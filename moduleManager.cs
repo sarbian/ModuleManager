@@ -127,8 +127,9 @@ public class moduleManager : MonoBehaviour
 				}
 				
 				foreach (ConfigNode rNode in node.GetNodes ("MODULE")) {
-					print ("REPLACE MODULE " + rNode.GetValue ("name") + " in " + partData.name);
-						part.Modules[rNode.GetValue ("name")].Load(rNode);
+					print ("REPLACE MODULE " + rNode.GetValue ("name") + " in " + partData.name + " with:");
+					print (rNode);
+					part.Modules[rNode.GetValue ("name")].Load(rNode);
 
 				}
 
@@ -140,9 +141,10 @@ public class moduleManager : MonoBehaviour
 				}
 
 				foreach (ConfigNode addNode in node.GetNodes ("MODULE")) {
-					print ("ADD MODULE " + addNode.GetValue ("name") + " to " + partData.name);
+					print ("ADD MODULE " + addNode.GetValue ("name") + " to " + partData.name + ":");
+					print (addNode);
 					//FIXME: this fails at PartModule.Load(ConfigNode) with a NullReferenceException
-					part.AddModule (addNode);
+					part.AddModule(addNode);
 				}
 				
 
