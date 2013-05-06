@@ -137,20 +137,18 @@ public class moduleManager : MonoBehaviour
 				foreach (ConfigNode addNode in node.GetNodes("RESOURCE")) {
 					print ("ADD RESOURCE " + addNode.GetValue ("name") + " to " + partData.name);
 					part.SetResource (addNode);
-					// this works
 				}
 
 				foreach (ConfigNode addNode in node.GetNodes ("MODULE")) {
 					print ("ADD MODULE " + addNode.GetValue ("name") + " to " + partData.name);
+					//FIXME: this fails at PartModule.Load(ConfigNode) with a NullReferenceException
 					part.AddModule (addNode);
-					// this fails at PartModule.Load(ConfigNode) with a NullReferenceException
 				}
 				
 
 			} else if(node.name.Equals ("COPY")) {
 				//TODO: Make this code work
 
-				/*
 				foreach (string newPartName in node.GetValues ("name")) {
 
 					AvailablePart newPart = new AvailablePart(partData.partPath);
@@ -164,12 +162,11 @@ public class moduleManager : MonoBehaviour
 					} else {
 						newPart.partPrefab.partName = newPartName;
 						newPart.name = newPartName;
-						updateQueue.Add (newPart);
+						PartLoader.LoadedPartsList.Add (newPart);
 						print ("COPY " + partData.name + " -> " + newPartName);
 
 					}
 				}
-				*/
 			}
 		}
 		
