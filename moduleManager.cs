@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -144,7 +145,12 @@ public class moduleManager : MonoBehaviour
 					print ("ADD MODULE " + addNode.GetValue ("name") + " to " + partData.name + ":");
 					print (addNode);
 					//FIXME: this fails at PartModule.Load(ConfigNode) with a NullReferenceException
-					part.AddModule(addNode);
+					PartModule module = part.AddModule (addNode.GetValue("name"));
+
+					// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
+					module.GetType ().InvokeMember ("Awake", BindingFlags.InvokeMethod | BindingFlags.NonPublic, null, null, new object[] {});
+
+					module.Load(addNode);
 				}
 				
 
