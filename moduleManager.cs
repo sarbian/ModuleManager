@@ -137,15 +137,19 @@ public class moduleManager : MonoBehaviour
 				foreach (ConfigNode addNode in node.GetNodes("RESOURCE")) {
 					print ("ADD RESOURCE " + addNode.GetValue ("name") + " to " + partData.name);
 					part.SetResource (addNode);
+					// this works
 				}
 
 				foreach (ConfigNode addNode in node.GetNodes ("MODULE")) {
 					print ("ADD MODULE " + addNode.GetValue ("name") + " to " + partData.name);
 					part.AddModule (addNode);
+					// this fails at PartModule.Load(ConfigNode) with a NullReferenceException
 				}
 				
 
 			} else if(node.name.Equals ("COPY")) {
+				//TODO: Make this code work
+
 				/*
 				foreach (string newPartName in node.GetValues ("name")) {
 
