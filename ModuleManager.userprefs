@@ -1,13 +1,17 @@
 ﻿<Properties>
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Debug" PreferredExecutionTarget="MonoDevelop.Default" />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Release" PreferredExecutionTarget="MonoDevelop.Default" />
   <MonoDevelop.Ide.Workbench ActiveDocument="moduleManager.cs">
     <Files>
-      <File FileName="moduleManager.cs" Line="73" Column="1" />
+      <File FileName="moduleManager.cs" Line="69" Column="3" />
+      <File FileName="../modularFuelTanks/modularFuelTank.cs" Line="453" Column="4" />
+      <File FileName="../../../zips/Chester.cs" Line="29" Column="1" />
+      <File FileName="AssemblyInfo.cs" Line="1" Column="1" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
         <State expanded="True">
           <Node name="ModuleManager" expanded="True">
+            <Node name="References" expanded="True" />
             <Node name="moduleManager.cs" selected="True" />
           </Node>
         </State>

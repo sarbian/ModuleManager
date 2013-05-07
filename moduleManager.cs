@@ -58,6 +58,23 @@ public class moduleManager : MonoBehaviour
 		print ("moduleManager: finished search of partList.");
 	}
 
+	public static bool Awaken(PartModule module)
+	{
+		// thanks to Mu and Kine for help with this bit of Dark Magic. 
+		// KINEMORTOBESTMORTOLOLOLOL
+		if (module == null)
+			return false;
+		object[] paramList = new object[] { };
+		MethodInfo awakeMethod = typeof(PartModule).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic);
+
+		if (awakeMethod == null)
+			return false;
+		
+		awakeMethod.Invoke(module, paramList);
+		return true;
+	}
+
+
 	private void Initialize(string newCFG)
 	{
 
@@ -148,13 +165,24 @@ public class moduleManager : MonoBehaviour
 					PartModule module = part.AddModule (addNode.GetValue("name"));
 
 					// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
-					module.GetType ().InvokeMember ("Awake", BindingFlags.InvokeMethod | BindingFlags.NonPublic, null, null, new object[] {});
+					if(Awaken (module)) { // uses reflection to find and call the PartModule.Awake() private method
+						module.Load(addNode);
 
-					module.Load(addNode);
+					} else {
+						print ("Awaken failed for new module.");
+					}
+					if(module.part == null)
+						print ("new module has null part.");
+					else
+						print ("Created module for " + module.part.name);
 				}
 				
 
-			} else if(node.name.Equals ("COPY")) {
+			}
+
+
+
+			if(node.name.Equals ("COPY")) {
 				//TODO: Make this code work
 
 				foreach (string newPartName in node.GetValues ("name")) {

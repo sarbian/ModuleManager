@@ -9,6 +9,7 @@
     <OutputType>Library</OutputType>
     <RootNamespace>ModuleManager</RootNamespace>
     <AssemblyName>ModuleManager</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>True</DebugSymbols>
@@ -29,7 +30,9 @@
     <ConsolePause>False</ConsolePause>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="System" />
+    <Reference Include="System">
+      <HintPath>..\..\..\KSP.app\Contents\Data\Managed\System.dll</HintPath>
+    </Reference>
     <Reference Include="Assembly-UnityScript-firstpass">
       <HintPath>..\..\..\KSP.app\Contents\Data\Managed\Assembly-UnityScript-firstpass.dll</HintPath>
     </Reference>
