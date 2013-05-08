@@ -20,6 +20,11 @@ public class moduleManager : MonoBehaviour
 	private void LoadCFG(string newCFG)
 	{
 		ConfigNode mods = ConfigNode.Load(appPath + newCFG);
+		if (mods == null) {
+			print ("ModuleManager: file " + newCFG + " not found.");
+			return;
+
+		}
 		print ("moduleManager loaded " + mods.CountNodes + " nodes from " + appPath + newCFG);
 		
 		// step 1: get all available part definitions
@@ -147,7 +152,26 @@ public class moduleManager : MonoBehaviour
 				foreach (ConfigNode rNode in node.GetNodes ("MODULE")) {
 					print ("REPLACE MODULE " + rNode.GetValue ("name") + " in " + partData.name + " with:");
 					print (rNode);
-					part.Modules[rNode.GetValue ("name")].Load(rNode);
+//					part.Modules[rNode.GetValue ("name")].Load(rNode);
+
+					PartModule module = part.Modules[rNode.GetValue ("name")];
+					if(module)
+						part.RemoveModule (module);
+					
+					module = part.AddModule (rNode.GetValue("name"));
+					
+					// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
+					if(Awaken (module)) { // uses reflection to find and call the PartModule.Awake() private method
+						module.Load(rNode);
+						
+					} else {
+						print ("Awaken failed for new module.");
+					}
+					if(module.part == null)
+						print ("new module has null part.");
+					else
+						print ("Created module for " + module.part.name);
+					
 
 				}
 
@@ -156,6 +180,7 @@ public class moduleManager : MonoBehaviour
 				foreach (ConfigNode addNode in node.GetNodes("RESOURCE")) {
 					print ("ADD RESOURCE " + addNode.GetValue ("name") + " to " + partData.name);
 					part.SetResource (addNode);
+
 				}
 
 				foreach (ConfigNode addNode in node.GetNodes ("MODULE")) {
@@ -176,8 +201,11 @@ public class moduleManager : MonoBehaviour
 					else
 						print ("Created module for " + module.part.name);
 				}
-				
-
+			}
+			partData.moduleInfo = "";				
+			foreach(PartModule module in part.Modules)
+			{
+				partData.moduleInfo += module.GetInfo();
 			}
 
 
