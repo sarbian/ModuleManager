@@ -159,19 +159,21 @@ public class moduleManager : MonoBehaviour
 						part.RemoveModule (module);
 					
 					module = part.AddModule (rNode.GetValue("name"));
-					
-					// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
-					if(Awaken (module)) { // uses reflection to find and call the PartModule.Awake() private method
-						module.Load(rNode);
-						
+					if(module) {
+						// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
+						if(Awaken (module)) { // uses reflection to find and call the PartModule.Awake() private method
+							module.Load(rNode);
+							
+						} else {
+							print ("Awaken failed for new module.");
+						}
+						if(module.part == null)
+							print ("new module has null part.");
+						else
+							print ("Created module for " + module.part.name);
 					} else {
-						print ("Awaken failed for new module.");
+						print ("module " + rNode.GetValue ("name") + " not found - are you missing a plugin?");
 					}
-					if(module.part == null)
-						print ("new module has null part.");
-					else
-						print ("Created module for " + module.part.name);
-					
 
 				}
 
@@ -188,18 +190,21 @@ public class moduleManager : MonoBehaviour
 					print (addNode);
 					//FIXME: this fails at PartModule.Load(ConfigNode) with a NullReferenceException
 					PartModule module = part.AddModule (addNode.GetValue("name"));
-
-					// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
-					if(Awaken (module)) { // uses reflection to find and call the PartModule.Awake() private method
-						module.Load(addNode);
-
+					if(module) {
+						// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
+						if(Awaken (module)) { // uses reflection to find and call the PartModule.Awake() private method
+							module.Load(addNode);
+	
+						} else {
+							print ("Awaken failed for new module.");
+						}
+						if(module.part == null)
+							print ("new module has null part.");
+						else
+							print ("Created module for " + module.part.name);
 					} else {
-						print ("Awaken failed for new module.");
+						print ("module " + addNode.GetValue ("name") + " not found - are you missing a plugin?");
 					}
-					if(module.part == null)
-						print ("new module has null part.");
-					else
-						print ("Created module for " + module.part.name);
 				}
 			}
 			partData.moduleInfo = "";				
