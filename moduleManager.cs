@@ -8,6 +8,7 @@ using UnityEngine;
 using KSP;
 using KSP.IO;
 
+using FuelModule;
 
 public class moduleManager : MonoBehaviour
 {
@@ -38,7 +39,7 @@ public class moduleManager : MonoBehaviour
 			if(partData == null) {
 				print ("moduleManager could not find part: " + pmod.name);
 			} else {
-				print ("moduleManager found part: " + partData.name);
+				print ("moduleManager modifying part: " + partData.name);
 				
 				Part part = partData.partPrefab;
 				
@@ -117,18 +118,24 @@ public class moduleManager : MonoBehaviour
 
 	public static AvailablePart ModifyPart(AvailablePart partData, ConfigNode config)
 	{
+		#if DEBUG
 		print ("applying the following to " + partData.name + ":");
 		print (config);
+		#endif
 		Part part = partData.partPrefab;
 
 		foreach(ConfigNode node in config.nodes)
 		{
+			#if DEBUG
 			print (node);
+			#endif
 			if(node.name.Equals ("REMOVE")) {
 				foreach (string value in node.GetValues("RESOURCE")) {
 					while(part.Resources.Contains(value))
 					{
+						#if DEBUG
 						print ("REMOVE RESOURCE " + value + " from " + partData.name);
+						#endif
 						part.Resources.list.Remove (part.Resources[value]);					
 					}
 				}
@@ -139,20 +146,25 @@ public class moduleManager : MonoBehaviour
 				foreach (string value in node.GetValues ("MODULE")) {
 					while(part.Modules.Contains (value))
 					{
+						#if DEBUG
 						print ("REMOVE MODULE " + value + " from " + partData.name);
+						#endif
 						part.RemoveModule(part.Modules[value]);
 					}
 				}
 			} else if(node.name.Equals ("REPLACE")) {
 				foreach (ConfigNode rNode in node.GetNodes("RESOURCE")) {
+					#if DEBUG
 					print ("REPLACE RESOURCE " + rNode.GetValue ("name") + " to " + partData.name);
+					#endif
 					part.SetResource (rNode);
 				}
 				
 				foreach (ConfigNode rNode in node.GetNodes ("MODULE")) {
+					#if DEBUG
 					print ("REPLACE MODULE " + rNode.GetValue ("name") + " in " + partData.name + " with:");
 					print (rNode);
-//					part.Modules[rNode.GetValue ("name")].Load(rNode);
+					#endif
 
 					PartModule module = part.Modules[rNode.GetValue ("name")];
 					if(module)
@@ -169,10 +181,15 @@ public class moduleManager : MonoBehaviour
 						}
 						if(module.part == null)
 							print ("new module has null part.");
-						else
+						else {
+							#if DEBUG
 							print ("Created module for " + module.part.name);
+							#endif
+						}
 					} else {
+						#if DEBUG
 						print ("module " + rNode.GetValue ("name") + " not found - are you missing a plugin?");
+						#endif
 					}
 
 				}
@@ -180,30 +197,60 @@ public class moduleManager : MonoBehaviour
 			} else if(node.name.Equals ("ADD")) {
 
 				foreach (ConfigNode addNode in node.GetNodes("RESOURCE")) {
+					#if DEBUG
 					print ("ADD RESOURCE " + addNode.GetValue ("name") + " to " + partData.name);
+					#endif
 					part.SetResource (addNode);
 
 				}
+				foreach (ConfigNode addNode in node.GetNodes ("TANK")) {
+					if(part.Modules.Contains ("ModuleFuelTanks"))
+					{
+						ModuleFuelTanks module = (ModuleFuelTanks) part.Modules["ModuleFuelTanks"];
+						ModuleFuelTanks.FuelTank tank = new ModuleFuelTanks.FuelTank();
+						tank.Load (addNode);
+						module.fuelList.Add (tank);
+					}
+				}
+
+				foreach (ConfigNode addNode in node.GetNodes ("CONFIG")) {
+					if(part.Modules.Contains ("ModuleEngineConfigs"))
+					{
+						ModuleEngineConfigs module = (ModuleEngineConfigs) part.Modules["ModuleEngineConfigs"];
+						module.configs.Add (addNode);
+					}
+				}
 
 				foreach (ConfigNode addNode in node.GetNodes ("MODULE")) {
+					#if DEBUG
 					print ("ADD MODULE " + addNode.GetValue ("name") + " to " + partData.name + ":");
 					print (addNode);
-					//FIXME: this fails at PartModule.Load(ConfigNode) with a NullReferenceException
-					PartModule module = part.AddModule (addNode.GetValue("name"));
-					if(module) {
-						// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
-						if(Awaken (module)) { // uses reflection to find and call the PartModule.Awake() private method
-							module.Load(addNode);
-	
-						} else {
-							print ("Awaken failed for new module.");
-						}
-						if(module.part == null)
-							print ("new module has null part.");
-						else
-							print ("Created module for " + module.part.name);
+					#endif
+					if(part.Modules.Contains (addNode.GetValue("name"))) {
+						#if DEBUG
+						print ("Not ADDing MODULE " + addNode.GetValue ("name") + " to " + partData.name + " - it already has one.");
+						#endif
+
 					} else {
-						print ("module " + addNode.GetValue ("name") + " not found - are you missing a plugin?");
+						PartModule module = part.AddModule (addNode.GetValue("name"));
+						if(module) {
+							// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
+							if(Awaken (module)) { // uses reflection to find and call the PartModule.Awake() private method
+								module.Load(addNode);
+		
+							} else {
+								print ("Awaken failed for module " + addNode.GetValue ("name"));
+							}
+							if(module.part == null)
+								print ("new module has null part.");
+							else {
+								#if DEBUG
+								print ("Created module for " + module.part.name);
+								#endif
+							}
+						} else {
+							print ("module " + addNode.GetValue ("name") + " not found - are you missing a plugin?");
+						}
 					}
 				}
 			}

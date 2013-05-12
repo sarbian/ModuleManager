@@ -48,6 +48,9 @@
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\KSP.app\Contents\Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
+    <Reference Include="modularFuelTanks">
+      <HintPath>..\..\Plugins\modularFuelTanks.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.cs" />
