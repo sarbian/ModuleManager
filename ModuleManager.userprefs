@@ -2,18 +2,14 @@
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Release" />
   <MonoDevelop.Ide.Workbench ActiveDocument="moduleManager.cs">
     <Files>
-      <File FileName="moduleManager.cs" Line="219" Column="91" />
-      <File FileName="../modularFuelTanks/modularFuelTank.cs" Line="301" Column="7" />
-      <File FileName="../../../zips/Chester.cs" Line="1" Column="1" />
-      <File FileName="AssemblyInfo.cs" Line="1" Column="1" />
-      <File FileName="../../../zips/TTEch-1.7.1/source/txlib.cs" Line="1" Column="1" />
-      <File FileName="../../../zips/uploads_2013_03_FerramAerospaceResearch_v0.9.1/Source/FARBaseAerodynamics.cs" Line="1" Column="1" />
+      <File FileName="moduleManager.cs" Line="256" Column="35" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
         <State expanded="True">
           <Node name="ModuleManager" expanded="True">
-            <Node name="References" expanded="True" selected="True" />
+            <Node name="References" expanded="True" />
+            <Node name="moduleManager.cs" selected="True" />
           </Node>
         </State>
       </Pad>

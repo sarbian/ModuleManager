@@ -33,23 +33,11 @@
     <Reference Include="System">
       <HintPath>..\..\..\KSP.app\Contents\Data\Managed\System.dll</HintPath>
     </Reference>
-    <Reference Include="Assembly-UnityScript-firstpass">
-      <HintPath>..\..\..\KSP.app\Contents\Data\Managed\Assembly-UnityScript-firstpass.dll</HintPath>
-    </Reference>
-    <Reference Include="Assembly-UnityScript">
-      <HintPath>..\..\..\KSP.app\Contents\Data\Managed\Assembly-UnityScript.dll</HintPath>
-    </Reference>
-    <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>..\..\..\KSP.app\Contents\Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
-    </Reference>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\KSP.app\Contents\Data\Managed\Assembly-CSharp.dll</HintPath>
+      <HintPath>..\..\..\..\KSP.app\Contents\Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="UnityEngine">
-      <HintPath>..\..\..\KSP.app\Contents\Data\Managed\UnityEngine.dll</HintPath>
-    </Reference>
-    <Reference Include="modularFuelTanks">
-      <HintPath>..\..\Plugins\modularFuelTanks.dll</HintPath>
+      <HintPath>..\..\..\..\KSP.app\Contents\Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>

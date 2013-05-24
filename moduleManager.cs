@@ -1,22 +1,176 @@
 using System;
-using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
+using System.Reflection;
 
 using UnityEngine;
 
 using KSP;
-using KSP.IO;
 
-using FuelModule;
-
-public class moduleManager : MonoBehaviour
+[KSPAddon(KSPAddon.Startup.MainMenu, true)]
+public class ModuleManager : MonoBehaviour
 {
-	public static GameObject GameObjectInstance;
-	private static PluginConfiguration config = PluginConfiguration.CreateForType<moduleManager>();
+
 	private static string loadedCFG = "";
-	private static string appPath = KSPUtil.ApplicationRootPath.Replace("\\", "/") + "PluginData/moduleManager/";
-	private bool initialized = false;
+	public static List<AvailablePart> partDatabase = PartLoader.LoadedPartsList;
+	private static string appPath = KSPUtil.ApplicationRootPath.Replace("\\", "/") + "GameData/";
+	private static bool initialized = false;
+
+
+	//FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType. If nodeName is not null,
+	//it will only find a node of type nodeType with the value name=nodeName. If nodeTag is not null,
+	//it will only find a node of type nodeType with the value name=nodeName and tag=nodeTag.
+
+	public static ConfigNode FindConfigNodeIn(ConfigNode src, string nodeType, string nodeName, string nodeTag)
+	{
+		if (nodeTag == null)
+			print ("Searching node for " + nodeType + "[" + nodeName + "]");
+		else
+			print ("Searching node for " + nodeType + "[" + nodeName + "," + nodeTag + "]");
+
+		foreach (ConfigNode n in src.GetNodes (nodeType)) {
+			if(n.HasValue ("name") && n.GetValue ("name").Equals (nodeName) && 
+			   (nodeTag == null || 
+			   (n.HasValue ("tag") && n.GetValue("tag").Equals(nodeTag))) ) {
+				print ("found node!");
+				return n;
+			}
+		}
+		return null;
+	}
+
+	public static UrlDir.UrlConfig FindConfig(string nodeType, string nodeName) 
+	{
+		print ("Searching " + (GameDatabase.Instance.GetConfigs (nodeType).Length+1).ToString () + nodeType + " nodes for 'name = " + nodeName + "'");
+		foreach (UrlDir.UrlConfig n in GameDatabase.Instance.GetConfigs(nodeType)) {
+			if(n.name.Equals (nodeName)) {
+				return n;
+			} else if(n.config.HasValue ("name") && n.config.GetValue ("name").Equals (nodeName)) {
+				return n;
+			}
+		}
+		return null;
+	}
+
+
+	//ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original,
+	//then returns the patched ConfigNode.
+
+	// it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
+
+	public ConfigNode ModifyNode(ConfigNode original, ConfigNode mod)
+	{
+		ConfigNode newNode = new ConfigNode(original.name);
+		original.CopyTo (newNode);
+
+		foreach(ConfigNode.Value val in mod.values) {
+			if(val.name[0] == '@') {
+				// Modifying a value: Format is @key = value or @key,index = value 
+				string valName = val.name.Substring (1);
+				int index = 0;
+				if(valName.Contains (",")) {
+					int.TryParse(valName.Split (',')[1], out index);
+					valName = valName.Split (',')[0];
+				}
+				newNode.SetValue (valName, val.value, index);
+			} else if (val.name[0] == '!') {
+				// Parsing: Format is @key = value or @key,index = value 
+				string valName = val.name.Substring (1);
+				int index = 0;
+				if(valName.Contains (",")) {
+					int.TryParse(valName.Split (',')[1], out index);
+					valName = valName.Split (',')[0];
+				} // index is useless right now, but some day it might not be.
+				newNode.RemoveValue (valName);
+			} else {
+				newNode.AddValue (val.name, val.value);
+			}
+		}
+
+		foreach (ConfigNode subMod in mod.nodes) {
+			if(subMod.name[0] == '@') {
+				// Modifying a node: Format is @NODETYPE {...}, @NODETYPE[Name] {...} or @NODETYPE[Name,Tag] {...}
+				ConfigNode subNode = null;
+
+				if(subMod.name.Contains ("["))
+				{ // format @NODETYPE[Name] {...} or @NODETYPE[Name, Tag] {...}
+					string nodeType = subMod.name.Substring (1).Split ('[')[0].Trim ();
+					string nodeName = subMod.name.Split ('[')[1].Replace ("]","").Trim();
+					string nodeTag = null;
+					if(nodeName.Contains (",")) { //format @NODETYPE[Name, Tag] {...}
+						nodeTag = nodeName.Split (',')[1];
+						nodeName = nodeName.Split (',')[0];
+					}
+					subNode = FindConfigNodeIn(newNode, nodeType, nodeName, nodeTag);
+				} else { // format @NODETYPE {...}
+					string nodeType = subMod.name.Substring (1);
+					subNode = newNode.GetNode (nodeType);
+				}
+				// find the original subnode to modify, modify it, remove the original and add the modified.
+				if(subNode == null) {
+					print ("Could not find node to modify: " + subMod.name);
+				} else {
+					ConfigNode newSubNode = ModifyNode (subNode, subMod);
+					newNode.nodes.Remove (subNode);
+					newNode.nodes.Add (newSubNode);
+				}
+
+			} else if(subMod.name[0] == '!') {
+				// Removing a node: Format is !NODETYPE {}, !NODETYPE[Name] {} or !NODETYPE[Name,Tag] {}
+
+				ConfigNode subNode;
+				
+				if(subMod.name.Contains ("["))
+				{ // format !NODETYPE[Name] {} or !NODETYPE[Name, Tag] {}
+					string nodeType = subMod.name.Substring (1).Split ('[')[0].Trim ();
+					string nodeName = subMod.name.Split ('[')[1].Replace ("]","").Trim();
+					string nodeTag = null;
+					if(nodeName.Contains (",")) { //format !NODETYPE[Name, Tag] {}
+						nodeTag = nodeName.Split (',')[1];
+						nodeName = nodeName.Split (',')[0];
+					}
+					subNode = FindConfigNodeIn(newNode, nodeType, nodeName, nodeTag);
+				} else { // format !NODETYPE {}
+					string nodeType = subMod.name.Substring (1);
+					subNode = newNode.GetNode (nodeType);
+				}
+				if(subNode != null)
+					newNode.nodes.Remove (subNode);
+
+			} else {
+				// this is a full node, not a mod, so just add it as a new subnode.
+				newNode.AddNode (subMod);
+			}
+		}
+
+		return newNode;
+	}
+
+	
+	public UrlDir.UrlConfig ModifyConfig(ConfigNode modNode)
+	{ 
+		// this is a modifier node. Format: @NODETYPE[NodeName] {...}
+		if (modNode.name == null || modNode.name.Trim ().Equals ("") || modNode.name [0] != '@' || !modNode.name.Contains ("["))
+			return null;
+		else {
+			string nodeType = modNode.name.Substring (1).Split ('[') [0].Trim ();
+			string nodeName = modNode.name.Split ('[') [1].Replace ("]", "").Trim ();
+			
+			print ("moduleManager modifying " + nodeType + "[" + nodeName + "]");
+			
+			UrlDir.UrlConfig orig = FindConfig (nodeType, nodeName);
+			if (orig == null) {
+				print ("Could not find Config for " + nodeType + "[" + nodeName + "]");
+				return null;
+			}
+			print ("Old ConfigNode:");
+			print (orig.config.ToString ());
+			orig.config = ModifyNode (orig.config, modNode);
+			print ("New ConfigNode:");
+			print (orig.config.ToString ());
+			return orig;
+		}
+	}
 
 	private void LoadCFG(string newCFG)
 	{
@@ -34,27 +188,33 @@ public class moduleManager : MonoBehaviour
 		print ("moduleManager: beginning search of partList...");
 		
 		foreach (ConfigNode pmod in mods.nodes) {
-			AvailablePart partData = PartLoader.getPartInfoByName (pmod.name);
-			
-			if(partData == null) {
-				print ("moduleManager could not find part: " + pmod.name);
-			} else {
-				print ("moduleManager modifying part: " + partData.name);
-				
-				Part part = partData.partPrefab;
-				
-				if(!part) {
-					// I have no idea how this could happen, but may as well check for it.
-					print ("Null part from partData " + partData.name);
-					
-				} else if(part.Modules == null) {
-					// I have no idea how this could happen, but may as well check for it.
-					print ("Null Modules from part " + part.name);
-					
-				} else  {
-					ModifyPart (partData, pmod);
+			if(pmod.name == null || pmod.name.Trim ().Equals ("")) {
+				// an empty node? I suppose it's possible
+			} else if(pmod.name[0] == '@') {
+				UrlDir.UrlConfig orig = ModifyConfig (pmod);
+				if(orig == null)
+					print (pmod.name.Substring (1) + " not found");
+				else {
+					string nodeType = orig.config.name, nodeName = orig.name;
+					if(nodeType.Equals ("PART")) {
+						// we just modified a part node, so let's change the AvailablePart
+						AvailablePart partData = partDatabase.Find (p => p.name.Equals (nodeName.Replace ("_", ".")));
+						if(partData == null)
+							print ("PART[" + nodeName + "] not found!");
+						else {
+							ModifyPart(partData, orig.config);
+						}
+					} else if(nodeType.Equals ("RESOURCE_DEFINITION")) {
+						// we just modified a resource definition node, so let's change the ResourceDefinition
+						PartResourceDefinition resource = PartResourceLibrary.Instance.resourceDefinitions[nodeName];
+						if(resource == null)
+							print ("RESOURCE_DEFINITION[" + nodeName + "] not found!");
+						else
+							resource.Load (orig.config);
+					}
 				}
 			}
+
 		}
 		foreach (string includeFile in mods.GetValues ("include")) {
 			print ("recursing into " + includeFile);
@@ -64,6 +224,7 @@ public class moduleManager : MonoBehaviour
 		print ("moduleManager: finished search of partList.");
 	}
 
+	
 	public static bool Awaken(PartModule module)
 	{
 		// thanks to Mu and Kine for help with this bit of Dark Magic. 
@@ -72,7 +233,7 @@ public class moduleManager : MonoBehaviour
 			return false;
 		object[] paramList = new object[] { };
 		MethodInfo awakeMethod = typeof(PartModule).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic);
-
+		
 		if (awakeMethod == null)
 			return false;
 		
@@ -80,6 +241,48 @@ public class moduleManager : MonoBehaviour
 		return true;
 	}
 
+	public static void ModifyPart(AvailablePart partData, ConfigNode node)
+	{
+		//Step 1: load the Fields
+		partData.partPrefab.Fields.Load(node);
+
+		//Step 2A: clear the old Resources
+		partData.partPrefab.Resources.list.Clear ();
+		partData.resourceInfo = "";
+		//Step 2B: load the new Resources
+		foreach(ConfigNode rNode in node.GetNodes ("RESOURCE")) {
+			PartResource resource = partData.partPrefab.AddResource (rNode);
+			if(partData.resourceInfo.Length > 0)
+				partData.resourceInfo += "\n";
+			partData.resourceInfo += resource.GetInfo ();
+		}
+		//Step 3A: clear the old Modules
+		while (partData.partPrefab.Modules.Count > 0)
+			partData.partPrefab.RemoveModule (partData.partPrefab.Modules [0]);
+		partData.moduleInfo = "";
+		//Step 3B: load the new Modules
+		foreach(ConfigNode mNode in node.GetNodes ("MODULE")) {
+
+			PartModule module = partData.partPrefab.AddModule (mNode.GetValue ("name"));
+			if(module) {
+				// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
+				if(Awaken (module)) { // uses reflection to find and call the PartModule.Awake() private method
+					module.Load(mNode);					
+				} else {
+					print ("Awaken failed for new module.");
+				}
+				if(module.part == null) {
+					print ("new module has null part.");
+				} else {
+					#if DEBUG
+					print ("Created module for " + module.part.name);
+					#endif
+				}
+			}
+			partData.moduleInfo += module.GetInfo ();
+		}
+
+	}
 
 	private void Initialize(string newCFG)
 	{
@@ -87,8 +290,6 @@ public class moduleManager : MonoBehaviour
 		// initialize our plugin.
 		if (loadedCFG.Equals (newCFG) && initialized) // we only want to intialize if we haven't already, since this can conceivably get called each frame.
 			return;
-		if(config != null)
-			config.load ();
 
 		print ("Initializing moduleManager...");
 
@@ -97,209 +298,10 @@ public class moduleManager : MonoBehaviour
 		initialized = true;
 		print ("moduleManager initialized.");
 	}
-	
+
 	public void Awake()
 	{
-		DontDestroyOnLoad(this);
-	}
-
-
-	public void OnGUI()
-	{
-		EditorLogic editor = EditorLogic.fetch;
-		if (!HighLogic.LoadedSceneIsEditor || !editor) {
-			initialized = false;
-			return;
-		}
-		// we can afford to initialize each frame, because Initialize() checks to see if
-		// we're already initialized.
-		Initialize ("parts.cfg");
-	}
-
-	public static AvailablePart ModifyPart(AvailablePart partData, ConfigNode config)
-	{
-		#if DEBUG
-		print ("applying the following to " + partData.name + ":");
-		print (config);
-		#endif
-		Part part = partData.partPrefab;
-
-		foreach(ConfigNode node in config.nodes)
-		{
-			#if DEBUG
-			print (node);
-			#endif
-			if(node.name.Equals ("REMOVE")) {
-				foreach (string value in node.GetValues("RESOURCE")) {
-					while(part.Resources.Contains(value))
-					{
-						#if DEBUG
-						print ("REMOVE RESOURCE " + value + " from " + partData.name);
-						#endif
-						part.Resources.list.Remove (part.Resources[value]);					
-					}
-				}
-				partData.resourceInfo = "";
-				foreach(PartResource r in part.Resources)
-					partData.resourceInfo += r.GetInfo() + "\n";
-
-				foreach (string value in node.GetValues ("MODULE")) {
-					while(part.Modules.Contains (value))
-					{
-						#if DEBUG
-						print ("REMOVE MODULE " + value + " from " + partData.name);
-						#endif
-						part.RemoveModule(part.Modules[value]);
-					}
-				}
-			} else if(node.name.Equals ("REPLACE")) {
-				foreach (ConfigNode rNode in node.GetNodes("RESOURCE")) {
-					#if DEBUG
-					print ("REPLACE RESOURCE " + rNode.GetValue ("name") + " to " + partData.name);
-					#endif
-					part.SetResource (rNode);
-				}
-				
-				foreach (ConfigNode rNode in node.GetNodes ("MODULE")) {
-					#if DEBUG
-					print ("REPLACE MODULE " + rNode.GetValue ("name") + " in " + partData.name + " with:");
-					print (rNode);
-					#endif
-
-					PartModule module = part.Modules[rNode.GetValue ("name")];
-					if(module)
-						part.RemoveModule (module);
-					
-					module = part.AddModule (rNode.GetValue("name"));
-					if(module) {
-						// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
-						if(Awaken (module)) { // uses reflection to find and call the PartModule.Awake() private method
-							module.Load(rNode);
-							
-						} else {
-							print ("Awaken failed for new module.");
-						}
-						if(module.part == null)
-							print ("new module has null part.");
-						else {
-							#if DEBUG
-							print ("Created module for " + module.part.name);
-							#endif
-						}
-					} else {
-						#if DEBUG
-						print ("module " + rNode.GetValue ("name") + " not found - are you missing a plugin?");
-						#endif
-					}
-
-				}
-
-			} else if(node.name.Equals ("ADD")) {
-
-				foreach (ConfigNode addNode in node.GetNodes("RESOURCE")) {
-					#if DEBUG
-					print ("ADD RESOURCE " + addNode.GetValue ("name") + " to " + partData.name);
-					#endif
-					part.SetResource (addNode);
-
-				}
-				foreach (ConfigNode addNode in node.GetNodes ("TANK")) {
-					if(part.Modules.Contains ("ModuleFuelTanks"))
-					{
-						ModuleFuelTanks module = (ModuleFuelTanks) part.Modules["ModuleFuelTanks"];
-						ModuleFuelTanks.FuelTank tank = new ModuleFuelTanks.FuelTank();
-						tank.Load (addNode);
-						module.fuelList.Add (tank);
-					}
-				}
-
-				foreach (ConfigNode addNode in node.GetNodes ("CONFIG")) {
-					if(part.Modules.Contains ("ModuleEngineConfigs"))
-					{
-						ModuleEngineConfigs module = (ModuleEngineConfigs) part.Modules["ModuleEngineConfigs"];
-						module.configs.Add (addNode);
-					}
-				}
-
-				foreach (ConfigNode addNode in node.GetNodes ("MODULE")) {
-					#if DEBUG
-					print ("ADD MODULE " + addNode.GetValue ("name") + " to " + partData.name + ":");
-					print (addNode);
-					#endif
-					if(part.Modules.Contains (addNode.GetValue("name"))) {
-						#if DEBUG
-						print ("Not ADDing MODULE " + addNode.GetValue ("name") + " to " + partData.name + " - it already has one.");
-						#endif
-
-					} else {
-						PartModule module = part.AddModule (addNode.GetValue("name"));
-						if(module) {
-							// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
-							if(Awaken (module)) { // uses reflection to find and call the PartModule.Awake() private method
-								module.Load(addNode);
-		
-							} else {
-								print ("Awaken failed for module " + addNode.GetValue ("name"));
-							}
-							if(module.part == null)
-								print ("new module has null part.");
-							else {
-								#if DEBUG
-								print ("Created module for " + module.part.name);
-								#endif
-							}
-						} else {
-							print ("module " + addNode.GetValue ("name") + " not found - are you missing a plugin?");
-						}
-					}
-				}
-			}
-			partData.moduleInfo = "";				
-			foreach(PartModule module in part.Modules)
-			{
-				partData.moduleInfo += module.GetInfo();
-			}
-
-
-
-			if(node.name.Equals ("COPY")) {
-				//TODO: Make this code work
-
-				foreach (string newPartName in node.GetValues ("name")) {
-
-					AvailablePart newPart = new AvailablePart(partData.partPath);
-					if(newPart.partPrefab == null)
-					{
-						newPart.partPrefab = new Part();
-						newPart.name = newPartName;
-						newPart.partPrefab.partName = newPartName;
-
-						print ("COPY " + partData.name + " -> " + newPartName + " failed due to null partPrefab.");
-					} else {
-						newPart.partPrefab.partName = newPartName;
-						newPart.name = newPartName;
-						PartLoader.LoadedPartsList.Add (newPart);
-						print ("COPY " + partData.name + " -> " + newPartName);
-
-					}
-				}
-			}
-		}
-		
-		//AvailablePart newPartData = PartLoader.getPartInfoByPartPrefab(part.gameObject);
-		//if (newPartData == null) {
-		//	print ("getPartInfoByPartPrefab(" + part.name + ") returned null!");
-		//	return partData;
-		//}
-		return partData;
-	}
+		Initialize ("gameData.cfg");
+	}	
 }
 
-public class moduleManagerInit : KSP.Testing.UnitTest
-{
-	public moduleManagerInit()
-	{
-		var gameobject = new GameObject("moduleManager", typeof(moduleManager));
-		UnityEngine.Object.DontDestroyOnLoad(gameobject);
-	}
-}
