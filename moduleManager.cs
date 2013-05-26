@@ -41,7 +41,9 @@ namespace ModuleManager
 	[KSPAddon(KSPAddon.Startup.MainMenu, true)]
 	public class ModuleManager : MonoBehaviour
 	{
-
+		public static string version {
+			get { return "1.01";}
+		}
 		public static List<AvailablePart> partDatabase = PartLoader.LoadedPartsList;
 		private static string appPath = KSPUtil.ApplicationRootPath.Replace("\\", "/") + "GameData/";
 
@@ -101,7 +103,11 @@ namespace ModuleManager
 						int.TryParse(valName.Split (',')[1], out index);
 						valName = valName.Split (',')[0];
 					}
-					newNode.SetValue (valName, val.value, index);
+					if(newNode.HasValue (valName))
+						newNode.SetValue (valName, val.value, index);
+					else
+						newNode.AddValue (valName, val.value);
+
 				} else if (val.name[0] == '!') {
 					// Parsing: Format is @key = value or @key,index = value 
 					string valName = val.name.Substring (1);
@@ -272,23 +278,50 @@ namespace ModuleManager
 
 		public static void ModifyPart(AvailablePart partData, ConfigNode node)
 		{
+			print ("reloading from node: " + node.ToString ());
+
 			//Step 1: load the Fields
+			ConfigNode.LoadObjectFromConfig (partData, node);
+			ConfigNode.LoadObjectFromConfig (partData.partPrefab, node);
 			partData.partPrefab.Fields.Load(node);
 
+			// why I gotta do everything myself?
+			foreach (ConfigNode.Value kv in node.values) {
+				FieldInfo field = partData.partPrefab.GetType().GetField (kv.name);
+				if(field != null) {
+					if(field.FieldType == typeof(string)) {
+						field.SetValue (partData.partPrefab, kv.value);
+					} else if(field.FieldType == typeof(float)) {
+						float v;
+						float.TryParse (kv.value, out v);
+						field.SetValue (partData.partPrefab, v);
+					} else if(field.FieldType == typeof(double)) {
+						double v;
+						double.TryParse (kv.value, out v);
+						field.SetValue (partData.partPrefab, v);
+					} else if(field.FieldType == typeof(double)) {
+						int v;
+						int.TryParse (kv.value, out v);
+						field.SetValue (partData.partPrefab, v);
+					} else if(field.FieldType == typeof(bool)) {
+						bool v;
+						bool.TryParse (kv.value, out v);
+						field.SetValue (partData.partPrefab, v);
+					}
+
+				}
+			}
 			//Step 2A: clear the old Resources
 			partData.partPrefab.Resources.list.Clear ();
-			partData.resourceInfo = "";
 			//Step 2B: load the new Resources
 			foreach(ConfigNode rNode in node.GetNodes ("RESOURCE")) {
-				PartResource resource = partData.partPrefab.AddResource (rNode);
-				if(partData.resourceInfo.Length > 0)
-					partData.resourceInfo += "\n";
-				partData.resourceInfo += resource.GetInfo ();
+				partData.partPrefab.AddResource (rNode);
 			}
+
 			//Step 3A: clear the old Modules
 			while (partData.partPrefab.Modules.Count > 0)
 				partData.partPrefab.RemoveModule (partData.partPrefab.Modules [0]);
-			partData.moduleInfo = "";
+
 			//Step 3B: load the new Modules
 			foreach(ConfigNode mNode in node.GetNodes ("MODULE")) {
 
@@ -308,6 +341,21 @@ namespace ModuleManager
 						#endif
 					}
 				}
+			}
+			RefreshInfo (partData);
+		}
+
+		public static void RefreshInfo(AvailablePart partData)
+		{
+			partData.resourceInfo = "";
+			foreach(PartResource resource in partData.partPrefab.Resources) {
+				if(partData.resourceInfo.Length > 0)
+					partData.resourceInfo += "\n";
+				partData.resourceInfo += resource.GetInfo ();
+			}
+
+			partData.moduleInfo = "";
+			foreach (PartModule module in partData.partPrefab.Modules) {
 				partData.moduleInfo += module.GetInfo ();
 			}
 
