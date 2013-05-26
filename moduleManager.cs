@@ -357,7 +357,15 @@ namespace ModuleManager
 
 		public void Awake()
 		{
-			ApplyMods ("RESOURCE_DEFINITION");
+			List<string> types = new List<string>();
+			foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs) {
+				if(!types.Contains (url.type)) {
+					types.Add (url.type);
+					print (url.type);
+					if(url.type[0] != '@' && !url.type.Equals ("PART")) // do parts last.
+						ApplyMods (url.type);
+				}
+			}
 			ApplyMods ("PART");
 		}	
 	}
