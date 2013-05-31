@@ -1,8 +1,8 @@
 ﻿<Properties>
-  <MonoDevelop.Ide.Workspace ActiveConfiguration="Release" />
+  <MonoDevelop.Ide.Workspace ActiveConfiguration="Release" PreferredExecutionTarget="MonoDevelop.Default" />
   <MonoDevelop.Ide.Workbench ActiveDocument="moduleManager.cs">
     <Files>
-      <File FileName="moduleManager.cs" Line="256" Column="35" />
+      <File FileName="moduleManager.cs" Line="281" Column="4" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">

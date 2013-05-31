@@ -32,12 +32,16 @@
   <ItemGroup>
     <Reference Include="System">
       <HintPath>..\..\..\KSP.app\Contents\Data\Managed\System.dll</HintPath>
-    </Reference>
-    <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\..\..\KSP.app\Contents\Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
     </Reference>
     <Reference Include="UnityEngine">
       <HintPath>..\..\..\..\KSP.app\Contents\Data\Managed\UnityEngine.dll</HintPath>
+      <Package>/Applications/Kerbal Space Program/KSP.app/Contents/Data/Managed/UnityEngine.dll</Package>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\..\..\zips\KSP_0.20\KSP.app\Contents\Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>False</Private>
     </Reference>
   </ItemGroup>
   <ItemGroup>
