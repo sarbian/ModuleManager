@@ -51,16 +51,19 @@ namespace ModuleManager
 		public static ConfigNode FindConfigNodeIn(ConfigNode src, string nodeType, 
 		                                          string nodeName = null, string nodeTag = null)
 		{
+#if debug
 			if (nodeTag == null)
 				print ("Searching node for " + nodeType + "[" + nodeName + "]");
 			else
 				print ("Searching node for " + nodeType + "[" + nodeName + "," + nodeTag + "]");
-
+#endif
 			foreach (ConfigNode n in src.GetNodes (nodeType)) {
 				if(n.HasValue ("name") && n.GetValue ("name").Equals (nodeName) && 
 				   (nodeTag == null || 
 				   (n.HasValue ("tag") && n.GetValue("tag").Equals(nodeTag))) ) {
+#if debug
 					print ("found node!");
+#endif
 					return n;
 				}
 			}
@@ -170,24 +173,16 @@ namespace ModuleManager
 		public void OnGUI()
 		{
 			//by the time we reach OnGUI(), all the configNodes have been loaded.
-
+			print ("ModuleManager loading cfg patches...");
 			foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs) {
-				if (url.type [0] == '@') {
-				} else {
-					string nodeName = url.type + "[" + url.name + "]";
-					print ("modifying " + nodeName);
-
+				if (url.type [0] != '@') {
 					string modName = "@" + url.type + "[" + url.name + "]";
-					print ("Searching gameDatabase for " + modName);
-					
 					foreach (ConfigNode mod in GameDatabase.Instance.GetConfigNodes(modName)) {
 						print ("Applying node " + modName);
 						url.config = ModifyNode (url.config, mod);
 					}
 				
 					modName = "@" + url.type + "[" + url.name + "]:Final";
-					print ("Searching gameDatabase for " + modName);
-					
 					foreach (ConfigNode mod in GameDatabase.Instance.GetConfigNodes(modName)) {
 						print ("Applying node " + modName);
 						url.config = ModifyNode (url.config, mod);
@@ -196,7 +191,7 @@ namespace ModuleManager
 			}
 
 			// we're done; no need to stick around.
-			Destroy (this);
+			DestroyImmediate (this);
 				
 		}
 	}
