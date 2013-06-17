@@ -1,7 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Reflection;
+using System.Text.RegularExpressions;
 
 using UnityEngine;
 
@@ -38,21 +38,18 @@ using KSP.IO;
  * */
 namespace ModuleManager
 {
-	[KSPAddon(KSPAddon.Startup.MainMenu, true)]
-	public class ModuleManager : MonoBehaviour
+	[KSPAddon(KSPAddon.Startup.Instantly, true)]
+	public class ConfigManager : MonoBehaviour
 	{
-		public static string version {
-			get { return "1.01";}
-		}
+
 		public static List<AvailablePart> partDatabase = PartLoader.LoadedPartsList;
-		private static string appPath = KSPUtil.ApplicationRootPath.Replace("\\", "/") + "GameData/";
 
+		//FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType. 
+		//If nodeName is not null, it will only find a node of type nodeType with the value name=nodeName. 
+		//If nodeTag is not null, it will only find a node of type nodeType with the value name=nodeName and tag=nodeTag.
 
-		//FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType. If nodeName is not null,
-		//it will only find a node of type nodeType with the value name=nodeName. If nodeTag is not null,
-		//it will only find a node of type nodeType with the value name=nodeName and tag=nodeTag.
-
-		public static ConfigNode FindConfigNodeIn(ConfigNode src, string nodeType, string nodeName, string nodeTag)
+		public static ConfigNode FindConfigNodeIn(ConfigNode src, string nodeType, 
+		                                          string nodeName = null, string nodeTag = null)
 		{
 			if (nodeTag == null)
 				print ("Searching node for " + nodeType + "[" + nodeName + "]");
@@ -70,23 +67,7 @@ namespace ModuleManager
 			return null;
 		}
 
-		public static UrlDir.UrlConfig FindConfig(string nodeType, string nodeName) 
-		{
-			print ("Searching " + (GameDatabase.Instance.GetConfigs (nodeType).Length+1).ToString () + nodeType + " nodes for 'name = " + nodeName + "'");
-			foreach (UrlDir.UrlConfig n in GameDatabase.Instance.GetConfigs(nodeType)) {
-				if(n.name.Equals (nodeName)) {
-					return n;
-				} else if(n.config.HasValue ("name") && n.config.GetValue ("name").Equals (nodeName)) {
-					return n;
-				}
-			}
-			return null;
-		}
-
-
-		//ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original,
-		//then returns the patched ConfigNode.
-
+		//ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original, then returns the patched ConfigNode.
 		// it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
 
 		public static ConfigNode ModifyNode(ConfigNode original, ConfigNode mod)
@@ -103,11 +84,7 @@ namespace ModuleManager
 						int.TryParse(valName.Split (',')[1], out index);
 						valName = valName.Split (',')[0];
 					}
-					if(newNode.HasValue (valName))
-						newNode.SetValue (valName, val.value, index);
-					else
-						newNode.AddValue (valName, val.value);
-
+					newNode.SetValue (valName, val.value, index);
 				} else if (val.name[0] == '!') {
 					// Parsing: Format is @key = value or @key,index = value 
 					string valName = val.name.Substring (1);
@@ -177,245 +154,51 @@ namespace ModuleManager
 					newNode.AddNode (subMod);
 				}
 			}
-
 			return newNode;
 		}
 
-		
-		public static UrlDir.UrlConfig ModifyConfig(ConfigNode modNode)
-		{ 
-			// this is a modifier node. Format: @NODETYPE[NodeName] {...}
-			if (modNode.name == null || modNode.name.Trim ().Equals ("") || modNode.name [0] != '@' || !modNode.name.Contains ("["))
-				return null;
-			else {
-				string nodeType = modNode.name.Substring (1).Split ('[') [0].Trim ();
-				string nodeName = modNode.name.Split ('[') [1].Replace ("]", "").Trim ();
-				
-				print ("moduleManager modifying " + nodeType + "[" + nodeName + "]");
-				
-				UrlDir.UrlConfig orig = FindConfig (nodeType, nodeName);
-				if (orig == null) {
-					print ("Could not find Config for " + nodeType + "[" + nodeName + "]");
-					return null;
-				}
-				print ("Old ConfigNode:");
-				print (orig.config.ToString ());
-				orig.config = ModifyNode (orig.config, modNode);
-				print ("New ConfigNode:");
-				print (orig.config.ToString ());
-				return orig;
-			}
-		}
-
-		private static void LoadCFG(string newCFG)
-		{
-			ConfigNode mods = ConfigNode.Load(appPath + newCFG);
-			if (mods == null) {
-				print ("ModuleManager: file " + newCFG + " not found.");
-				return;
-
-			}
-			print ("moduleManager loaded " + mods.CountNodes + " nodes from " + appPath + newCFG);
-			
-			// step 1: get all available part definitions
-			
-			
-			print ("moduleManager: beginning search of partList...");
-			
-			foreach (ConfigNode pmod in mods.nodes) {
-				if(pmod.name == null || pmod.name.Trim ().Equals ("")) {
-					// an empty node? I suppose it's possible
-				} else if(pmod.name[0] == '@') {
-					UrlDir.UrlConfig orig = ModifyConfig (pmod);
-					if(orig == null)
-						print (pmod.name.Substring (1) + " not found");
-					else {
-						string nodeType = orig.config.name, nodeName = orig.name;
-						if(nodeType.Equals ("PART")) {
-							// we just modified a part node, so let's change the AvailablePart
-							AvailablePart partData = partDatabase.Find (p => p.name.Equals (nodeName.Replace ("_", ".")));
-							if(partData == null)
-								print ("PART[" + nodeName + "] not found!");
-							else {
-								ModifyPart(partData, orig.config);
-							}
-						} else if(nodeType.Equals ("RESOURCE_DEFINITION")) {
-							// we just modified a resource definition node, so let's change the ResourceDefinition
-							PartResourceDefinition resource = PartResourceLibrary.Instance.resourceDefinitions[nodeName];
-							if(resource == null)
-								print ("RESOURCE_DEFINITION[" + nodeName + "] not found!");
-							else
-								resource.Load (orig.config);
-						}
-					}
-				}
-
-			}
-			foreach (string includeFile in mods.GetValues ("include")) {
-				print ("recursing into " + includeFile);
-				LoadCFG (includeFile);
-			}
-
-			print ("moduleManager: finished search of partList.");
-		}
-
-		
-		public static bool Awaken(PartModule module)
-		{
-			// thanks to Mu and Kine for help with this bit of Dark Magic. 
-			// KINEMORTOBESTMORTOLOLOLOL
-			if (module == null)
-				return false;
-			object[] paramList = new object[] { };
-			MethodInfo awakeMethod = typeof(PartModule).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic);
-			
-			if (awakeMethod == null)
-				return false;
-			
-			awakeMethod.Invoke(module, paramList);
-			return true;
-		}
-
-		public static void ModifyPart(AvailablePart partData, ConfigNode node)
-		{
-			print ("reloading from node: " + node.ToString ());
-
-			//Step 1: load the Fields
-			ConfigNode.LoadObjectFromConfig (partData, node);
-			ConfigNode.LoadObjectFromConfig (partData.partPrefab, node);
-			partData.partPrefab.Fields.Load(node);
-
-			// why I gotta do everything myself?
-			foreach (ConfigNode.Value kv in node.values) {
-				FieldInfo field = partData.partPrefab.GetType().GetField (kv.name);
-				if(field != null) {
-					if(field.FieldType == typeof(string)) {
-						field.SetValue (partData.partPrefab, kv.value);
-					} else if(field.FieldType == typeof(float)) {
-						float v;
-						float.TryParse (kv.value, out v);
-						field.SetValue (partData.partPrefab, v);
-					} else if(field.FieldType == typeof(double)) {
-						double v;
-						double.TryParse (kv.value, out v);
-						field.SetValue (partData.partPrefab, v);
-					} else if(field.FieldType == typeof(double)) {
-						int v;
-						int.TryParse (kv.value, out v);
-						field.SetValue (partData.partPrefab, v);
-					} else if(field.FieldType == typeof(bool)) {
-						bool v;
-						bool.TryParse (kv.value, out v);
-						field.SetValue (partData.partPrefab, v);
-					}
-
-				}
-			}
-			//Step 2A: clear the old Resources
-			partData.partPrefab.Resources.list.Clear ();
-			//Step 2B: load the new Resources
-			foreach(ConfigNode rNode in node.GetNodes ("RESOURCE")) {
-				partData.partPrefab.AddResource (rNode);
-			}
-
-			//Step 3A: clear the old Modules
-			while (partData.partPrefab.Modules.Count > 0)
-				partData.partPrefab.RemoveModule (partData.partPrefab.Modules [0]);
-
-			//Step 3B: load the new Modules
-			foreach(ConfigNode mNode in node.GetNodes ("MODULE")) {
-
-				PartModule module = partData.partPrefab.AddModule (mNode.GetValue ("name"));
-				if(module) {
-					// really? REALLY? It appears the only way to make this work, is to molest KSP's privates.
-					if(Awaken (module)) { // uses reflection to find and call the PartModule.Awake() private method
-						module.Load(mNode);					
-					} else {
-						print ("Awaken failed for new module.");
-					}
-					if(module.part == null) {
-						print ("new module has null part.");
-					} else {
-						#if DEBUG
-						print ("Created module for " + module.part.name);
-						#endif
-					}
-				}
-			}
-			RefreshInfo (partData);
-		}
-
-		public static void RefreshInfo(AvailablePart partData)
-		{
-			partData.resourceInfo = "";
-			foreach(PartResource resource in partData.partPrefab.Resources) {
-				if(partData.resourceInfo.Length > 0)
-					partData.resourceInfo += "\n";
-				partData.resourceInfo += resource.GetInfo ();
-			}
-
-			partData.moduleInfo = "";
-			foreach (PartModule module in partData.partPrefab.Modules) {
-				partData.moduleInfo += module.GetInfo ();
-			}
-
-		}
-
-		public static void ApplyMods(string nodeType)
-		{
-			foreach (UrlDir.UrlConfig url in GameDatabase.Instance.GetConfigs (nodeType)) {
-
-				string nodeName = url.name;
-
-				string modName = "@" + nodeType + "[" + nodeName + "]";
-				print ("Searching gameDatabase for " + modName);
-
-				foreach (ConfigNode mod in GameDatabase.Instance.GetConfigNodes(modName)) {
-					print ("Applying node " + modName);
-					url.config = ModifyNode (url.config, mod);
-				}
-
-				modName = "@" + nodeType + "[" + nodeName + "]:Final";
-				print ("Searching gameDatabase for " + modName);
-				
-				foreach (ConfigNode mod in GameDatabase.Instance.GetConfigNodes(modName)) {
-					print ("Applying node " + modName);
-					url.config = ModifyNode (url.config, mod);
-				}
-
-				if (nodeType.Equals ("PART")) {
-					// we just modified a part node, so let's change the AvailablePart
-					AvailablePart partData = partDatabase.Find (p => p.name.Equals (nodeName.Replace ("_", ".")));
-					if (partData == null)
-						print ("PART[" + nodeName + "] not found!");
-					else {
-						ModifyPart (partData, url.config);
-					}
-				} else if (nodeType.Equals ("RESOURCE_DEFINITION")) {
-					// we just modified a resource definition node, so let's change the ResourceDefinition
-					PartResourceDefinition resource = PartResourceLibrary.Instance.resourceDefinitions [nodeName];
-					if (resource == null)
-						print ("RESOURCE_DEFINITION[" + nodeName + "] not found!");
-					else
-						resource.Load (url.config);
-				}
-
-			}
-		}
-
-		public void Awake()
-		{
-			List<string> types = new List<string>();
+		public static List<ConfigNode> AllConfigsStartingWith(string match) {
+			List<ConfigNode> nodes = new List<ConfigNode>();
 			foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs) {
-				if(!types.Contains (url.type)) {
-					types.Add (url.type);
-					print (url.type);
-					if(url.type[0] != '@' && !url.type.Equals ("PART")) // do parts last.
-						ApplyMods (url.type);
+				if(url.type.StartsWith (match))
+					url.config.name = url.type;
+					nodes.Add (url.config);
+			}
+			return nodes;
+		}
+
+		public void OnGUI()
+		{
+			//by the time we reach OnGUI(), all the configNodes have been loaded.
+
+			foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs) {
+				if (url.type [0] == '@') {
+				} else {
+					string nodeName = url.type + "[" + url.name + "]";
+					print ("modifying " + nodeName);
+
+					string modName = "@" + url.type + "[" + url.name + "]";
+					print ("Searching gameDatabase for " + modName);
+					
+					foreach (ConfigNode mod in GameDatabase.Instance.GetConfigNodes(modName)) {
+						print ("Applying node " + modName);
+						url.config = ModifyNode (url.config, mod);
+					}
+				
+					modName = "@" + url.type + "[" + url.name + "]:Final";
+					print ("Searching gameDatabase for " + modName);
+					
+					foreach (ConfigNode mod in GameDatabase.Instance.GetConfigNodes(modName)) {
+						print ("Applying node " + modName);
+						url.config = ModifyNode (url.config, mod);
+					}										
 				}
 			}
-			ApplyMods ("PART");
-		}	
+
+			// we're done; no need to stick around.
+			Destroy (this);
+				
+		}
 	}
 }
 

@@ -1,10 +1,8 @@
 ﻿<Properties>
   <MonoDevelop.Ide.Workspace ActiveConfiguration="Release" PreferredExecutionTarget="MonoDevelop.Default" />
-  <MonoDevelop.Ide.Workbench ActiveDocument="../../../zips/KSP_0.20.Test/GameData/moduleManagerSource/moduleManager.cs">
+  <MonoDevelop.Ide.Workbench ActiveDocument="moduleManager.cs">
     <Files>
-      <File FileName="../../../zips/uploads_2013_06_B9-Aerospace-Pack-R3b/Source/ExsurgentEngineering/HydraEngineController.cs" Line="100" Column="19" />
-      <File FileName="../../../zips/KSP_0.20.Test/GameData/moduleManagerSource/moduleManager.cs" Line="306" Column="1" />
-      <File FileName="moduleManager.cs" Line="1" Column="1" />
+      <File FileName="moduleManager.cs" Line="204" Column="1" />
     </Files>
     <Pads>
       <Pad Id="ProjectPad">
