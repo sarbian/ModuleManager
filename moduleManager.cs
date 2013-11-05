@@ -262,15 +262,9 @@ namespace ModuleManager
 
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
             {
-<<<<<<< HEAD
                 if (mod.name == "MODULEMANAGER[LOCAL]")
                 {
                     string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
-=======
-                if (mod.name == "@MODULEMANAGER[LOCAL]")
-                {
-                    string fullpath =  mod.url.Substring(0, mod.url.IndexOf('@'));
->>>>>>> 53f77eda800e10f1f25b41442aa7756141402122
                     string excludepath = fullpath.Substring(0,fullpath.LastIndexOf('/'));
                     excludePaths.Add(excludepath);
                     print("excludepath: " + excludepath);                    
