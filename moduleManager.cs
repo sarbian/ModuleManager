@@ -202,6 +202,17 @@ namespace ModuleManager
             if (loaded)
                 return;
 
+            // Check for old version and MMSarbianExt
+            var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 5)) == -1);
+            var oldAssemblies = oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
+            if (oldAssemblies.Any())
+            {
+                var badPaths = oldAssemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
+                PopupDialog.SpawnPopupDialog("Old versions of Module Manager", "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray()), "OK", false, HighLogic.Skin);
+                loaded = true;
+                return;
+            }
+
             Assembly currentAssembly = Assembly.GetExecutingAssembly();
             var eligible = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == currentAssembly.GetName().Name);
 
@@ -220,20 +231,13 @@ namespace ModuleManager
                 string candidates = "";
                 foreach (AssemblyLoader.LoadedAssembly a in eligible)
                     candidates += "Version " + a.assembly.GetName().Version + " " + a.path + " " + "\n";
-                print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n\n" + candidates);
-            }
+                print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
+            }             
 
-            // 1.4.1 is the first official release of MM 1.4+. Older version should be removed
-            var assemblies = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 4, 1)) == -1);
-            if (assemblies.Any())
-            {
-                var badPaths = assemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
-                PopupDialog.SpawnPopupDialog("Old versions of Module Manager", "You have old versions of Module Manager (older than 1.4.1).\nYou will need to remove them for Module Manager to work\n\nIncorrect version(s):\n" + String.Join("\n", badPaths.ToArray()), "OK", false, HighLogic.Skin);
-                loaded = true;
-                return;
-            }
 
-            List<String> processedPath = new List<string>();
+            /* No longer usefull but kept as reference in case I need it
+
+            List<String> processedPath = new List<string>();            
 
             // Generate the list of subdirectory of Gamedata where we process patch file
             foreach (AssemblyLoader.LoadedAssembly a in eligible)
@@ -247,74 +251,74 @@ namespace ModuleManager
                     return;
                 }
                 processedPath.Add(relPath);
-            }
+            }            
 
             print("[ModuleManager] will procces patch in" + String.Join("\n",processedPath.ToArray()));
 
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
-            {
-                if (mod.type[0] == '@')
-                {
-                    char[] sep = new char[] { '[', ']' };
-                    string[] splits = mod.name.Split(sep, 3);
-                    string pattern = splits[1];
-                    string type = splits[0].Substring(1);
+            */
 
-                    
-
-                    // it's a modification node and it's not one Modulemanager will process
-                    if (!mod.name.EndsWith(":Final"))
-                    {
-                        String cond = "";
-                        if (splits.Length > 2 && splits[2].Length > 5)
-                        {
-                            int start = splits[2].IndexOf("HAS[") + 4;
-                            cond = splits[2].Substring(start, splits[2].LastIndexOf(']') - start);
-                        }
-                        foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
-                        {
-                            if (url.type == type && WildcardMatch(url.name, pattern) && CheckCondition(url.config, cond) && isPathInList(mod.url, processedPath))
-                            {
-                                print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
-                                url.config = ConfigManager.ModifyNode(url.config, mod.config);
-                            }
-                        }
-                    }
-                }
-            }
+            // Build a list of subdirectory that won't be processed
+            List<String> excludePaths = new List<string>();
 
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
             {
-                if (mod.type[0] == '@')
+                if (mod.name == "MODULEMANAGER[LOCAL]")
                 {
-                    char[] sep = new char[] { '[', ']' };
-                    string[] splits = mod.name.Split(sep, 3);
-                    string pattern = splits[1];
-                    string type = splits[0].Substring(1);
-
-                    // it's a modification node and it's not one Modulemanager will process
-                    if (mod.name.EndsWith(":Final"))
-                    {
-                        String cond = "";
-                        if (splits.Length > 2 && splits[2].Length > 5)
-                        {
-                            int start = splits[2].IndexOf("HAS[") + 4;
-                            cond = splits[2].Substring(start, splits[2].LastIndexOf(']') - start);
-                        }
-                        foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
-                        {
-                            if (url.type == type && WildcardMatch(url.name, pattern) && CheckCondition(url.config, cond) && isPathInList(mod.url, processedPath))
-                            {
-                                print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
-                                url.config = ConfigManager.ModifyNode(url.config, mod.config);
-                            }
-                        }
-                    }
+                    string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
+                    string excludepath = fullpath.Substring(0,fullpath.LastIndexOf('/'));
+                    excludePaths.Add(excludepath);
+                    print("excludepath: " + excludepath);                    
                 }
             }
+            if (excludePaths.Any())
+                print("[ModuleManager] will not procces patch in those subdirectories:\n" + String.Join("\n",excludePaths.ToArray()));
 
+            applyPatch(excludePaths, false);
 
+            // :Final node
+            applyPatch(excludePaths, true);
+            
             loaded = true;
+        }
+
+        // Apply patch to all relevent nodes
+        public void applyPatch(List<String> excludePaths, bool final)
+        {
+            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
+            {
+                if (mod.type[0] == '@')
+                {
+                    try
+                    {
+                        char[] sep = new char[] { '[', ']' };
+                        string[] splits = mod.name.Split(sep, 3);
+                        string pattern = splits[1];
+                        string type = splits[0].Substring(1);
+
+                        if (final ^ mod.name.EndsWith(":Final"))
+                        {
+                            String cond = "";
+                            if (splits.Length > 2 && splits[2].Length > 5)
+                            {
+                                int start = splits[2].IndexOf("HAS[") + 4;
+                                cond = splits[2].Substring(start, splits[2].LastIndexOf(']') - start);
+                            }
+                            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
+                            {
+                                if (url.type == type && WildcardMatch(url.name, pattern) && CheckCondition(url.config, cond) && !isPathInList(mod.url, excludePaths))
+                                {
+                                    print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
+                                    url.config = ConfigManager.ModifyNode(url.config, mod.config);
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
+                    }
+                }
+            }
         }
 
         public bool isPathInList(string modPath, List<String> pathList)
