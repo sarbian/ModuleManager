@@ -290,18 +290,21 @@ namespace ModuleManager
                 {
                     try
                     {
-                        char[] sep = new char[] { '[', ']' };
-                        string[] splits = mod.name.Split(sep, 3);
-                        string pattern = splits[1];
-                        string type = splits[0].Substring(1);
-
-                        if (final ^ mod.name.EndsWith(":Final"))
+                        if (!final ^ mod.name.EndsWith(":Final"))
                         {
+                            char[] sep = new char[] { '[', ']' };
+                            string name = mod.name;
+                            if (final)
+                                name = name.Substring(0, name.LastIndexOf(":Final"));
+                            string[] splits = name.Split(sep, 3);
+                            string pattern = splits[1];
+                            string type = splits[0].Substring(1);
+
                             String cond = "";
                             if (splits.Length > 2 && splits[2].Length > 5)
                             {
                                 int start = splits[2].IndexOf("HAS[") + 4;
-                                cond = splits[2].Substring(start, splits[2].LastIndexOf(']') - start);
+                                cond = splits[2].Substring(start, splits[2].LastIndexOf(']') - start).Trim();
                             }
                             foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
                             {
