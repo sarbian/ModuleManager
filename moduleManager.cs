@@ -187,18 +187,28 @@ namespace ModuleManager
             return nodes;
         }
 
-        bool loaded = true;
+        bool loaded = false;
 
-        bool waitingReload = true;
+        //bool waitingReload = true;
 
         public void OnGUI()
         {
+            /* 
+             * It should be a code to reload when the Reload Database debug button is used.
+             * But it seem to go balistic after the 2nd reload.
+             * 
             if (PartLoader.Instance.Recompile == waitingReload)
             {
                 waitingReload = !waitingReload;
+                print("[ModuleManager] waitingReload change " + waitingReload + " loaded " + loaded);
                 if (!waitingReload)
+                {
                     loaded = false;
+                    print("[ModuleManager] loaded = false ");
+                }
             }
+             */
+
             if (loaded)
                 return;
 
@@ -279,6 +289,15 @@ namespace ModuleManager
             applyPatch(excludePaths, true);
             
             loaded = true;
+
+            /*  Part of the reload button code that don't realy works
+            // deal with the case where the database reloaded faster than the patch where applied
+            if (!PartLoader.Instance.Recompile)
+            {
+                print("[ModuleManager] Reloading was fast");
+                waitingReload = true;
+            }
+             */ 
         }
 
         // Apply patch to all relevent nodes
