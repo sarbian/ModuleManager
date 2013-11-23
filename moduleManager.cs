@@ -49,7 +49,7 @@ namespace ModuleManager
             if (node.name == "")
                 return false;
             foreach (ConfigNode subnode in node.nodes)
-                if (!IsSane (subnode))
+                if (!IsSane(subnode))
                     return false;
             return true;
         }
@@ -70,61 +70,61 @@ namespace ModuleManager
             original.CopyTo(newNode);
 
             foreach (ConfigNode.Value val in mod.values) {
-                if (val.name [0] != '@' && val.name [0] != '!')
-                    newNode.AddValue (val.name, val.value);
+                if (val.name[0] != '@' && val.name[0] != '!')
+                    newNode.AddValue(val.name, val.value);
                 else {
                     // Parsing: Format is @key = value or @key,index = value 
-                    string valName = val.name.Substring (1);
+                    string valName = val.name.Substring(1);
                     int index = 0;
-                    if (valName.Contains (",")) {
-                        int.TryParse (valName.Split (',') [1], out index);
-                        valName = valName.Split (',') [0];
+                    if (valName.Contains(",")) {
+                        int.TryParse(valName.Split(',')[1], out index);
+                        valName = valName.Split(',')[0];
                     } // index is useless right now, but some day it might not be.
                 
-                    if (val.name [0] == '@')
-                        newNode.SetValue (valName, val.value, index);
-                    else if (val.name [0] == '!')
-                        newNode.RemoveValue (valName);
+                    if (val.name[0] == '@')
+                        newNode.SetValue(valName, val.value, index);
+                    else if (val.name[0] == '!')
+                        newNode.RemoveValue(valName);
                 }
             }
 
             foreach (ConfigNode subMod in mod.nodes)
             {
-                if (subMod.name [0] != '@' && subMod.name [0] != '!')
-                    newNode.AddNode (subMod);
+                if (subMod.name[0] != '@' && subMod.name[0] != '!')
+                    newNode.AddNode(subMod);
                 else {
                     ConfigNode subNode;
-                    if (subMod.name [0] == '@')
+                    if (subMod.name[0] == '@')
                         subNode = null;
 
-                    if (subMod.name.Contains ("[")) {
+                    if (subMod.name.Contains("[")) {
                         // format @NODETYPE[Name] {...} or @NODETYPE[Name, Tag] {...} or ! instead of @
-                        string nodeType = subMod.name.Substring (1).Split ('[') [0].Trim ();
-                        string nodeName = subMod.name.Split ('[') [1].Replace ("]", "").Trim ();
+                        string nodeType = subMod.name.Substring(1).Split('[')[0].Trim();
+                        string nodeName = subMod.name.Split('[')[1].Replace("]", "").Trim();
                         string nodeTag = null;
-                        if (nodeName.Contains (",")) {
+                        if (nodeName.Contains(",")) {
                             //format @NODETYPE[Name, Tag] {...}
-                            nodeTag = nodeName.Split (',') [1];
-                            nodeName = nodeName.Split (',') [0];
+                            nodeTag = nodeName.Split(',')[1];
+                            nodeName = nodeName.Split(',')[0];
                         }
                         subNode = FindConfigNodeIn (newNode, nodeType, nodeName, nodeTag);
                     } else {
                         // format @NODETYPE {...} or ! instead of @
-                        string nodeType = subMod.name.Substring (1);
-                        subNode = newNode.GetNode (nodeType);
+                        string nodeType = subMod.name.Substring(1);
+                        subNode = newNode.GetNode(nodeType);
                     }
 
-                    if (subMod.name [0] == '@') {
+                    if (subMod.name[0] == '@') {
                         // find the original subnode to modify, modify it and add the modified.
                         if (subNode != null) {
-                            ConfigNode newSubNode = ModifyNode (subNode, subMod);
-                            newNode.nodes.Add (newSubNode);
+                            ConfigNode newSubNode = ModifyNode(subNode, subMod);
+                            newNode.nodes.Add(newSubNode);
                         } else
-                            print ("[ModuleManager] Could not find node to modify: " + subMod.name);
+                            print("[ModuleManager] Could not find node to modify: " + subMod.name);
                     }
 
                     if (subNode != null)
-                        newNode.nodes.Remove (subNode);
+                        newNode.nodes.Remove(subNode);
                 }
             }
             return newNode;
@@ -330,36 +330,36 @@ namespace ModuleManager
                 List<string> condsList = SplitCondition (conds);
 
                 if (condsList.Count == 1) {
-                    conds = condsList [0];
+                    conds = condsList[0];
 
                     string remainCond = "";
-                    if (conds.Contains ("HAS[")) {
-                        int start = conds.IndexOf ("HAS[") + 4;
-                        remainCond = conds.Substring (start, condsList [0].LastIndexOf (']') - start);
-                        conds = conds.Substring (0, start - 5);
+                    if (conds.Contains("HAS[")) {
+                        int start = conds.IndexOf("HAS[") + 4;
+                        remainCond = conds.Substring(start, condsList[0].LastIndexOf(']') - start);
+                        conds = conds.Substring(0, start - 5);
                     }
 
-                    string type = conds.Substring (1).Split ('[') [0].Trim ();
-                    string name = conds.Split ('[') [1].Replace ("]", "").Trim ();
+                    string type = conds.Substring(1).Split('[')[0].Trim();
+                    string name = conds.Split('[')[1].Replace("]", "").Trim();
 
-                    switch (conds [0]) {
+                    switch (conds[0]) {
                     case '@':
                     case '!':
                         // @MODULE[ModuleAlternator] or !MODULE[ModuleAlternator]
-                        bool not = (conds [0] == '!');
-                        ConfigNode subNode = ConfigManager.FindConfigNodeIn (node, type, name);
+                        bool not = (conds[0] == '!');
+                        ConfigNode subNode = ConfigManager.FindConfigNodeIn(node, type, name);
                         if (subNode != null)
-                            return not ^ CheckCondition (subNode, remainCond);
+                            return not ^ CheckCondition(subNode, remainCond);
                         return not ^ false;
                     case '#':
                         // #module[Winglet]
-                        if (node.HasValue (type) && node.GetValue (type).Equals (name))
-                            return CheckCondition (node, remainCond);
+                        if (node.HasValue(type) && node.GetValue(type).Equals(name))
+                            return CheckCondition(node, remainCond);
                         return false;
                     case '~':
                         // ~breakingForce[]  breakingForce is not present
-                        if (!(node.HasValue (type)))
-                            return CheckCondition (node, remainCond);
+                        if (!(node.HasValue(type)))
+                            return CheckCondition(node, remainCond);
                         return false;
                     default:
                         return false;
