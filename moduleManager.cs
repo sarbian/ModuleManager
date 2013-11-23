@@ -103,11 +103,11 @@ namespace ModuleManager
                         string nodeName = subMod.name.Split('[')[1].Replace("]", "").Trim();
                         string nodeTag = null;
                         if (nodeName.Contains(",")) {
-                            //format @NODETYPE[Name, Tag] {...}
+                            // format @NODETYPE[Name, Tag] {...} or ! instead of @
                             nodeTag = nodeName.Split(',')[1];
                             nodeName = nodeName.Split(',')[0];
                         }
-                        subNode = FindConfigNodeIn (newNode, nodeType, nodeName, nodeTag);
+                        subNode = FindConfigNodeIn(newNode, nodeType, nodeName, nodeTag);
                     } else {
                         // format @NODETYPE {...} or ! instead of @
                         string nodeType = subMod.name.Substring(1);
@@ -122,7 +122,6 @@ namespace ModuleManager
                         } else
                             print("[ModuleManager] Could not find node to modify: " + subMod.name);
                     }
-
                     if (subNode != null)
                         newNode.nodes.Remove(subNode);
                 }
@@ -327,7 +326,7 @@ namespace ModuleManager
         public static bool CheckCondition(ConfigNode node, string conds)
         {
             if (conds.Length > 0) {
-                List<string> condsList = SplitCondition (conds);
+                List<string> condsList = SplitCondition(conds);
 
                 if (condsList.Count == 1) {
                     conds = condsList[0];
