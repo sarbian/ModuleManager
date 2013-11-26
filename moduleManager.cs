@@ -46,7 +46,7 @@ namespace ModuleManager
         // Like a pair of curly bracket without a name before them
         public static bool IsSane(ConfigNode node)
         {
-            if (node.name == "")
+            if (node.name.Length == 0)
                 return false;
             foreach (ConfigNode subnode in node.nodes)
                 if (!IsSane(subnode))
@@ -54,6 +54,10 @@ namespace ModuleManager
             return true;
         }
 
+		public static string RemoveWS(string withWhite)
+		{   // Removes ALL whitespace of a string.
+			return new string(withWhite.ToCharArray().Where(c => !Char.IsWhiteSpace(c)).ToArray());
+		}
 
         // ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original, then returns the patched ConfigNode.
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
@@ -66,8 +70,7 @@ namespace ModuleManager
                 return original;
             }
 
-            ConfigNode newNode = new ConfigNode(original.name);
-            original.CopyTo(newNode);
+            ConfigNode newNode = original.CreateCopy();
 
             foreach (ConfigNode.Value val in mod.values) {
                 if (val.name[0] != '@' && val.name[0] != '!')
@@ -90,6 +93,7 @@ namespace ModuleManager
 
             foreach (ConfigNode subMod in mod.nodes)
             {
+				subMod.name = RemoveWS(subMod.name);
                 if (subMod.name[0] != '@' && subMod.name[0] != '!')
                     newNode.AddNode(subMod);
                 else {
@@ -99,8 +103,8 @@ namespace ModuleManager
 
                     if (subMod.name.Contains("[")) {
                         // format @NODETYPE[Name] {...} or @NODETYPE[Name, Tag] {...} or ! instead of @
-                        string nodeType = subMod.name.Substring(1).Split('[')[0].Trim();
-                        string nodeName = subMod.name.Split('[')[1].Replace("]", "").Trim();
+                        string nodeType = subMod.name.Substring(1).Split('[')[0];
+                        string nodeName = subMod.name.Split('[')[1].Replace("]", "");
                         string nodeTag = null;
                         if (nodeName.Contains(",")) {
                             // format @NODETYPE[Name, Tag] {...} or ! instead of @
@@ -194,8 +198,10 @@ namespace ModuleManager
             {
                 string candidates = "";
                 foreach (AssemblyLoader.LoadedAssembly a in eligible)
-                    candidates += "Version " + a.assembly.GetName().Version + " " + a.path + " " + "\n";
-                print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
+					if (currentAssembly.Location != a.path)
+						candidates += "Version " + a.assembly.GetName().Version + " " + a.path + " " + "\n";
+				if (candidates.Length > 0)
+					print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
             }             
 
 
@@ -231,16 +237,16 @@ namespace ModuleManager
                     string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
                     string excludepath = fullpath.Substring(0,fullpath.LastIndexOf('/'));
                     excludePaths.Add(excludepath);
-                    print("excludepath: " + excludepath);                    
+                    print("excludepath: " + excludepath);
                 }
             }
             if (excludePaths.Any())
                 print("[ModuleManager] will not procces patch in those subdirectories:\n" + String.Join("\n",excludePaths.ToArray()));
 
-            applyPatch(excludePaths, false);
+            ApplyPatch(excludePaths, false);
 
             // :Final node
-            applyPatch(excludePaths, true);
+            ApplyPatch(excludePaths, true);
             
             loaded = true;
 
@@ -255,7 +261,7 @@ namespace ModuleManager
         }
 
         // Apply patch to all relevent nodes
-        public void applyPatch(List<String> excludePaths, bool final)
+        public void ApplyPatch(List<String> excludePaths, bool final)
         {
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
             {
@@ -266,7 +272,7 @@ namespace ModuleManager
                         if (!final ^ mod.name.EndsWith(":Final"))
                         {
                             char[] sep = new char[] { '[', ']' };
-                            string name = mod.name;
+							string name = RemoveWS(mod.name);
                             if (final)
                                 name = name.Substring(0, name.LastIndexOf(":Final"));
                             string[] splits = name.Split(sep, 3);
@@ -277,11 +283,14 @@ namespace ModuleManager
                             if (splits.Length > 2 && splits[2].Length > 5)
                             {
                                 int start = splits[2].IndexOf("HAS[") + 4;
-                                cond = splits[2].Substring(start, splits[2].LastIndexOf(']') - start).Trim();
+                                cond = splits[2].Substring(start, splits[2].LastIndexOf(']') - start);
                             }
                             foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
                             {
-                                if (url.type == type && WildcardMatch(url.name, pattern) && CheckCondition(url.config, cond) && !isPathInList(mod.url, excludePaths))
+                                if (url.type == type
+								    && WildcardMatch(url.name, pattern)
+								    && CheckCondition(url.config, cond)
+								    && !IsPathInList(mod.url, excludePaths))
                                 {
                                     print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
                                     url.config = ConfigManager.ModifyNode(url.config, mod.config);
@@ -297,24 +306,24 @@ namespace ModuleManager
             }
         }
 
-        public bool isPathInList(string modPath, List<String> pathList)
+        public bool IsPathInList(string modPath, List<String> pathList)
         {
-            return pathList.Any(p => modPath.StartsWith(p));
+            return pathList.Any(modPath.StartsWith);
         }
 
 
         // Split condiction while not getting lost in embeded brackets
         public static List<string> SplitCondition(string cond)
         {
-            cond = cond + ",";
+            cond = RemoveWS(cond) + ",";
             List<string> conds = new List<string>();
             int start = 0;
             int level = 0;
-            for (int end = 0; end < cond.Length; end++)
+			for (int end = 0; end < cond.Length; end++)
             {
                 if (cond[end] == ',' && level == 0)
                 {
-                    conds.Add(cond.Substring(start, end - start).Trim());
+                    conds.Add(cond.Substring(start, end - start));
                     start = end + 1;
                 }
                 else if (cond[end] == '[') level++;
@@ -324,52 +333,51 @@ namespace ModuleManager
         }
 
         public static bool CheckCondition(ConfigNode node, string conds)
-        {
-            if (conds.Length > 0) {
-                List<string> condsList = SplitCondition(conds);
+		{
+			conds = RemoveWS(conds);
+			if (conds.Length == 0)
+				return true;
 
-                if (condsList.Count == 1) {
-                    conds = condsList[0];
+			List<string> condsList = SplitCondition(conds);
 
-                    string remainCond = "";
-                    if (conds.Contains("HAS[")) {
-                        int start = conds.IndexOf("HAS[") + 4;
-                        remainCond = conds.Substring(start, condsList[0].LastIndexOf(']') - start);
-                        conds = conds.Substring(0, start - 5);
-                    }
+			if (condsList.Count == 1) {
+				conds = condsList[0];
 
-                    string type = conds.Substring(1).Split('[')[0].Trim();
-                    string name = conds.Split('[')[1].Replace("]", "").Trim();
+				string remainCond = "";
+				if (conds.Contains("HAS[")) {
+					int start = conds.IndexOf("HAS[") + 4;
+					remainCond = conds.Substring(start, condsList[0].LastIndexOf(']') - start);
+					conds = conds.Substring(0, start - 5);
+				}
 
-                    switch (conds[0]) {
-                    case '@':
-                    case '!':
-                        // @MODULE[ModuleAlternator] or !MODULE[ModuleAlternator]
-                        bool not = (conds[0] == '!');
-                        ConfigNode subNode = ConfigManager.FindConfigNodeIn(node, type, name);
-                        if (subNode != null)
-                            return not ^ CheckCondition(subNode, remainCond);
-                        return not ^ false;
-                    case '#':
-                        // #module[Winglet]
-                        if (node.HasValue(type) && node.GetValue(type).Equals(name))
-                            return CheckCondition(node, remainCond);
-                        return false;
-                    case '~':
-                        // ~breakingForce[]  breakingForce is not present
-                        if (!(node.HasValue(type)))
-                            return CheckCondition(node, remainCond);
-                        return false;
-                    default:
-                        return false;
-                    }
-                }
-                foreach (string cond in condsList)  // Multiple condition
-                    if (!CheckCondition (node, cond))
-                        return false;
-            }
-            return true;
-        }
+				string type = conds.Substring(1).Split('[')[0];
+				string name = conds.Split('[')[1].Replace("]", "");
+
+				switch (conds[0]) {
+				case '@':
+				case '!':
+					// @MODULE[ModuleAlternator] or !MODULE[ModuleAlternator]
+					bool not = (conds[0] == '!');
+					ConfigNode subNode = ConfigManager.FindConfigNodeIn(node, type, name);
+					if (subNode != null)
+						return not ^ CheckCondition(subNode, remainCond);
+					return not ^ false;
+				case '#':
+					// #module[Winglet]
+					if (node.HasValue(type) && node.GetValue(type).Equals(name))
+						return CheckCondition(node, remainCond);
+					return false;
+				case '~':
+					// ~breakingForce[]  breakingForce is not present
+					if (!(node.HasValue(type)))
+						return CheckCondition(node, remainCond);
+					return false;
+				default:
+					return false;
+				}
+			}
+			return condsList.TrueForAll(c => CheckCondition(node, c));
+		}
 
         public static bool WildcardMatch(String s, String wildcard)
         {
@@ -414,6 +422,5 @@ namespace ModuleManager
             return this.startup.GetHashCode() ^ this.once.GetHashCode() ^ this.type.GetHashCode();
         }
     }
-
 }
 
