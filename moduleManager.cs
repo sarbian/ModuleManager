@@ -7,19 +7,17 @@ using System.Text.RegularExpressions;
 using KSP;
 using UnityEngine;
 
-
 namespace ModuleManager
 {
     // Once MUST be true for the election process to work when 2+ dll of the same version are loaded
     [KSPAddonFixed(KSPAddon.Startup.Instantly, true, typeof(ConfigManager))]
     public class ConfigManager : MonoBehaviour
     {
-        //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType. 
-        //If nodeName is not null, it will only find a node of type nodeType with the value name=nodeName. 
+        //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType.
+        //If nodeName is not null, it will only find a node of type nodeType with the value name=nodeName.
         //If nodeTag is not null, it will only find a node of type nodeType with the value name=nodeName and tag=nodeTag.
-
         public static ConfigNode FindConfigNodeIn(ConfigNode src, string nodeType,
-                                                  string nodeName = null, string nodeTag = null)
+                                                   string nodeName = null, string nodeTag = null)
         {
 #if DEBUG
 			if (nodeTag == null)
@@ -27,12 +25,10 @@ namespace ModuleManager
 			else
 				print ("Searching node for " + nodeType + "[" + nodeName + "," + nodeTag + "]");
 #endif
-            foreach (ConfigNode n in src.GetNodes(nodeType))
-            {
+            foreach (ConfigNode n in src.GetNodes(nodeType)) {
                 if (n.HasValue("name") && WildcardMatch(n.GetValue("name"), nodeName) &&
-                   (nodeTag == null ||
-                   (n.HasValue("tag") && WildcardMatch(n.GetValue("tag"), nodeTag))))
-                {
+                    (nodeTag == null ||
+                    (n.HasValue("tag") && WildcardMatch(n.GetValue("tag"), nodeTag)))) {
 #if DEBUG
                     print ("found node!");
 #endif
@@ -41,7 +37,6 @@ namespace ModuleManager
             }
             return null;
         }
-
         // Added that to prevent a crash in KSP 'CopyTo' when a subnode has an empty name like
         // Like a pair of curly bracket without a name before them
         public static bool IsSane(ConfigNode node)
@@ -54,18 +49,15 @@ namespace ModuleManager
             return true;
         }
 
-		public static string RemoveWS(string withWhite)
-		{   // Removes ALL whitespace of a string.
-			return new string(withWhite.ToCharArray().Where(c => !Char.IsWhiteSpace(c)).ToArray());
-		}
-
+        public static string RemoveWS(string withWhite)
+        {   // Removes ALL whitespace of a string.
+            return new string(withWhite.ToCharArray().Where(c => !Char.IsWhiteSpace(c)).ToArray());
+        }
         // ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original, then returns the patched ConfigNode.
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
-
         public static ConfigNode ModifyNode(ConfigNode original, ConfigNode mod)
         {
-            if (!IsSane(original) || !IsSane(mod))
-            {
+            if (!IsSane(original) || !IsSane(mod)) {
                 print("[ModuleManager] A node has an empty name. Skipping it. Original: " + original.name);
                 return original;
             }
@@ -91,9 +83,8 @@ namespace ModuleManager
                 }
             }
 
-            foreach (ConfigNode subMod in mod.nodes)
-            {
-				subMod.name = RemoveWS(subMod.name);
+            foreach (ConfigNode subMod in mod.nodes) {
+                subMod.name = RemoveWS(subMod.name);
                 if (subMod.name[0] != '@' && subMod.name[0] != '!')
                     newNode.AddNode(subMod);
                 else {
@@ -136,8 +127,7 @@ namespace ModuleManager
         public static List<UrlDir.UrlConfig> AllConfigsStartingWith(string match)
         {
             List<UrlDir.UrlConfig> nodes = new List<UrlDir.UrlConfig>();
-            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
-            {
+            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs) {
                 if (url.type.StartsWith(match))
                     url.config.name = url.type;
                 nodes.Add(url);
@@ -146,9 +136,7 @@ namespace ModuleManager
         }
 
         bool loaded = false;
-
         //bool waitingReload = true;
-
         public void OnGUI()
         {
             /* 
@@ -173,8 +161,7 @@ namespace ModuleManager
             // Check for old version and MMSarbianExt
             var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 5)) == -1);
             var oldAssemblies = oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
-            if (oldAssemblies.Any())
-            {
+            if (oldAssemblies.Any()) {
                 var badPaths = oldAssemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
                 PopupDialog.SpawnPopupDialog("Old versions of Module Manager", "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray()), "OK", false, HighLogic.Skin);
                 loaded = true;
@@ -188,20 +175,17 @@ namespace ModuleManager
 
             // Elect the newest loaded version of MM to process all patch files.
             // If there is a newer version loaded then don't do anything
-            if (eligible.Any(a => a.assembly.GetName().Version.CompareTo(currentAssembly.GetName().Version) == 1))
-            {
+            if (eligible.Any(a => a.assembly.GetName().Version.CompareTo(currentAssembly.GetName().Version) == 1)) {
                 loaded = true;
                 print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " lost the election");
                 return;
-            }
-            else
-            {
+            } else {
                 string candidates = "";
                 foreach (AssemblyLoader.LoadedAssembly a in eligible)
-					if (currentAssembly.Location != a.path)
-						candidates += "Version " + a.assembly.GetName().Version + " " + a.path + " " + "\n";
-				if (candidates.Length > 0)
-					print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
+                    if (currentAssembly.Location != a.path)
+                        candidates += "Version " + a.assembly.GetName().Version + " " + a.path + " " + "\n";
+                if (candidates.Length > 0)
+                    print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
             }             
 
 
@@ -230,18 +214,16 @@ namespace ModuleManager
             // Build a list of subdirectory that won't be processed
             List<String> excludePaths = new List<string>();
 
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
-            {
-                if (mod.name == "MODULEMANAGER[LOCAL]")
-                {
+            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs) {
+                if (mod.name == "MODULEMANAGER[LOCAL]") {
                     string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
-                    string excludepath = fullpath.Substring(0,fullpath.LastIndexOf('/'));
+                    string excludepath = fullpath.Substring(0, fullpath.LastIndexOf('/'));
                     excludePaths.Add(excludepath);
                     print("excludepath: " + excludepath);
                 }
             }
             if (excludePaths.Any())
-                print("[ModuleManager] will not procces patch in those subdirectories:\n" + String.Join("\n",excludePaths.ToArray()));
+                print("[ModuleManager] will not procces patch in those subdirectories:\n" + String.Join("\n", excludePaths.ToArray()));
 
             ApplyPatch(excludePaths, false);
 
@@ -259,20 +241,15 @@ namespace ModuleManager
             }
              */ 
         }
-
         // Apply patch to all relevent nodes
         public void ApplyPatch(List<String> excludePaths, bool final)
         {
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
-            {
-                if (mod.type[0] == '@')
-                {
-                    try
-                    {
-                        if (!final ^ mod.name.EndsWith(":Final"))
-                        {
+            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs) {
+                if (mod.type[0] == '@') {
+                    try {
+                        if (!final ^ mod.name.EndsWith(":Final")) {
                             char[] sep = new char[] { '[', ']' };
-							string name = RemoveWS(mod.name);
+                            string name = RemoveWS(mod.name);
                             if (final)
                                 name = name.Substring(0, name.LastIndexOf(":Final"));
                             string[] splits = name.Split(sep, 3);
@@ -280,26 +257,21 @@ namespace ModuleManager
                             string type = splits[0].Substring(1);
 
                             String cond = "";
-                            if (splits.Length > 2 && splits[2].Length > 5)
-                            {
+                            if (splits.Length > 2 && splits[2].Length > 5) {
                                 int start = splits[2].IndexOf("HAS[") + 4;
                                 cond = splits[2].Substring(start, splits[2].LastIndexOf(']') - start);
                             }
-                            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
-                            {
+                            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs) {
                                 if (url.type == type
-								    && WildcardMatch(url.name, pattern)
-								    && CheckCondition(url.config, cond)
-								    && !IsPathInList(mod.url, excludePaths))
-                                {
+                                    && WildcardMatch(url.name, pattern)
+                                    && CheckCondition(url.config, cond)
+                                    && !IsPathInList(mod.url, excludePaths)) {
                                     print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
                                     url.config = ConfigManager.ModifyNode(url.config, mod.config);
                                 }
                             }
                         }
-                    }
-                    catch (Exception e)
-                    {
+                    } catch (Exception e) {
                         print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
                     }
                 }
@@ -310,8 +282,6 @@ namespace ModuleManager
         {
             return pathList.Any(modPath.StartsWith);
         }
-
-
         // Split condiction while not getting lost in embeded brackets
         public static List<string> SplitCondition(string cond)
         {
@@ -319,65 +289,64 @@ namespace ModuleManager
             List<string> conds = new List<string>();
             int start = 0;
             int level = 0;
-			for (int end = 0; end < cond.Length; end++)
-            {
-                if (cond[end] == ',' && level == 0)
-                {
+            for (int end = 0; end < cond.Length; end++) {
+                if (cond[end] == ',' && level == 0) {
                     conds.Add(cond.Substring(start, end - start));
                     start = end + 1;
-                }
-                else if (cond[end] == '[') level++;
-                else if (cond[end] == ']') level--;
+                } else if (cond[end] == '[')
+                    level++;
+                else if (cond[end] == ']')
+                    level--;
             }
             return conds;
         }
 
         public static bool CheckCondition(ConfigNode node, string conds)
-		{
-			conds = RemoveWS(conds);
-			if (conds.Length == 0)
-				return true;
+        {
+            conds = RemoveWS(conds);
+            if (conds.Length == 0)
+                return true;
 
-			List<string> condsList = SplitCondition(conds);
+            List<string> condsList = SplitCondition(conds);
 
-			if (condsList.Count == 1) {
-				conds = condsList[0];
+            if (condsList.Count == 1) {
+                conds = condsList[0];
 
-				string remainCond = "";
-				if (conds.Contains("HAS[")) {
-					int start = conds.IndexOf("HAS[") + 4;
-					remainCond = conds.Substring(start, condsList[0].LastIndexOf(']') - start);
-					conds = conds.Substring(0, start - 5);
-				}
+                string remainCond = "";
+                if (conds.Contains("HAS[")) {
+                    int start = conds.IndexOf("HAS[") + 4;
+                    remainCond = conds.Substring(start, condsList[0].LastIndexOf(']') - start);
+                    conds = conds.Substring(0, start - 5);
+                }
 
-				string type = conds.Substring(1).Split('[')[0];
-				string name = conds.Split('[')[1].Replace("]", "");
+                string type = conds.Substring(1).Split('[')[0];
+                string name = conds.Split('[')[1].Replace("]", "");
 
-				switch (conds[0]) {
-				case '@':
-				case '!':
+                switch (conds[0]) {
+                case '@':
+                case '!':
 					// @MODULE[ModuleAlternator] or !MODULE[ModuleAlternator]
-					bool not = (conds[0] == '!');
-					ConfigNode subNode = ConfigManager.FindConfigNodeIn(node, type, name);
-					if (subNode != null)
-						return not ^ CheckCondition(subNode, remainCond);
-					return not ^ false;
-				case '#':
+                    bool not = (conds[0] == '!');
+                    ConfigNode subNode = ConfigManager.FindConfigNodeIn(node, type, name);
+                    if (subNode != null)
+                        return not ^ CheckCondition(subNode, remainCond);
+                    return not ^ false;
+                case '#':
 					// #module[Winglet]
-					if (node.HasValue(type) && node.GetValue(type).Equals(name))
-						return CheckCondition(node, remainCond);
-					return false;
-				case '~':
+                    if (node.HasValue(type) && node.GetValue(type).Equals(name))
+                        return CheckCondition(node, remainCond);
+                    return false;
+                case '~':
 					// ~breakingForce[]  breakingForce is not present
-					if (!(node.HasValue(type)))
-						return CheckCondition(node, remainCond);
-					return false;
-				default:
-					return false;
-				}
-			}
-			return condsList.TrueForAll(c => CheckCondition(node, c));
-		}
+                    if (!(node.HasValue(type)))
+                        return CheckCondition(node, remainCond);
+                    return false;
+                default:
+                    return false;
+                }
+            }
+            return condsList.TrueForAll(c => CheckCondition(node, c));
+        }
 
         public static bool WildcardMatch(String s, String wildcard)
         {
@@ -387,7 +356,6 @@ namespace ModuleManager
 
             return (regex.IsMatch(s));
         }
-
     }
 
     /// <summary>
@@ -405,15 +373,23 @@ namespace ModuleManager
 
         public override bool Equals(object obj)
         {
-            if (obj.GetType() != this.GetType()) { return false; }
+            if (obj.GetType() != this.GetType()) {
+                return false;
+            }
             return Equals((KSPAddonFixed)obj);
         }
 
         public bool Equals(KSPAddonFixed other)
         {
-            if (this.once != other.once) { return false; }
-            if (this.startup != other.startup) { return false; }
-            if (this.type != other.type) { return false; }
+            if (this.once != other.once) {
+                return false;
+            }
+            if (this.startup != other.startup) {
+                return false;
+            }
+            if (this.type != other.type) {
+                return false;
+            }
             return true;
         }
 
