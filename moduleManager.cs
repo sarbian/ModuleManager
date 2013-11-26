@@ -373,23 +373,15 @@ namespace ModuleManager
 
         public override bool Equals(object obj)
         {
-            if (obj.GetType() != this.GetType()) {
-                return false;
-            }
+            if (obj.GetType() != this.GetType()) { return false; }
             return Equals((KSPAddonFixed)obj);
         }
 
         public bool Equals(KSPAddonFixed other)
         {
-            if (this.once != other.once) {
-                return false;
-            }
-            if (this.startup != other.startup) {
-                return false;
-            }
-            if (this.type != other.type) {
-                return false;
-            }
+            if (this.once != other.once) { return false; }
+            if (this.startup != other.startup) { return false; }
+            if (this.type != other.type) { return false; }
             return true;
         }
 
