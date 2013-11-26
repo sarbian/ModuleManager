@@ -10,7 +10,8 @@ using UnityEngine;
 namespace ModuleManager
 {
     // Once MUST be true for the election process to work when 2+ dll of the same version are loaded
-    [KSPAddonFixed(KSPAddon.Startup.Instantly, true, typeof(ConfigManager))]
+    // But I need it to be false for the reload database thingy
+    [KSPAddonFixed(KSPAddon.Startup.Instantly, false, typeof(ConfigManager))]
     public class ConfigManager : MonoBehaviour
     {
         //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType.
@@ -140,8 +141,10 @@ namespace ModuleManager
         }
 
         bool loaded = false;
-        //bool waitingReload = true;
-        public void OnGUI()
+
+        int patchCount = 0;
+
+        public void Update()
         {
             /* 
              * It should be a code to reload when the Reload Database debug button is used.
@@ -159,6 +162,11 @@ namespace ModuleManager
             }
              */
 
+            if (!GameDatabase.Instance.IsReady() && ((HighLogic.LoadedScene == GameScenes.MAINMENU) || (HighLogic.LoadedScene == GameScenes.SPACECENTER)))
+            {
+                return;
+            }
+
             if (loaded)
                 return;
 
@@ -169,6 +177,7 @@ namespace ModuleManager
                 var badPaths = oldAssemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
                 PopupDialog.SpawnPopupDialog("Old versions of Module Manager", "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray()), "OK", false, HighLogic.Skin);
                 loaded = true;
+                print("[ModuleManager] Old version of Module Manager present. Stopping");
                 return;
             }
 
@@ -191,7 +200,6 @@ namespace ModuleManager
                 if (candidates.Length > 0)
                     print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
             }             
-
 
             /* No longer usefull but kept as reference in case I need it
 
@@ -229,21 +237,16 @@ namespace ModuleManager
             if (excludePaths.Any())
                 print("[ModuleManager] will not procces patch in those subdirectories:\n" + String.Join("\n", excludePaths.ToArray()));
 
+            patchCount = 0;
+
             ApplyPatch(excludePaths, false);
 
             // :Final node
             ApplyPatch(excludePaths, true);
-            
+
+            print("[ModuleManager] Applied " + patchCount + " patch");
             loaded = true;
 
-            /*  Part of the reload button code that don't realy works
-            // deal with the case where the database reloaded faster than the patch where applied
-            if (!PartLoader.Instance.Recompile)
-            {
-                print("[ModuleManager] Reloading was fast");
-                waitingReload = true;
-            }
-             */ 
         }
         // Apply patch to all relevent nodes
         public void ApplyPatch(List<String> excludePaths, bool final)
@@ -271,6 +274,7 @@ namespace ModuleManager
                                     && CheckCondition(url.config, cond)
                                     && !IsPathInList(mod.url, excludePaths)) {
                                     print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
+                                    patchCount++;
                                     url.config = ConfigManager.ModifyNode(url.config, mod.config);
                                 }
                             }

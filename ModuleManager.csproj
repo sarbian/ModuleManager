@@ -49,7 +49,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy "$(TargetPath)" "C:\Games\ksp-win-0-22-0\GameData\MechJeb2"
-copy "$(TargetPath)" "C:\Games\ksp-win-0-22-0_dev\GameData\MechJeb2"</PostBuildEvent>
+    <PostBuildEvent>copy "$(TargetPath)" "C:\Games\ksp-win-0-22-0\GameData"
+copy "$(TargetPath)" "C:\Games\ksp-win-0-22-0_dev\GameData"</PostBuildEvent>
   </PropertyGroup>
 </Project>
