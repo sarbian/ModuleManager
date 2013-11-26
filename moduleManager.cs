@@ -80,6 +80,10 @@ namespace ModuleManager
                         newNode.SetValue(valName, val.value, index);
                     else if (val.name[0] == '!')
                         newNode.RemoveValue(valName);
+                    else if (val.name[0] == '%') {
+                        newNode.RemoveValue(valName);
+                        newNode.AddValue(valName);
+                    }
                 }
             }
 
