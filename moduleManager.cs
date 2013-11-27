@@ -66,7 +66,7 @@ namespace ModuleManager
             ConfigNode newNode = original.CreateCopy();
 
             foreach (ConfigNode.Value val in mod.values) {
-                if (val.name[0] != '@' && val.name[0] != '!')
+                if (val.name[0] != '@' && val.name[0] != '!' && val.name[0] != '%')
                     newNode.AddValue(val.name, val.value);
                 else {
                     // Parsing: Format is @key = value or @key,index = value 
@@ -76,13 +76,12 @@ namespace ModuleManager
                         int.TryParse(valName.Split(',')[1], out index);
                         valName = valName.Split(',')[0];
                     } // index is useless right now, but some day it might not be.
-                
                     if (val.name[0] == '@')
                         newNode.SetValue(valName, val.value, index);
                     else if (val.name[0] == '!')
-                        newNode.RemoveValue(valName);
+                        newNode.RemoveValues(valName);
                     else if (val.name[0] == '%') {
-                        newNode.RemoveValue(valName);
+                        newNode.RemoveValues(valName);
                         newNode.AddValue(valName, val.value);
                     }
                 }
@@ -113,7 +112,6 @@ namespace ModuleManager
                         string nodeType = subMod.name.Substring(1);
                         subNode = newNode.GetNode(nodeType);
                     }
-
                     if (subMod.name[0] == '@') {
                         // find the original subnode to modify, modify it and add the modified.
                         if (subNode != null) {
