@@ -89,11 +89,11 @@ namespace ModuleManager
 
             foreach (ConfigNode subMod in mod.nodes) {
                 subMod.name = RemoveWS(subMod.name);
-                if (subMod.name[0] != '@' && subMod.name[0] != '!')
+                if (subMod.name[0] != '@' && subMod.name[0] != '!' && subMod.name[0] != '%' && subMod.name[0] != '$')
                     newNode.AddNode(subMod);
                 else {
                     ConfigNode subNode;
-                    if (subMod.name[0] == '@')
+                    if (subMod.name[0] == '@' && subMod.name[0] != '!' && subMod.name[0] != '%')
                         subNode = null;
 
                     if (subMod.name.Contains("[")) {
@@ -110,7 +110,18 @@ namespace ModuleManager
                     } else {
                         // format @NODETYPE {...} or ! instead of @
                         string nodeType = subMod.name.Substring(1);
-                        subNode = newNode.GetNode(nodeType);
+
+                        // format @NODETYPE,N {...} or ! instead of @
+                        int index = 0;
+                        if (nodeType.Contains(",")) {
+                            int.TryParse(nodeType.Split(',')[1], out index);
+                            nodeType = nodeType.Split(',')[0];
+                        }
+                        ConfigNode[] subNodes = newNode.GetNodes(nodeType);
+                        if (subNodes.Length < index)
+                            subNode = subNodes[index];
+                        else
+                            subNode = null;
                     }
                     if (subMod.name[0] == '@') {
                         // find the original subnode to modify, modify it and add the modified.
@@ -120,8 +131,37 @@ namespace ModuleManager
                         } else
                             print("[ModuleManager] Could not find node to modify: " + subMod.name);
                     }
-                    if (subNode != null)
-                        newNode.nodes.Remove(subNode);
+                    if (subMod.name[0] == '%') {
+                        // if the original node exist add it
+                        if (subNode != null) {
+                            newNode.nodes.Add(subNode);
+                        }
+                        else { // if not add the mod node without the % in its name
+                            if (subMod.name.Contains("["))
+                                subMod.name = subMod.name.Substring(1).Split('[')[0];
+                            else
+                                subMod.name = subMod.name.Substring(1);
+                            newNode.nodes.Add(subMod);
+                        }                            
+                    }
+                    if (subMod.name[0] == '$')
+                    {
+                        // find the original subnode to copy, add the original, add the the modified copy.
+                        if (subNode != null) {
+                            newNode.nodes.Add(subNode);
+                            ConfigNode newSubNode = ModifyNode(subNode, subMod);
+                            newNode.nodes.Add(newSubNode);
+                        }
+                        else
+                            print("[ModuleManager] Could not find node to copy: " + subMod.name);
+                    }
+                    if (subMod.name[0] == '!') {
+                        if (subNode != null) {
+                            newNode.nodes.Remove(subNode);
+                        }
+                        else
+                            print("[ModuleManager] Could not find node to delete: " + subMod.name);
+                    }
                 }
             }
             return newNode;
