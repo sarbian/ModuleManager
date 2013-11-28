@@ -93,7 +93,7 @@ namespace ModuleManager
                     newNode.AddNode(subMod);
                 else {
                     ConfigNode subNode;
-                    if (subMod.name[0] == '@' && subMod.name[0] != '!' && subMod.name[0] != '%')
+                    if (subMod.name[0] == '@' && subMod.name[0] != '%')
                         subNode = null;
 
                     if (subMod.name.Contains("[")) {
@@ -155,13 +155,9 @@ namespace ModuleManager
                         else
                             print("[ModuleManager] Could not find node to copy: " + subMod.name);
                     }
-                    if (subMod.name[0] == '!') {
-                        if (subNode != null) {
-                            newNode.nodes.Remove(subNode);
-                        }
-                        else
-                            print("[ModuleManager] Could not find node to delete: " + subMod.name);
-                    }
+                    if (subNode != null)
+                        newNode.nodes.Remove(subNode);
+
                 }
             }
             return newNode;
