@@ -118,7 +118,7 @@ namespace ModuleManager
                             nodeType = nodeType.Split(',')[0];
                         }
                         ConfigNode[] subNodes = newNode.GetNodes(nodeType);
-                        if (subNodes.Length < index)
+                        if (subNodes.Length > index)
                             subNode = subNodes[index];
                         else
                             subNode = null;
@@ -273,6 +273,8 @@ namespace ModuleManager
 
             patchCount = 0;
 
+            ApplyNodesSwitch();
+
             ApplyPatch(excludePaths, false);
 
             // :Final node
@@ -286,7 +288,7 @@ namespace ModuleManager
         public void ApplyPatch(List<String> excludePaths, bool final)
         {
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs) {
-                if (mod.type[0] == '@') {
+                if (mod.type[0] == '@' || (mod.type[0] == '$' )) {
                     try {
                         if (!final ^ mod.name.EndsWith(":Final")) {
                             char[] sep = new char[] { '[', ']' };
@@ -307,9 +309,17 @@ namespace ModuleManager
                                     && WildcardMatch(url.name, pattern)
                                     && CheckCondition(url.config, cond)
                                     && !IsPathInList(mod.url, excludePaths)) {
-                                    print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
-                                    patchCount++;
-                                    url.config = ConfigManager.ModifyNode(url.config, mod.config);
+                                        if (mod.type[0] == '@') {
+                                            print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
+                                            patchCount++;
+                                            url.config = ConfigManager.ModifyNode(url.config, mod.config);
+                                        }
+                                        else {
+                                            // Here we would duplicate an Node if we had the mean to do it
+                                            //ConfigNode newNode = ConfigManager.ModifyNode(url.config, mod.config);
+                                            //UrlDir.UrlConfig newurl = new UrlDir.UrlConfig(mod.parent, newNode);
+                                            //print("[ModuleManager] Copying Node " + newurl.url + " " + newurl.name);
+                                        }                                    
                                 }
                             }
                         }
@@ -397,6 +407,72 @@ namespace ModuleManager
             regex = new Regex(pattern);
 
             return (regex.IsMatch(s));
+        }
+
+        public static void ApplyNodesSwitch()
+        {
+
+            log("Processing Node Switch. Avaiable DLL are "+ String.Join(" ", AssemblyLoader.loadedAssemblies.Select(a => a.assembly.GetName().Name).ToArray()));
+
+            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
+            {
+                //log("processing " + url.name);
+                url.config = SearchNodesSwitch(url.config, url.type + " " + url.name);                    
+            }
+        }
+
+        public static ConfigNode SearchNodesSwitch(ConfigNode node, String rootName)
+        {
+            ConfigNode newNode = new ConfigNode(node.name);
+
+            foreach (ConfigNode.Value val in node.values)
+                newNode.AddValue(val.name, val.value);
+
+            foreach (ConfigNode child in node.nodes)
+            {
+                if (child.name == "MM_SWITCH")
+                {
+                    foreach (ConfigNode cas in child.nodes)
+                    {
+                        if (cas.name == "DEFAULT" || (cas.name == "CASE" && TestSwitchCase(cas)))
+                        {
+                            foreach (ConfigNode n in cas.nodes)
+                                newNode.AddNode(n);
+
+                            string list = "";
+                            foreach (ConfigNode.Value value in cas.values)
+                                list += " " + value.name + "=" + value.value;
+                            log("MM_SWITCH processed for " + rootName + " using " + cas.name + list);
+                            break;
+                        }
+                    }
+                }
+                else
+                {
+                    newNode.nodes.Add(SearchNodesSwitch(child, rootName));
+                }
+            }
+            return newNode;
+        }
+
+        public static bool TestSwitchCase(ConfigNode node)
+        {
+            bool state = true;
+            foreach (ConfigNode.Value value in node.values) { 
+                // Switch case so we can extend the number of test easily
+                switch (value.name)
+                {
+                    case "dll_loaded":
+                        state = state && AssemblyLoader.loadedAssemblies.Any(a => a.assembly.GetName().Name == value.value);
+                        break;
+                }
+            }
+            return state;
+        }
+
+        public static void log(String s)
+        {
+            print("[ModuleManager] " + s);
         }
     }
 
