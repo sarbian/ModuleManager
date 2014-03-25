@@ -333,7 +333,12 @@ namespace ModuleManager
 
             mods = new List<AssemblyName>(AssemblyLoader.loadedAssemblies.Select(a => (a.assembly.GetName())));
 
-            string additions = "Non-DLL mods added:";
+            string modlist = "compiling list of loaded mods...\nMod DLLs found:\n";
+            foreach (AssemblyName mod in mods)
+            {
+                modlist += "  " + mod.Name + " v" + mod.Version.ToString() + "\n";
+            }
+            modlist += "Non-DLL mods added:";
             foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
             {
                 if (cfgmod.type[0] == '@' || (cfgmod.type[0] == '$'))
@@ -349,12 +354,12 @@ namespace ModuleManager
                             AssemblyName newMod = new AssemblyName(dependency);
                             newMod.Name = dependency;
                             mods.Add(newMod);
-                            additions += "\n " + dependency;
+                            modlist += "\n  " + dependency;
                         }
                     }
                 }
             }
-            print(additions);
+            log(modlist);
 
             // :First node (and any node without a :pass)
             ApplyPatch(excludePaths, ":FIRST");
