@@ -81,22 +81,59 @@ namespace ModuleManager
 
             ConfigNode newNode = original.CreateCopy();
 
+            string vals = "[ModuleManager] modding values";
             foreach (ConfigNode.Value val in mod.values)
             {
+                vals += "\n   " + val.name + "= " + val.value;
                 if (val.name[0] != '@' && val.name[0] != '!' && val.name[0] != '%')
                     newNode.AddValue(val.name, val.value);
                 else
-                {
-                    // Parsing: Format is @key = value or @key,index = value 
+                {  // Parsing: 
+                   // Format is @key = value or @key *= value or @key += value or @key -= value 
+                   // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value 
                     string valName = val.name.Substring(1);
                     int index = 0;
                     if (valName.Contains(","))
                     {
                         int.TryParse(valName.Split(',')[1], out index);
                         valName = valName.Split(',')[0];
-                    } // index is useless right now, but some day it might not be.
+                    }
+
                     if (val.name[0] == '@')
-                        newNode.SetValue(valName, val.value, index);
+                    {
+                        string value = val.value;
+                        char op = ' ';
+                        if (val.name.Contains(" *")) // @key *= val
+                            op = '*';
+                        else if (val.name.Contains(" +")) // @key += val
+                            op = '+';
+                        else if (val.name.Contains(" -")) // @key -= val
+                            op = '-';
+                        
+                        if (op != ' ')
+                        {
+                            valName = valName.Split(' ')[0];
+                                                        
+                            string ovalue = original.GetValue(valName, index);
+                            if(ovalue != null)
+                            {
+                                double s, os;
+                                if (double.TryParse(value, out s) && double.TryParse(ovalue, out os))
+                                {
+                                    if (op == '*')
+                                        value = (s * os).ToString();
+                                    else if (op == '+')
+                                        value = (s + os).ToString();
+                                    else if (op == '-')
+                                        value = (s - os).ToString();
+                                }
+                                vals += ": " + ovalue + " -> " + value;
+                            }
+
+                        }
+
+                        newNode.SetValue(valName, value, index);
+                    }
                     else if (val.name[0] == '!')
                         newNode.RemoveValues(valName);
                     else if (val.name[0] == '%')
@@ -105,7 +142,9 @@ namespace ModuleManager
                         newNode.AddValue(valName, val.value);
                     }
                 }
+                
             }
+            print(vals);
 
             foreach (ConfigNode subMod in mod.nodes)
             {
@@ -287,7 +326,8 @@ namespace ModuleManager
             // Check for old version and MMSarbianExt
             var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 6)) == -1);
             var oldAssemblies = oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
-            if (oldAssemblies.Any()) {
+            if (oldAssemblies.Any())
+            {
                 var badPaths = oldAssemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
                 PopupDialog.SpawnPopupDialog("Old versions of Module Manager", "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray()), "OK", false, HighLogic.Skin);
                 loaded = true;
@@ -360,7 +400,7 @@ namespace ModuleManager
                 }
             }
             log(modlist);
-
+            
             // :First node (and any node without a :pass)
             ApplyPatch(excludePaths, ":FIRST");
 
