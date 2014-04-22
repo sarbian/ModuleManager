@@ -18,7 +18,7 @@ namespace ModuleManager
         //If nodeName is not null, it will only find a node of type nodeType with the value name=nodeName.
         //If nodeTag is not null, it will only find a node of type nodeType with the value name=nodeName and tag=nodeTag.
         public static ConfigNode FindConfigNodeIn(ConfigNode src, string nodeType,
-                                                   string nodeName = null, string nodeTag = null)
+                                                   string nodeName = null, int index = 0)
         {
 #if DEBUG
 			if (nodeTag == null)
@@ -26,16 +26,28 @@ namespace ModuleManager
 			else
 				print ("Searching node for " + nodeType + "[" + nodeName + "," + nodeTag + "]");
 #endif
+            int found = 0;
             foreach (ConfigNode n in src.GetNodes(nodeType)) {
-                if (nodeName == null && nodeTag == null)
-                    return n;
-                if (n.HasValue("name") && WildcardMatch(n.GetValue("name"), nodeName) &&
-                    (nodeTag == null ||
-                    (n.HasValue("tag") && WildcardMatch(n.GetValue("tag"), nodeTag)))) {
+                if (nodeName == null)
+                {
+                    if (index == found)
+                        return n;
+                    else
+                        found++;
+                }
+                else if (n.HasValue("name") && WildcardMatch(n.GetValue("name"), nodeName))
+                {
+                    if (found == index)
+                    {
 #if DEBUG
-                    print ("found node!");
+                print ("found node " + found.ToString() + "!");
 #endif
-                    return n;
+                        return n;
+                    }
+                    else
+                    {
+                        found++;
+                    }
                 }
             }
             return null;
@@ -61,125 +73,207 @@ namespace ModuleManager
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
         public static ConfigNode ModifyNode(ConfigNode original, ConfigNode mod)
         {
-            if (!IsSane(original) || !IsSane(mod)) {
+            if (!IsSane(original) || !IsSane(mod))
+            {
                 print("[ModuleManager] A node has an empty name. Skipping it. Original: " + original.name);
                 return original;
             }
 
             ConfigNode newNode = original.CreateCopy();
 
-            foreach (ConfigNode.Value val in mod.values) {
+            string vals = "[ModuleManager] modding values";
+            foreach (ConfigNode.Value val in mod.values)
+            {
+                vals += "\n   " + val.name + "= " + val.value;
                 if (val.name[0] != '@' && val.name[0] != '!' && val.name[0] != '%')
                     newNode.AddValue(val.name, val.value);
-                else {
-                    // Parsing: Format is @key = value or @key,index = value 
+                else
+                {  // Parsing: 
+                   // Format is @key = value or @key *= value or @key += value or @key -= value 
+                   // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value 
                     string valName = val.name.Substring(1);
                     int index = 0;
-                    if (valName.Contains(",")) {
+                    if (valName.Contains(","))
+                    {
                         int.TryParse(valName.Split(',')[1], out index);
                         valName = valName.Split(',')[0];
-                    } // index is useless right now, but some day it might not be.
+                    }
+
                     if (val.name[0] == '@')
-                        newNode.SetValue(valName, val.value, index);
+                    {
+                        string value = val.value;
+                        char op = ' ';
+                        if (val.name.Contains(" *")) // @key *= val
+                            op = '*';
+                        else if (val.name.Contains(" +")) // @key += val
+                            op = '+';
+                        else if (val.name.Contains(" -")) // @key -= val
+                            op = '-';
+                        
+                        if (op != ' ')
+                        {
+                            valName = valName.Split(' ')[0];
+                                                        
+                            string ovalue = original.GetValue(valName, index);
+                            if(ovalue != null)
+                            {
+                                double s, os;
+                                if (double.TryParse(value, out s) && double.TryParse(ovalue, out os))
+                                {
+                                    if (op == '*')
+                                        value = (s * os).ToString();
+                                    else if (op == '+')
+                                        value = (s + os).ToString();
+                                    else if (op == '-')
+                                        value = (s - os).ToString();
+                                }
+                                vals += ": " + ovalue + " -> " + value;
+                            }
+
+                        }
+
+                        newNode.SetValue(valName, value, index);
+                    }
                     else if (val.name[0] == '!')
                         newNode.RemoveValues(valName);
-                    else if (val.name[0] == '%') {
+                    else if (val.name[0] == '%')
+                    {
                         newNode.RemoveValues(valName);
                         newNode.AddValue(valName, val.value);
                     }
                 }
+                
             }
+            print(vals);
 
-            foreach (ConfigNode subMod in mod.nodes) {
+            foreach (ConfigNode subMod in mod.nodes)
+            {
                 subMod.name = RemoveWS(subMod.name);
-                if (subMod.name[0] != '@' && subMod.name[0] != '!' && subMod.name[0] != '%' && subMod.name[0] != '$')
+                char cmd = subMod.name[0];
+                if (cmd != '@' && cmd != '!' && cmd != '%' && cmd != '$')
                     newNode.AddNode(subMod);
-                else {
-                    ConfigNode subNode;
+                else
+                {
+                    string name = subMod.name;
+                    string cond = "";
+                    string tag = "";
+                    string nodeType, nodeName;
+                    int index = 0;
+                    string msg = "";
+                    List<ConfigNode> subNodes = new List<ConfigNode>();
                     //if (subMod.name[0] == '@' && subMod.name[0] != '%')
                     //    subNode = null;
 
-                    if (subMod.name.Contains("[")) {
-                        // format @NODETYPE[Name] {...} or @NODETYPE[Name, Tag] {...} or ! instead of @
-                        string nodeType = subMod.name.Substring(1).Split('[')[0];
-                        string nodeName = subMod.name.Split('[')[1].Replace("]", "");
-                        string nodeTag = null;
-                        if (nodeName.Contains(",")) {
-                            // format @NODETYPE[Name, Tag] {...} or ! instead of @
-                            nodeTag = nodeName.Split(',')[1];
-                            nodeName = nodeName.Split(',')[0];
-                        }
-                        subNode = FindConfigNodeIn(newNode, nodeType, nodeName, nodeTag);
-                    } else {
+                    // three ways to specify:
+                    // NODE,n will match the nth node (NODE is the same as NODE,0)
+                    // NODE,* will match ALL nodes
+                    // NODE:HAS[condition] will match ALL nodes with condition
+                    if (name.Contains(":HAS["))
+                    {
+                        int start = name.IndexOf(":HAS[");
+                        cond = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
+                        name = name.Substring(0, start);
+                    }
+                    else if (name.Contains(","))
+                    {
+                        tag = name.Split(',')[1];
+                        name = name.Split(',')[1];
+                        int.TryParse(tag, out index);
+                    }
+
+                    if (name.Contains("["))
+                    {
+                        // format @NODETYPE[Name] {...} 
+                        // or @NODETYPE[Name, index] {...} 
+                        nodeType = name.Substring(1).Split('[')[0];
+                        nodeName = name.Split('[')[1].Replace("]", "");
+                    }
+                    else
+                    {
                         // format @NODETYPE {...} or ! instead of @
-                        string nodeType = subMod.name.Substring(1);
-
-                        // format @NODETYPE,N {...} or ! instead of @
-                        // The problem with ! is that the index is messed up
-                        // So the patch need to take that into account
-                        // and lower the index for the next search
-                        int index = 0;
-                        if (nodeType.Contains(",")) {
-                            int.TryParse(nodeType.Split(',')[1], out index);
-                            nodeType = nodeType.Split(',')[0];
+                        nodeType = name.Substring(1);
+                        nodeName = null;                        
+                    }
+                    
+                    
+                    if (tag == "*" || cond.Length > 0)
+                    { // get ALL nodes
+                        if (cmd == '%')
+                        {
+                            msg += "  cannot wildcard a % node: " + subMod.name + "\n";
                         }
-                        ConfigNode[] subNodes = newNode.GetNodes(nodeType);
-                        if (subNodes.Length > index)
-                            subNode = subNodes[index];
                         else
-                            subNode = null;
+                        {
+                            ConfigNode n;
+                            do
+                            {
+                                n = FindConfigNodeIn(newNode, nodeType, nodeName, index);
+                                if(n != null) subNodes.Add(n);
+                            } while (n != null);
+                        }
                     }
-                    if (subMod.name[0] == '@') {
-                        // find the original subnode to modify, modify it and add the modified.
-                        if (subNode != null) {
-                            ConfigNode newSubNode = ModifyNode(subNode, subMod);
-                            newNode.nodes.Add(newSubNode);
-                        } else
-                            print("[ModuleManager] Could not find node to modify: " + subMod.name);
+                    else
+                    { // just get one node
+                        ConfigNode n = FindConfigNodeIn(newNode, nodeType, nodeName, index);
+                        if(n != null) subNodes.Add(n);
                     }
-                    if (subMod.name[0] == '%') {
-                        // if the original node exist add it
-                        if (subNode != null) {
-                            ConfigNode newSubNode = ModifyNode(subNode, subMod);
+
+                    if (cmd == '@' || cmd == '!' || cmd == '$')
+                    { // find each original subnode to modify, modify it and add the modified.
+
+                        if (subNodes.Count == 0)   // no nodes to modify!
+                            msg += "  Could not find node(s) to modify: " + subMod.name + "\n";
+
+                        foreach (ConfigNode subNode in subNodes)
+                        {
+                            msg += "  Applying subnode " + subMod.name + "\n";
+                            if (cmd != '$')
+                            {// @ and ! both remove the original
+                                newNode.nodes.Remove(subNode);
+                            }
+                            if (cmd != '!')
+                            { // @ and $ both add the modified
+                                ConfigNode newSubNode = ModifyNode(subNode, subMod);
+                                newNode.nodes.Add(newSubNode);
+                            }
+                        }
+                    }
+                    else // cmd == '%'
+                    {
+                        // if the original exists modify it
+                        if (subNodes.Count > 0)
+                        {
+                            msg += "  Applying subnode " + subMod.name + "\n";
+                            ConfigNode newSubNode = ModifyNode(subNodes[0], subMod);
+                            newNode.nodes.Remove(subNodes[0]);
                             newNode.nodes.Add(newSubNode);
                         }
-                        else { // if not add the mod node without the % in its name                            
-                            // This part is messy. ialdabaoth is right, i need to rewrite.
-                            string type;
-                            string name;
-                            if (subMod.name.Contains("[")) {
-                                type = subMod.name.Substring(1).Split('[')[0];
-                                name = subMod.name.Split('[')[1].Replace("]", "");
-                            }
-                            else 
+                        else
+                        { // if not add the mod node without the % in its name                            
+                            msg += "  Adding subnode " + subMod.name + "\n";
+                            string newType;
+                            string newName;
+                            if (subMod.name.Contains("["))
                             {
-                                type = subMod.name.Substring(1);
-                                name = null;
+                                newType = subMod.name.Substring(1).Split('[')[0];
+                                newName = subMod.name.Split('[')[1].Replace("]", "");
                             }
-                            
-                            ConfigNode copy = new ConfigNode(type);
+                            else
+                            {
+                                newType = subMod.name.Substring(1);
+                                newName = null;
+                            }
 
-                            if (name != null)
-                                copy.AddValue("name", name);
+                            ConfigNode copy = new ConfigNode(newType);
+
+                            if (newName != null)
+                                copy.AddValue("name", newName);
 
                             ConfigNode newSubNode = ModifyNode(copy, subMod);
-                            newNode.nodes.Add(newSubNode);                            
-                        }                            
-                    }
-                    if (subMod.name[0] == '$')
-                    {
-                        // find the original subnode to copy, add the original, add the the modified copy.
-                        if (subNode != null) {
-                            newNode.nodes.Add(subNode);
-                            ConfigNode newSubNode = ModifyNode(subNode, subMod);
                             newNode.nodes.Add(newSubNode);
                         }
-                        else
-                            print("[ModuleManager] Could not find node to copy: " + subMod.name);
                     }
-                    if (subNode != null)
-                        newNode.nodes.Remove(subNode);
-
+                    print(msg);
                 }
             }
             return newNode;
@@ -199,6 +293,7 @@ namespace ModuleManager
         bool loaded = false;
 
         int patchCount = 0;
+        List<AssemblyName> mods;
 
         public void OnGUI()
         {
@@ -229,9 +324,10 @@ namespace ModuleManager
                 return;
 
             // Check for old version and MMSarbianExt
-            var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 5)) == -1);
+            var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 6)) == -1);
             var oldAssemblies = oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
-            if (oldAssemblies.Any()) {
+            if (oldAssemblies.Any())
+            {
                 var badPaths = oldAssemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
                 PopupDialog.SpawnPopupDialog("Old versions of Module Manager", "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray()), "OK", false, HighLogic.Skin);
                 loaded = true;
@@ -259,28 +355,6 @@ namespace ModuleManager
                     print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
             }             
 
-            /* No longer usefull but kept as reference in case I need it
-
-            List<String> processedPath = new List<string>();            
-
-            // Generate the list of subdirectory of Gamedata where we process patch file
-            foreach (AssemblyLoader.LoadedAssembly a in eligible)
-            {
-                string fullPath = Path.GetDirectoryName(a.path);
-                string relPath = Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(fullPath)).ToString() + "/").Remove(0, "GameData/".Length);
-                if (relPath == "/")
-                {
-                    PopupDialog.SpawnPopupDialog("Module Manager Path", "This Module Manager will only work if installed in a subfolder of GameData.\nAbording patch loading", "OK", false, HighLogic.Skin);
-                    loaded = true;
-                    return;
-                }
-                processedPath.Add(relPath);
-            }            
-
-            print("[ModuleManager] will procces patch in" + String.Join("\n",processedPath.ToArray()));
-
-            */
-
             // Build a list of subdirectory that won't be processed
             List<String> excludePaths = new List<string>();
 
@@ -293,35 +367,117 @@ namespace ModuleManager
                 }
             }
             if (excludePaths.Any())
-                print("[ModuleManager] will not procces patch in those subdirectories:\n" + String.Join("\n", excludePaths.ToArray()));
+                print("[ModuleManager] will not procces patch in these subdirectories:\n" + String.Join("\n", excludePaths.ToArray()));
 
             patchCount = 0;
 
-            ApplyNodesSwitch();
+            mods = new List<AssemblyName>(AssemblyLoader.loadedAssemblies.Select(a => (a.assembly.GetName())));
 
-            ApplyPatch(excludePaths, false);
+            string modlist = "compiling list of loaded mods...\nMod DLLs found:\n";
+            foreach (AssemblyName mod in mods)
+            {
+                modlist += "  " + mod.Name + " v" + mod.Version.ToString() + "\n";
+            }
+            modlist += "Non-DLL mods added:";
+            foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
+            {
+                if (cfgmod.type[0] == '@' || (cfgmod.type[0] == '$'))
+                {
+                    string name = RemoveWS(cfgmod.name);
+                    if(name.Contains(":FOR["))
+                    { // check for FOR[] blocks that don't match loaded DLLs and add them to the pass list
+                        
+                        string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
+                        dependency = dependency.Substring(0, dependency.IndexOf(']'));
+                        if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper()))) == null) 
+                        { // found one, now add it to the list.
+                            AssemblyName newMod = new AssemblyName(dependency);
+                            newMod.Name = dependency;
+                            mods.Add(newMod);
+                            modlist += "\n  " + dependency;
+                        }
+                    }
+                }
+            }
+            log(modlist);
+            
+            // :First node (and any node without a :pass)
+            ApplyPatch(excludePaths, ":FIRST");
 
+            foreach(AssemblyName mod in mods)
+            {
+                ApplyPatch(excludePaths, ":BEFORE[" + mod.Name + "]");
+                ApplyPatch(excludePaths, ":FOR[" + mod.Name + "]");
+                ApplyPatch(excludePaths, ":AFTER[" + mod.Name + "]");
+            }
+            
             // :Final node
-            ApplyPatch(excludePaths, true);
+            ApplyPatch(excludePaths, ":FINAL");
 
-            print("[ModuleManager] Applied " + patchCount + " patch");
+            print("[ModuleManager] Applied " + patchCount + " patches");
             loaded = true;
 
         }
         // Apply patch to all relevent nodes
-        public void ApplyPatch(List<String> excludePaths, bool final)
+        public void ApplyPatch(List<String> excludePaths, string Stage)
         {
+            print("[ModuleManager] " + Stage + (Stage == ":FIRST" ? " (default) pass" : " pass"));
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs) {
                 if (mod.type[0] == '@' || (mod.type[0] == '$' )) {
                     try {
-                        if (!final ^ mod.name.EndsWith(":Final")) {
-                            char[] sep = new char[] { '[', ']' };
-                            string name = RemoveWS(mod.name);
-                            string cond = "";
-                            if (final)
-                                name = name.Substring(0, name.LastIndexOf(":Final"));
+                        string name = RemoveWS(mod.name);
+                        
 
-                            if (name.Contains(":HAS[")) { 
+                        string dependencies = "";
+                        if(name.Contains(":NEEDS["))
+                        {
+                            dependencies = name.Substring(name.IndexOf(":NEEDS[") + 7).Replace("]", "");
+                            name = name.Remove(name.IndexOf(":NEEDS["));
+                        }
+                        bool unresolvedDependencies = false;
+                        if (dependencies.Length > 0)
+                        {
+                            foreach (string dependency in dependencies.Split(','))
+                            {
+                                string check = RemoveWS(dependency);
+                                if(check[0] == '!' ^ (mods.Find(a => a.Name.ToUpper().Equals(check.ToUpper())) == null))
+                                {
+                                    
+                                    unresolvedDependencies = true;
+                                    if (
+                                 (Stage == ":FIRST"
+                                   && !name.ToUpper().Contains(":BEFORE[")
+                                   && !name.ToUpper().Contains(":FOR[")
+                                   && !name.ToUpper().Contains(":AFTER[")
+                                   && !name.ToUpper().Contains(":FINAL")
+                                 ) ^ name.ToUpper().EndsWith(Stage.ToUpper()))
+                                    {
+                                        print("[ModuleManager] node " + mod.url + " - " + check + " not found!");
+                                    }
+                                }
+
+                            }
+                        }
+
+                        if (unresolvedDependencies)
+                        {
+
+                        }
+                        else if (
+                                 ( Stage == ":FIRST" 
+                                   && !name.ToUpper().Contains(":BEFORE[") 
+                                   && !name.ToUpper().Contains(":FOR[") 
+                                   && !name.ToUpper().Contains(":AFTER[") 
+                                   && !name.ToUpper().Contains(":FINAL") 
+                                 ) ^ name.ToUpper().EndsWith(Stage.ToUpper()) ) 
+                        {
+                            char[] sep = new char[] { '[', ']' };                            
+                            string cond = "";
+                            if (name.Contains(Stage))
+                                name = name.Substring(0, name.LastIndexOf(Stage));
+
+                            if (name.Contains(":HAS["))
+                            {
                                 int start = name.IndexOf(":HAS[");
                                 cond = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
                                 name = name.Substring(0, start);
@@ -335,7 +491,8 @@ namespace ModuleManager
                                 if (url.type == type
                                     && WildcardMatch(url.name, pattern)
                                     && CheckCondition(url.config, cond)
-                                    && !IsPathInList(mod.url, excludePaths)) {
+                                    && !IsPathInList(mod.url, excludePaths)
+                                    ) {
                                         if (mod.type[0] == '@') {
                                             print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
                                             patchCount++;
@@ -441,68 +598,6 @@ namespace ModuleManager
             return (regex.IsMatch(s));
         }
 
-        public static void ApplyNodesSwitch()
-        {
-
-            log("Processing Node Switch. Avaiable DLL are "+ String.Join(" ", AssemblyLoader.loadedAssemblies.Select(a => a.assembly.GetName().Name).ToArray()));
-
-            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
-            {
-                //log("processing " + url.name);
-                url.config = SearchNodesSwitch(url.config, url.type + " " + url.name);                    
-            }
-        }
-
-        public static ConfigNode SearchNodesSwitch(ConfigNode node, String rootName)
-        {
-            ConfigNode newNode = new ConfigNode(node.name);
-
-            foreach (ConfigNode.Value val in node.values)
-                newNode.AddValue(val.name, val.value);
-
-            foreach (ConfigNode child in node.nodes)
-            {
-                if (child.name == "MM_SWITCH")
-                {
-                    foreach (ConfigNode cas in child.nodes)
-                    {
-                        if (cas.name == "DEFAULT" || (cas.name == "CASE" && TestSwitchCase(cas)))
-                        {
-                            string list = "";
-                            foreach (ConfigNode.Value value in cas.values)
-                                list += " " + value.name + "=" + value.value;
-                            log("MM_SWITCH processed for " + rootName + " using " + cas.name + list);
-
-                            foreach (ConfigNode n in cas.nodes)
-                                newNode.AddNode(SearchNodesSwitch(n, rootName));
-                            
-                            break;
-                        }
-                    }
-                }
-                else
-                {
-                    newNode.nodes.Add(SearchNodesSwitch(child, rootName));
-                }
-            }
-            return newNode;
-        }
-
-        public static bool TestSwitchCase(ConfigNode node)
-        {
-            bool state = true;
-            foreach (ConfigNode.Value value in node.values) { 
-                // Switch case so we can extend the number of test easily
-                switch (value.name)
-                {
-                    case "dll_loaded":
-                        state = state && AssemblyLoader.loadedAssemblies.Any(a => a.assembly.GetName().Name == value.value);
-                        break;
-                }
-            }
-            return state;
-        }
-
         public static void log(String s)
         {
             print("[ModuleManager] " + s);
@@ -542,4 +637,3 @@ namespace ModuleManager
         }
     }
 }
-
