@@ -373,7 +373,15 @@ namespace ModuleManager
 
             patchCount = 0;
 
-            mods = new List<AssemblyName>(AssemblyLoader.loadedAssemblies.Select(a => (a.assembly.GetName())));
+            List<AssemblyName> modsWithDup = AssemblyLoader.loadedAssemblies.Select(a => (a.assembly.GetName())).ToList();
+
+            mods = new List<AssemblyName>();
+
+            foreach (AssemblyName a in modsWithDup  )
+            {
+                if (!mods.Any(m => m.Name == a.Name))
+                    mods.Add(a);
+            }
 
             string modlist = "compiling list of loaded mods...\nMod DLLs found:\n";
             foreach (AssemblyName mod in mods)
