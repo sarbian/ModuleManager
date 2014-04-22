@@ -342,7 +342,9 @@ namespace ModuleManager
 
             // Elect the newest loaded version of MM to process all patch files.
             // If there is a newer version loaded then don't do anything
-            if (eligible.Any(a => a.assembly.GetName().Version.CompareTo(currentAssembly.GetName().Version) == 1)) {
+            if (eligible.Any(a => 
+                    a.assembly.GetName().Version.CompareTo(currentAssembly.GetName().Version) == 1
+                    || a.assembly.Location.CompareTo(currentAssembly.Location) < 0)) {
                 loaded = true;
                 print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " lost the election");
                 return;
