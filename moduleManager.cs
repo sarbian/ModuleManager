@@ -160,6 +160,7 @@ namespace ModuleManager
                     string nodeType, nodeName;
                     int index = 0;
                     string msg = "";
+
                     List<ConfigNode> subNodes = new List<ConfigNode>();
                     //if (subMod.name[0] == '@' && subMod.name[0] != '%')
                     //    subNode = null;
@@ -177,7 +178,7 @@ namespace ModuleManager
                     else if (name.Contains(","))
                     {
                         tag = name.Split(',')[1];
-                        name = name.Split(',')[1];
+                        name = name.Split(',')[0];
                         int.TryParse(tag, out index);
                     }
 
@@ -194,7 +195,7 @@ namespace ModuleManager
                         nodeType = name.Substring(1);
                         nodeName = null;                        
                     }
-                    
+
                     
                     if (tag == "*" || cond.Length > 0)
                     { // get ALL nodes
@@ -207,9 +208,9 @@ namespace ModuleManager
                             ConfigNode n;
                             do
                             {
-                                n = FindConfigNodeIn(newNode, nodeType, nodeName, index);
-                                if(n != null) subNodes.Add(n);
-                            } while (n != null);
+                                n = FindConfigNodeIn(newNode, nodeType, nodeName, index++);
+                                if (n != null && CheckCondition(n, cond)) subNodes.Add(n);
+                            } while (n != null && index < newNode.nodes.Count);
                         }
                     }
                     else
@@ -508,7 +509,7 @@ namespace ModuleManager
                                             patchCount++;
                                             url.config = ConfigManager.ModifyNode(url.config, mod.config);
                                         }
-                                        else {
+                                        else { // type = $
                                             // Here we would duplicate an Node if we had the mean to do it
                                             //ConfigNode newNode = ConfigManager.ModifyNode(url.config, mod.config);
                                             //UrlDir.UrlConfig newurl = new UrlDir.UrlConfig(mod.parent, newNode);
