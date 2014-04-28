@@ -52,6 +52,28 @@ namespace ModuleManager
             }
             return null;
         }
+
+        public static bool IsBraquetBalanced(String str)
+        {
+            Stack<char> stack = new Stack<char>();
+
+            char c;
+            for (int i = 0; i < str.Length; i++)
+            {
+                c = str[i];
+                if (c == '[')
+                    stack.Push(c);
+                else if (c == ']')
+                    if (stack.Count == 0)
+                        return false;
+                    else if (stack.Peek() == '[' )
+                        stack.Pop();
+                    else
+                        return false;
+            }
+            return stack.Count == 0;
+        }
+
         // Added that to prevent a crash in KSP 'CopyTo' when a subnode has an empty name like
         // Like a pair of curly bracket without a name before them
         public static bool IsSane(ConfigNode node)
@@ -149,6 +171,14 @@ namespace ModuleManager
             foreach (ConfigNode subMod in mod.nodes)
             {
                 subMod.name = RemoveWS(subMod.name);
+
+                if (!IsBraquetBalanced(subMod.name))
+                {
+                    print("[ModuleManager] Skipping a patch subnode with unbalanced square brackets or a space (replace them with a '?') in " + mod.name + " : \n" + subMod.name + "\n");
+                    errorCount++;
+                    continue;
+                }
+
                 char cmd = subMod.name[0];
                 if (cmd != '@' && cmd != '!' && cmd != '%' && cmd != '$')
                     newNode.AddNode(subMod);
@@ -293,7 +323,8 @@ namespace ModuleManager
 
         bool loaded = false;
 
-        int patchCount = 0;
+        static int patchCount = 0;
+        static int errorCount = 0;
         List<AssemblyName> mods;
 
         public void OnGUI()
@@ -314,7 +345,7 @@ namespace ModuleManager
             }
              */
 
-                        
+            
 
             if (!GameDatabase.Instance.IsReady() && ((HighLogic.LoadedScene == GameScenes.MAINMENU) || (HighLogic.LoadedScene == GameScenes.SPACECENTER)))
             {
@@ -323,6 +354,9 @@ namespace ModuleManager
 
             if (loaded)
                 return;
+
+            patchCount = 0;
+            errorCount = 0;
 
             // Check for old version and MMSarbianExt
             var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 6)) == -1);
@@ -425,7 +459,7 @@ namespace ModuleManager
             // :Final node
             ApplyPatch(excludePaths, ":FINAL");
 
-            print("[ModuleManager] Applied " + patchCount + " patches");
+            print("[ModuleManager] Applied " + patchCount + " patches and found " + errorCount + " errors" );
             loaded = true;
 
         }
@@ -496,7 +530,14 @@ namespace ModuleManager
 
                             string[] splits = name.Split(sep, 3);
                             string pattern = splits.Length>1?splits[1]:null;
-                            string type = splits[0].Substring(1);                          
+                            string type = splits[0].Substring(1);
+
+                            if (!IsBraquetBalanced(mod.name))
+                            {
+                                print("[ModuleManager] Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" + mod.name + "\n");
+                                errorCount++;
+                                continue;
+                            }
 
                             foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs) {
                                 if (url.type == type
