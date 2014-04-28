@@ -27,7 +27,8 @@ namespace ModuleManager
 				print ("Searching node for " + nodeType + "[" + nodeName + "," + nodeTag + "]");
 #endif
             int found = 0;
-            foreach (ConfigNode n in src.GetNodes(nodeType)) {
+            foreach (ConfigNode n in src.GetNodes(nodeType))
+            {
                 if (nodeName == null)
                 {
                     if (index == found)
@@ -66,7 +67,7 @@ namespace ModuleManager
                 else if (c == ']')
                     if (stack.Count == 0)
                         return false;
-                    else if (stack.Peek() == '[' )
+                    else if (stack.Peek() == '[')
                         stack.Pop();
                     else
                         return false;
@@ -111,8 +112,8 @@ namespace ModuleManager
                     newNode.AddValue(val.name, val.value);
                 else
                 {  // Parsing: 
-                   // Format is @key = value or @key *= value or @key += value or @key -= value 
-                   // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value 
+                    // Format is @key = value or @key *= value or @key += value or @key -= value 
+                    // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value 
                     string valName = val.name.Substring(1);
                     int index = 0;
                     if (valName.Contains(","))
@@ -131,13 +132,13 @@ namespace ModuleManager
                             op = '+';
                         else if (val.name.Contains(" -")) // @key -= val
                             op = '-';
-                        
+
                         if (op != ' ')
                         {
                             valName = valName.Split(' ')[0];
-                                                        
+
                             string ovalue = original.GetValue(valName, index);
-                            if(ovalue != null)
+                            if (ovalue != null)
                             {
                                 double s, os;
                                 if (double.TryParse(value, out s) && double.TryParse(ovalue, out os))
@@ -164,7 +165,7 @@ namespace ModuleManager
                         newNode.AddValue(valName, val.value);
                     }
                 }
-                
+
             }
             print(vals);
 
@@ -223,10 +224,10 @@ namespace ModuleManager
                     {
                         // format @NODETYPE {...} or ! instead of @
                         nodeType = name.Substring(1);
-                        nodeName = null;                        
+                        nodeName = null;
                     }
 
-                    
+
                     if (tag == "*" || cond.Length > 0)
                     { // get ALL nodes
                         if (cmd == '%')
@@ -246,7 +247,7 @@ namespace ModuleManager
                     else
                     { // just get one node
                         ConfigNode n = FindConfigNodeIn(newNode, nodeType, nodeName, index);
-                        if(n != null) subNodes.Add(n);
+                        if (n != null) subNodes.Add(n);
                     }
 
                     if (cmd == '@' || cmd == '!' || cmd == '$')
@@ -313,7 +314,8 @@ namespace ModuleManager
         public static List<UrlDir.UrlConfig> AllConfigsStartingWith(string match)
         {
             List<UrlDir.UrlConfig> nodes = new List<UrlDir.UrlConfig>();
-            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs) {
+            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
+            {
                 if (url.type.StartsWith(match))
                     url.config.name = url.type;
                 nodes.Add(url);
@@ -345,7 +347,7 @@ namespace ModuleManager
             }
              */
 
-            
+
 
             if (!GameDatabase.Instance.IsReady() && ((HighLogic.LoadedScene == GameScenes.MAINMENU) || (HighLogic.LoadedScene == GameScenes.SPACECENTER)))
             {
@@ -377,26 +379,31 @@ namespace ModuleManager
 
             // Elect the newest loaded version of MM to process all patch files.
             // If there is a newer version loaded then don't do anything
-            if (eligible.Any(a => 
+            if (eligible.Any(a =>
                     a.assembly.GetName().Version.CompareTo(currentAssembly.GetName().Version) == 1
-                    || a.assembly.Location.CompareTo(currentAssembly.Location) < 0)) {
+                    || a.assembly.Location.CompareTo(currentAssembly.Location) < 0))
+            {
                 loaded = true;
                 print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " lost the election");
                 return;
-            } else {
+            }
+            else
+            {
                 string candidates = "";
                 foreach (AssemblyLoader.LoadedAssembly a in eligible)
                     if (currentAssembly.Location != a.path)
                         candidates += "Version " + a.assembly.GetName().Version + " " + a.path + " " + "\n";
                 if (candidates.Length > 0)
                     print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
-            }             
+            }
 
             // Build a list of subdirectory that won't be processed
             List<String> excludePaths = new List<string>();
 
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs) {
-                if (mod.name == "MODULEMANAGER[LOCAL]") {
+            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
+            {
+                if (mod.name == "MODULEMANAGER[LOCAL]")
+                {
                     string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
                     string excludepath = fullpath.Substring(0, fullpath.LastIndexOf('/'));
                     excludePaths.Add(excludepath);
@@ -412,7 +419,7 @@ namespace ModuleManager
 
             mods = new List<AssemblyName>();
 
-            foreach (AssemblyName a in modsWithDup  )
+            foreach (AssemblyName a in modsWithDup)
             {
                 if (!mods.Any(m => m.Name == a.Name))
                     mods.Add(a);
@@ -429,12 +436,12 @@ namespace ModuleManager
                 if (cfgmod.type[0] == '@' || (cfgmod.type[0] == '$'))
                 {
                     string name = RemoveWS(cfgmod.name);
-                    if(name.Contains(":FOR["))
+                    if (name.Contains(":FOR["))
                     { // check for FOR[] blocks that don't match loaded DLLs and add them to the pass list
-                        
+
                         string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
                         dependency = dependency.Substring(0, dependency.IndexOf(']'));
-                        if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper()))) == null) 
+                        if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper()))) == null)
                         { // found one, now add it to the list.
                             AssemblyName newMod = new AssemblyName(dependency);
                             newMod.Name = dependency;
@@ -445,21 +452,21 @@ namespace ModuleManager
                 }
             }
             log(modlist);
-            
+
             // :First node (and any node without a :pass)
             ApplyPatch(excludePaths, ":FIRST");
 
-            foreach(AssemblyName mod in mods)
+            foreach (AssemblyName mod in mods)
             {
                 ApplyPatch(excludePaths, ":BEFORE[" + mod.Name + "]");
                 ApplyPatch(excludePaths, ":FOR[" + mod.Name + "]");
                 ApplyPatch(excludePaths, ":AFTER[" + mod.Name + "]");
             }
-            
+
             // :Final node
             ApplyPatch(excludePaths, ":FINAL");
 
-            print("[ModuleManager] Applied " + patchCount + " patches and found " + errorCount + " errors" );
+            print("[ModuleManager] Applied " + patchCount + " patches and found " + errorCount + " errors");
             loaded = true;
 
         }
@@ -467,14 +474,17 @@ namespace ModuleManager
         public void ApplyPatch(List<String> excludePaths, string Stage)
         {
             print("[ModuleManager] " + Stage + (Stage == ":FIRST" ? " (default) pass" : " pass"));
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs) {
-                if (mod.type[0] == '@' || (mod.type[0] == '$' )) {
-                    try {
+            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
+            {
+                if (mod.type[0] == '@' || (mod.type[0] == '$'))
+                {
+                    try
+                    {
                         string name = RemoveWS(mod.name);
-                        
+
 
                         string dependencies = "";
-                        if(name.Contains(":NEEDS["))
+                        if (name.Contains(":NEEDS["))
                         {
                             dependencies = name.Substring(name.IndexOf(":NEEDS[") + 7).Replace("]", "");
                             name = name.Remove(name.IndexOf(":NEEDS["));
@@ -485,9 +495,9 @@ namespace ModuleManager
                             foreach (string dependency in dependencies.Split(','))
                             {
                                 string check = RemoveWS(dependency);
-                                if(check[0] == '!' ^ (mods.Find(a => a.Name.ToUpper().Equals(check.ToUpper())) == null))
+                                if (check[0] == '!' ^ (mods.Find(a => a.Name.ToUpper().Equals(check.ToUpper())) == null))
                                 {
-                                    
+
                                     unresolvedDependencies = true;
                                     if (
                                  (Stage == ":FIRST"
@@ -509,14 +519,14 @@ namespace ModuleManager
 
                         }
                         else if (
-                                 ( Stage == ":FIRST" 
-                                   && !name.ToUpper().Contains(":BEFORE[") 
-                                   && !name.ToUpper().Contains(":FOR[") 
-                                   && !name.ToUpper().Contains(":AFTER[") 
-                                   && !name.ToUpper().Contains(":FINAL") 
-                                 ) ^ name.ToUpper().EndsWith(Stage.ToUpper()) ) 
+                                 (Stage == ":FIRST"
+                                   && !name.ToUpper().Contains(":BEFORE[")
+                                   && !name.ToUpper().Contains(":FOR[")
+                                   && !name.ToUpper().Contains(":AFTER[")
+                                   && !name.ToUpper().Contains(":FINAL")
+                                 ) ^ name.ToUpper().EndsWith(Stage.ToUpper()))
                         {
-                            char[] sep = new char[] { '[', ']' };                            
+                            char[] sep = new char[] { '[', ']' };
                             string cond = "";
                             if (name.Contains(Stage))
                                 name = name.Substring(0, name.LastIndexOf(Stage));
@@ -529,7 +539,7 @@ namespace ModuleManager
                             }
 
                             string[] splits = name.Split(sep, 3);
-                            string pattern = splits.Length>1?splits[1]:null;
+                            string pattern = splits.Length > 1 ? splits[1] : null;
                             string type = splits[0].Substring(1);
 
                             if (!IsBraquetBalanced(mod.name))
@@ -539,27 +549,33 @@ namespace ModuleManager
                                 continue;
                             }
 
-                            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs) {
+                            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
+                            {
                                 if (url.type == type
                                     && WildcardMatch(url.name, pattern)
                                     && CheckCondition(url.config, cond)
                                     && !IsPathInList(mod.url, excludePaths)
-                                    ) {
-                                        if (mod.type[0] == '@') {
-                                            print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
-                                            patchCount++;
-                                            url.config = ConfigManager.ModifyNode(url.config, mod.config);
-                                        }
-                                        else { // type = $
-                                            // Here we would duplicate an Node if we had the mean to do it
-                                            //ConfigNode newNode = ConfigManager.ModifyNode(url.config, mod.config);
-                                            //UrlDir.UrlConfig newurl = new UrlDir.UrlConfig(mod.parent, newNode);
-                                            //print("[ModuleManager] Copying Node " + newurl.url + " " + newurl.name);
-                                        }                                    
+                                    )
+                                {
+                                    if (mod.type[0] == '@')
+                                    {
+                                        print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
+                                        patchCount++;
+                                        url.config = ConfigManager.ModifyNode(url.config, mod.config);
+                                    }
+                                    else
+                                    { // type = $
+                                        // Here we would duplicate an Node if we had the mean to do it
+                                        //ConfigNode newNode = ConfigManager.ModifyNode(url.config, mod.config);
+                                        //UrlDir.UrlConfig newurl = new UrlDir.UrlConfig(mod.parent, newNode);
+                                        //print("[ModuleManager] Copying Node " + newurl.url + " " + newurl.name);
+                                    }
                                 }
                             }
                         }
-                    } catch (Exception e) {
+                    }
+                    catch (Exception e)
+                    {
                         print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
                     }
                 }
@@ -577,11 +593,14 @@ namespace ModuleManager
             List<string> conds = new List<string>();
             int start = 0;
             int level = 0;
-            for (int end = 0; end < cond.Length; end++) {
-                if (cond[end] == ',' && level == 0) {
+            for (int end = 0; end < cond.Length; end++)
+            {
+                if (cond[end] == ',' && level == 0)
+                {
                     conds.Add(cond.Substring(start, end - start));
                     start = end + 1;
-                } else if (cond[end] == '[')
+                }
+                else if (cond[end] == '[')
                     level++;
                 else if (cond[end] == ']')
                     level--;
@@ -597,13 +616,15 @@ namespace ModuleManager
 
             List<string> condsList = SplitCondition(conds);
 
-            if (condsList.Count == 1) {
+            if (condsList.Count == 1)
+            {
                 conds = condsList[0];
 
-                
+
 
                 string remainCond = "";
-                if (conds.Contains("HAS[")) {
+                if (conds.Contains("HAS["))
+                {
                     int start = conds.IndexOf("HAS[") + 4;
                     remainCond = conds.Substring(start, condsList[0].LastIndexOf(']') - start);
                     conds = conds.Substring(0, start - 5);
@@ -614,27 +635,28 @@ namespace ModuleManager
                 string type = splits[0].Substring(1);
                 string name = splits.Length > 1 ? splits[1] : null;
 
-                switch (conds[0]) {
-                case '@':
-                case '!':
-					// @MODULE[ModuleAlternator] or !MODULE[ModuleAlternator]
-                    bool not = (conds[0] == '!');
-                    ConfigNode subNode = ConfigManager.FindConfigNodeIn(node, type, name);
-                    if (subNode != null)
-                        return not ^ CheckCondition(subNode, remainCond);
-                    return not ^ false;
-                case '#':
-					// #module[Winglet]
-                    if (node.HasValue(type) && node.GetValue(type).Equals(name))
-                        return CheckCondition(node, remainCond);
-                    return false;
-                case '~':
-					// ~breakingForce[]  breakingForce is not present
-                    if (!(node.HasValue(type)))
-                        return CheckCondition(node, remainCond);
-                    return false;
-                default:
-                    return false;
+                switch (conds[0])
+                {
+                    case '@':
+                    case '!':
+                        // @MODULE[ModuleAlternator] or !MODULE[ModuleAlternator]
+                        bool not = (conds[0] == '!');
+                        ConfigNode subNode = ConfigManager.FindConfigNodeIn(node, type, name);
+                        if (subNode != null)
+                            return not ^ CheckCondition(subNode, remainCond);
+                        return not ^ false;
+                    case '#':
+                        // #module[Winglet]
+                        if (node.HasValue(type) && node.GetValue(type).Equals(name))
+                            return CheckCondition(node, remainCond);
+                        return false;
+                    case '~':
+                        // ~breakingForce[]  breakingForce is not present
+                        if (!(node.HasValue(type)))
+                            return CheckCondition(node, remainCond);
+                        return false;
+                    default:
+                        return false;
                 }
             }
             return condsList.TrueForAll(c => CheckCondition(node, c));
