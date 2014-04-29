@@ -167,7 +167,7 @@ namespace ModuleManager
                 }
 
             }
-            print(vals);
+            //print(vals);
 
             foreach (ConfigNode subMod in mod.nodes)
             {
@@ -305,7 +305,7 @@ namespace ModuleManager
                             newNode.nodes.Add(newSubNode);
                         }
                     }
-                    print(msg);
+                    //print(msg);
                 }
             }
             return newNode;
@@ -327,9 +327,10 @@ namespace ModuleManager
 
         static int patchCount = 0;
         static int errorCount = 0;
+        static Dictionary<String,int> errorFiles;
         List<AssemblyName> mods;
 
-        public void OnGUI()
+        public void Update()
         {
             /* 
              * It should be a code to reload when the Reload Database debug button is used.
@@ -347,8 +348,6 @@ namespace ModuleManager
             }
              */
 
-
-
             if (!GameDatabase.Instance.IsReady() && ((HighLogic.LoadedScene == GameScenes.MAINMENU) || (HighLogic.LoadedScene == GameScenes.SPACECENTER)))
             {
                 return;
@@ -359,6 +358,7 @@ namespace ModuleManager
 
             patchCount = 0;
             errorCount = 0;
+            errorFiles = new Dictionary<string, int>();
 
             // Check for old version and MMSarbianExt
             var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 6)) == -1);
@@ -466,22 +466,57 @@ namespace ModuleManager
             // :Final node
             ApplyPatch(excludePaths, ":FINAL");
 
-            print("[ModuleManager] Applied " + patchCount + " patches and found " + errorCount + " errors");
+            if (errorCount > 0)
+                foreach (String file in errorFiles.Keys)
+                    errors += errorFiles[file] + " error"+ (errorFiles[file]>1?"s":"") +" in GameData/" + file + "\n";
+
+
+            status = "ModuleManager applied " + patchCount + " patches and found " + errorCount + " error" + (errorCount > 1 ? "s" : "");
+
+            print("[ModuleManager] " + status + "\n" + errors);
+
             loaded = true;
+        }
+
+        static string status = "Processing Module Manager patch\nPlease Wait...";
+        static string errors = "";
+
+        public void OnGUI()
+        {
+            if (HighLogic.LoadedScene != GameScenes.LOADING) 
+                return;                        
+            
+            var centeredStyle = GUI.skin.GetStyle("Label");
+            centeredStyle.alignment = TextAnchor.UpperCenter;
+            centeredStyle.fontSize = 16;
+            Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(status));
+            GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height), sizeOfLabel.x, sizeOfLabel.y), status, centeredStyle);
+
+            if (errorCount > 0)
+            {
+                var errorStyle = GUI.skin.GetStyle("Label");
+                errorStyle.alignment = TextAnchor.UpperLeft;
+                errorStyle.fontSize = 16;
+                Vector2 sizeOfError = errorStyle.CalcSize(new GUIContent(errors));
+                GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height) + sizeOfLabel.y, sizeOfError.x, sizeOfError.y), errors, errorStyle);
+                
+            }
 
         }
+
         // Apply patch to all relevent nodes
         public void ApplyPatch(List<String> excludePaths, string Stage)
         {
             print("[ModuleManager] " + Stage + (Stage == ":FIRST" ? " (default) pass" : " pass"));
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
             {
-                if (mod.type[0] == '@' || (mod.type[0] == '$'))
+                if (mod.type[0] == '@' || (mod.type[0] == '$') || (mod.type[0] == '!'))
                 {
                     try
                     {
-                        string name = RemoveWS(mod.name);
+                        int lastErrorCount = errorCount;
 
+                        string name = RemoveWS(mod.name);
 
                         string dependencies = "";
                         if (name.Contains(":NEEDS["))
@@ -545,6 +580,7 @@ namespace ModuleManager
                             if (!IsBraquetBalanced(mod.name))
                             {
                                 print("[ModuleManager] Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" + mod.name + "\n");
+                                addErrorFiles(mod.parent);
                                 errorCount++;
                                 continue;
                             }
@@ -563,23 +599,55 @@ namespace ModuleManager
                                         patchCount++;
                                         url.config = ConfigManager.ModifyNode(url.config, mod.config);
                                     }
-                                    else
-                                    { // type = $
-                                        // Here we would duplicate an Node if we had the mean to do it
-                                        //ConfigNode newNode = ConfigManager.ModifyNode(url.config, mod.config);
-                                        //UrlDir.UrlConfig newurl = new UrlDir.UrlConfig(mod.parent, newNode);
-                                        //print("[ModuleManager] Copying Node " + newurl.url + " " + newurl.name);
+                                    else if (mod.type[0] == '$')
+                                    {
+                                        // Here we would duplicate an Node if it did not create an exception since we modfiy an enum while it is used                                       
+                                        
+                                        //ConfigNode clone = ConfigManager.ModifyNode(url.config, mod.config);
+                                        //if (url.config.name != mod.name)
+                                        //{
+                                        //    print("[ModuleManager] Copying Node " + url.config.name + " into " + clone.name);
+                                        //    url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
+                                        //}
+                                        //else
+                                        //{                                            
+                                        //    errorCount++;
+                                        //    print("[ModuleManager] Error while processing " + mod.config.name + " the copy need to have a different name than the parent (use @name = xxx)");
+                                        //}
+                                    }
+                                    else if (mod.type[0] == '!')
+                                    {
+                                        // Same problem
+                                        //print("[ModuleManager] Deleting Node " + url.config.name);
+                                        //url.parent.configs.Remove(url);
                                     }
                                 }
                             }
                         }
+
+                        if (lastErrorCount < errorCount)
+                            addErrorFiles(mod.parent, errorCount - lastErrorCount);
+
                     }
                     catch (Exception e)
                     {
                         print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
+                        addErrorFiles(mod.parent);
                     }
                 }
             }
+        }
+
+        public void addErrorFiles(UrlDir.UrlFile file, int n=1)
+        {
+            string key = file.url + "." + file.fileExtension;
+            if (key[0] == '/')
+                key = key.Substring(1);
+            if (!errorFiles.ContainsKey(key))
+                errorFiles.Add(key, n);
+            else
+                errorFiles[key] = errorFiles[key] + n;
+
         }
 
         public bool IsPathInList(string modPath, List<String> pathList)
