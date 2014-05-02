@@ -480,7 +480,7 @@ namespace ModuleManager
 
         static string status = "Processing Module Manager patch\nPlease Wait...";
         static string errors = "";
-        
+
         public void OnGUI()
         {
             if (HighLogic.LoadedScene != GameScenes.LOADING) 
@@ -508,7 +508,7 @@ namespace ModuleManager
         public void ApplyPatch(List<String> excludePaths, string Stage)
         {
             print("[ModuleManager] " + Stage + (Stage == ":FIRST" ? " (default) pass" : " pass"));
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
+            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
             {
                 if (mod.type[0] == '@' || (mod.type[0] == '$') || (mod.type[0] == '!'))
                 {
@@ -585,7 +585,7 @@ namespace ModuleManager
                                 continue;
                             }
 
-                            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
+                            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
                             {
                                 if (url.type == type
                                     && WildcardMatch(url.name, pattern)
@@ -601,25 +601,22 @@ namespace ModuleManager
                                     }
                                     else if (mod.type[0] == '$')
                                     {
-                                        // Here we would duplicate an Node if it did not create an exception since we modfiy an enum while it is used                                       
-                                        
-                                        //ConfigNode clone = ConfigManager.ModifyNode(url.config, mod.config);
-                                        //if (url.config.name != mod.name)
-                                        //{
-                                        //    print("[ModuleManager] Copying Node " + url.config.name + " into " + clone.name);
-                                        //    url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                        //}
-                                        //else
-                                        //{                                            
-                                        //    errorCount++;
-                                        //    print("[ModuleManager] Error while processing " + mod.config.name + " the copy need to have a different name than the parent (use @name = xxx)");
-                                        //}
+                                        ConfigNode clone = ConfigManager.ModifyNode(url.config, mod.config);
+                                        if (url.config.name != mod.name)
+                                        {
+                                            print("[ModuleManager] Copying Node " + url.config.name + " into " + clone.name);
+                                            url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
+                                        }
+                                        else
+                                        {                                            
+                                            errorCount++;
+                                            print("[ModuleManager] Error while processing " + mod.config.name + " the copy needs to have a different name than the parent (use @name = xxx)");
+                                        }
                                     }
                                     else if (mod.type[0] == '!')
                                     {
-                                        // Same problem
-                                        //print("[ModuleManager] Deleting Node " + url.config.name);
-                                        //url.parent.configs.Remove(url);
+                                        print("[ModuleManager] Deleting Node " + url.config.name);
+                                        url.parent.configs.Remove(url);
                                     }
                                 }
                             }
