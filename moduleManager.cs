@@ -481,17 +481,12 @@ namespace ModuleManager
         static string status = "Processing Module Manager patch\nPlease Wait...";
         static string errors = "";
         
-        GUISkin mmSkin;
-
         public void OnGUI()
         {
             if (HighLogic.LoadedScene != GameScenes.LOADING) 
                 return;
 
-            if (mmSkin == null)
-                mmSkin = (GUISkin)GameObject.Instantiate(GUI.skin);
-
-            var centeredStyle = mmSkin.GetStyle("Label");
+            var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
             centeredStyle.alignment = TextAnchor.UpperCenter;
             centeredStyle.fontSize = 16;
             Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(status));
@@ -499,7 +494,7 @@ namespace ModuleManager
 
             if (errorCount > 0)
             {
-                var errorStyle = mmSkin.GetStyle("Label");
+                var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
                 errorStyle.alignment = TextAnchor.UpperLeft;
                 errorStyle.fontSize = 16;
                 Vector2 sizeOfError = errorStyle.CalcSize(new GUIContent(errors));
