@@ -510,129 +510,160 @@ namespace ModuleManager
             print("[ModuleManager] " + Stage + (Stage == ":FIRST" ? " (default) pass" : " pass"));
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
             {
+                string name = RemoveWS(mod.name);
+
                 if (mod.type[0] == '@' || (mod.type[0] == '$') || (mod.type[0] == '!'))
                 {
+                    int lastErrorCount = errorCount;
+
                     try
                     {
-                        int lastErrorCount = errorCount;
-
-                        string name = RemoveWS(mod.name);
-
-                        string dependencies = "";
-                        if (name.Contains(":NEEDS["))
+                        // Ensure the stage is correct
+                        int stageIdx = name.IndexOf(Stage);
+                        if (stageIdx >= 0) 
                         {
-                            dependencies = name.Substring(name.IndexOf(":NEEDS[") + 7).Replace("]", "");
-                            name = name.Remove(name.IndexOf(":NEEDS["));
+                            name = name.Substring(0, stageIdx) + name.Substring(stageIdx + Stage.Length);
                         }
-                        bool unresolvedDependencies = false;
-                        if (dependencies.Length > 0)
-                        {
-                            foreach (string dependency in dependencies.Split(','))
-                            {
-                                string check = RemoveWS(dependency);
-                                if (check[0] == '!' ^ (mods.Find(a => a.Name.ToUpper().Equals(check.ToUpper())) == null))
-                                {
-
-                                    unresolvedDependencies = true;
-                                    if (
-                                 (Stage == ":FIRST"
+                        else if(!(Stage == ":FIRST"
                                    && !name.ToUpper().Contains(":BEFORE[")
                                    && !name.ToUpper().Contains(":FOR[")
                                    && !name.ToUpper().Contains(":AFTER[")
-                                   && !name.ToUpper().Contains(":FINAL")
-                                 ) ^ name.ToUpper().EndsWith(Stage.ToUpper()))
-                                    {
-                                        print("[ModuleManager] node " + mod.url + " - " + check + " not found!");
-                                    }
-                                }
-
-                            }
+                                   && !name.ToUpper().Contains(":FINAL")))
+                        {
+                            continue;
                         }
 
-                        if (unresolvedDependencies)
+                        if (!CheckNeeds(ref name))
                         {
-
+                            print("[ModuleManager] node " + mod.url + " - unable to satisfy the list of things that it NEEDS!");
+                            continue;
                         }
-                        else if (
-                                 (Stage == ":FIRST"
-                                   && !name.ToUpper().Contains(":BEFORE[")
-                                   && !name.ToUpper().Contains(":FOR[")
-                                   && !name.ToUpper().Contains(":AFTER[")
-                                   && !name.ToUpper().Contains(":FINAL")
-                                 ) ^ name.ToUpper().EndsWith(Stage.ToUpper()))
+                        
+                        char[] sep = new char[] { '[', ']' };
+                        string cond = "";
+
+                        if (name.Contains(":HAS["))
                         {
-                            char[] sep = new char[] { '[', ']' };
-                            string cond = "";
-                            if (name.Contains(Stage))
-                                name = name.Substring(0, name.LastIndexOf(Stage));
+                            int start = name.IndexOf(":HAS[");
+                            cond = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
+                            name = name.Substring(0, start);
+                        }
 
-                            if (name.Contains(":HAS["))
+                        string[] splits = name.Split(sep, 3);
+                        string pattern = splits.Length > 1 ? splits[1] : null;
+                        string type = splits[0].Substring(1);
+
+                        if (!IsBraquetBalanced(mod.name))
+                        {
+                            print("[ModuleManager] Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" + mod.name + "\n");
+                            addErrorFiles(mod.parent);
+                            errorCount++;
+                            continue;
+                        }
+
+                        foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
+                        {
+                            if (url.type == type
+                                && WildcardMatch(url.name, pattern)
+                                && CheckCondition(url.config, cond)
+                                && !IsPathInList(mod.url, excludePaths)
+                                )
                             {
-                                int start = name.IndexOf(":HAS[");
-                                cond = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
-                                name = name.Substring(0, start);
-                            }
-
-                            string[] splits = name.Split(sep, 3);
-                            string pattern = splits.Length > 1 ? splits[1] : null;
-                            string type = splits[0].Substring(1);
-
-                            if (!IsBraquetBalanced(mod.name))
-                            {
-                                print("[ModuleManager] Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" + mod.name + "\n");
-                                addErrorFiles(mod.parent);
-                                errorCount++;
-                                continue;
-                            }
-
-                            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
-                            {
-                                if (url.type == type
-                                    && WildcardMatch(url.name, pattern)
-                                    && CheckCondition(url.config, cond)
-                                    && !IsPathInList(mod.url, excludePaths)
-                                    )
+                                if (mod.type[0] == '@')
                                 {
-                                    if (mod.type[0] == '@')
+                                    print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
+                                    patchCount++;
+                                    url.config = ConfigManager.ModifyNode(url.config, mod.config);
+                                }
+                                else if (mod.type[0] == '$')
+                                {
+                                    ConfigNode clone = ConfigManager.ModifyNode(url.config, mod.config);
+                                    if (url.config.name != mod.name)
                                     {
-                                        print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
-                                        patchCount++;
-                                        url.config = ConfigManager.ModifyNode(url.config, mod.config);
+                                        print("[ModuleManager] Copying Node " + url.config.name + " into " + clone.name);
+                                        url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
                                     }
-                                    else if (mod.type[0] == '$')
-                                    {
-                                        ConfigNode clone = ConfigManager.ModifyNode(url.config, mod.config);
-                                        if (url.config.name != mod.name)
-                                        {
-                                            print("[ModuleManager] Copying Node " + url.config.name + " into " + clone.name);
-                                            url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                        }
-                                        else
-                                        {                                            
-                                            errorCount++;
-                                            print("[ModuleManager] Error while processing " + mod.config.name + " the copy needs to have a different name than the parent (use @name = xxx)");
-                                        }
+                                    else
+                                    {                                            
+                                        errorCount++;
+                                        print("[ModuleManager] Error while processing " + mod.config.name + " the copy needs to have a different name than the parent (use @name = xxx)");
                                     }
-                                    else if (mod.type[0] == '!')
-                                    {
-                                        print("[ModuleManager] Deleting Node " + url.config.name);
-                                        url.parent.configs.Remove(url);
-                                    }
+                                }
+                                else if (mod.type[0] == '!')
+                                {
+                                    print("[ModuleManager] Deleting Node " + url.config.name);
+                                    url.parent.configs.Remove(url);
                                 }
                             }
                         }
-
-                        if (lastErrorCount < errorCount)
-                            addErrorFiles(mod.parent, errorCount - lastErrorCount);
-
                     }
                     catch (Exception e)
                     {
                         print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
                         addErrorFiles(mod.parent);
                     }
+                    finally
+                    {
+                        if (lastErrorCount < errorCount)
+                            addErrorFiles(mod.parent, errorCount - lastErrorCount);
+                    }
+                }
+                else if(Stage == ":FIRST" && mod.type.Contains(":NEEDS["))
+                {
+                    mod.parent.configs.Remove(mod);
+                    string type = mod.type;
+
+                    // NEEDS for ordinary nodes
+                    if (!CheckNeeds(ref type))
+                    {
+                        print("[ModuleManager] Deleting Node " + mod.url + " as it can't satisfy its NEEDS");
+                        continue;
+                    }
+                    Debug.LogWarning(type);
+                    
+                    ConfigNode copy = new ConfigNode(type);
+                    mod.config.CopyTo(copy);
+
+                    mod.parent.configs.Add(new UrlDir.UrlConfig(mod.parent, copy));
+                    
                 }
             }
+        }
+
+        private bool CheckNeeds(ref string name)
+        {
+            int idxStart = name.IndexOf(":NEEDS[");
+            if (idxStart < 0)
+                return true;
+            int idxEnd = name.IndexOf(']', idxStart + 7);
+            string needsString = name.Substring(idxStart + 7, idxEnd - idxStart - 7).ToUpper();
+
+            name = name.Substring(0, idxStart) + name.Substring(idxEnd+1);
+            
+            // Check to see if all the needed dependencies are present.
+            foreach (string andDependencies in needsString.Split(',', '&'))
+            {
+                bool orMatch = false;
+                foreach (string orDependency in andDependencies.Split('|'))
+                {
+                    if (orDependency.Length == 0)
+                        continue;
+
+                    bool not = orDependency[0] == '!';
+                    string toFind = not ? orDependency.Substring(1) : orDependency;
+                    bool found = mods.Find(a => a.Name.ToUpper() == toFind) != null;
+
+                    if (not == !found)
+                    {
+                        orMatch = true;
+                        break;
+                    }
+                }
+                if (!orMatch)
+                    return false;
+            }
+
+            return true;
         }
 
         public void addErrorFiles(UrlDir.UrlFile file, int n=1)
