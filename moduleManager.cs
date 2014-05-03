@@ -472,7 +472,7 @@ namespace ModuleManager
                     errors += errorFiles[file] + " error"+ (errorFiles[file]>1?"s":"") +" in GameData/" + file + "\n";
 
 
-            status = "ModuleManager applied " + patchCount + " patches and found " + errorCount + " error" + (errorCount > 1 ? "s" : "");
+            status = "ModuleManager applied " + patchCount + " patches and found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
 
             print("[ModuleManager] " + status + "\n" + errors);
 
@@ -511,13 +511,21 @@ namespace ModuleManager
             print("[ModuleManager] " + Stage + (Stage == ":FIRST" ? " (default) pass" : " pass"));
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
             {
-                string name = RemoveWS(mod.name);
-
-                if (mod.type[0] == '@' || (mod.type[0] == '$') || (mod.type[0] == '!'))
+                if (!IsBraquetBalanced(mod.type))
                 {
-                    int lastErrorCount = errorCount;
+                    print("[ModuleManager] Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" + mod.name + "\n");
+                    addErrorFiles(mod.parent);
+                    errorCount++;
+                    continue;
+                }
 
-                    try
+                string name = RemoveWS(mod.type);
+
+                int lastErrorCount = errorCount;
+
+                try
+                {
+                    if (name[0] == '@' || (name[0] == '$') || (name[0] == '!'))
                     {
                         // Ensure the stage is correct
                         int stageIdx = name.IndexOf(Stage);
@@ -534,9 +542,11 @@ namespace ModuleManager
                             continue;
                         }
 
+                        // TODO: do we want to ensure there's only one phase specifier?
+
                         if (!CheckNeeds(ref name))
                         {
-                            print("[ModuleManager] node " + mod.url + " - unable to satisfy the list of things that it NEEDS!");
+                            print("[ModuleManager] Not applying patch " + mod.url + " - unable to satisfy NEEDS");
                             continue;
                         }
                         
@@ -553,14 +563,6 @@ namespace ModuleManager
                         string[] splits = name.Split(sep, 3);
                         string pattern = splits.Length > 1 ? splits[1] : null;
                         string type = splits[0].Substring(1);
-
-                        if (!IsBraquetBalanced(mod.name))
-                        {
-                            print("[ModuleManager] Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" + mod.name + "\n");
-                            addErrorFiles(mod.parent);
-                            errorCount++;
-                            continue;
-                        }
 
                         foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
                         {
@@ -598,35 +600,35 @@ namespace ModuleManager
                             }
                         }
                     }
-                    catch (Exception e)
+                    else if(Stage == ":FIRST" && mod.type.Contains(":NEEDS["))
                     {
-                        print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
-                        addErrorFiles(mod.parent);
-                    }
-                    finally
-                    {
-                        if (lastErrorCount < errorCount)
-                            addErrorFiles(mod.parent, errorCount - lastErrorCount);
+                        mod.parent.configs.Remove(mod);
+                        string type = mod.type;
+
+                        // NEEDS for ordinary nodes
+                        if (!CheckNeeds(ref type))
+                        {
+                            print("[ModuleManager] Deleting Node " + mod.url + " as it can't satisfy its NEEDS");
+                            continue;
+                        }
+                        Debug.LogWarning(type);
+                    
+                        ConfigNode copy = new ConfigNode(type);
+                        mod.config.CopyTo(copy);
+
+                        mod.parent.configs.Add(new UrlDir.UrlConfig(mod.parent, copy));
+                    
                     }
                 }
-                else if(Stage == ":FIRST" && mod.type.Contains(":NEEDS["))
+                catch (Exception e)
                 {
-                    mod.parent.configs.Remove(mod);
-                    string type = mod.type;
-
-                    // NEEDS for ordinary nodes
-                    if (!CheckNeeds(ref type))
-                    {
-                        print("[ModuleManager] Deleting Node " + mod.url + " as it can't satisfy its NEEDS");
-                        continue;
-                    }
-                    Debug.LogWarning(type);
-                    
-                    ConfigNode copy = new ConfigNode(type);
-                    mod.config.CopyTo(copy);
-
-                    mod.parent.configs.Add(new UrlDir.UrlConfig(mod.parent, copy));
-                    
+                    print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
+                    addErrorFiles(mod.parent);
+                }
+                finally
+                {
+                    if (lastErrorCount < errorCount)
+                        addErrorFiles(mod.parent, errorCount - lastErrorCount);
                 }
             }
         }
