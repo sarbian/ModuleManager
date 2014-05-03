@@ -373,15 +373,16 @@ namespace ModuleManager
             }
 
             Assembly currentAssembly = Assembly.GetExecutingAssembly();
-            var eligible = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == currentAssembly.GetName().Name);
-
-            //print("[ModuleManager] starting \n" + String.Join("\n", eligible.Select(a => a.path).ToArray()));
+            var eligible = from a in AssemblyLoader.loadedAssemblies
+                           let ass = a.assembly
+                           where ass.GetName().Name == currentAssembly.GetName().Name
+                           orderby ass.GetName().Version descending, a.path ascending
+                           select a;
 
             // Elect the newest loaded version of MM to process all patch files.
             // If there is a newer version loaded then don't do anything
-            if (eligible.Any(a =>
-                    a.assembly.GetName().Version.CompareTo(currentAssembly.GetName().Version) == 1
-                    || a.assembly.Location.CompareTo(currentAssembly.Location) < 0))
+            // If there is a same version but earlier in the list, don't do anything either.
+            if (eligible.First().assembly != currentAssembly)
             {
                 loaded = true;
                 print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " lost the election");
