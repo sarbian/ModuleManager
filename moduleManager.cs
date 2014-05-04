@@ -444,7 +444,7 @@ namespace ModuleManager
             errorFiles = new Dictionary<string, int>();
 
             // Check for old version and MMSarbianExt
-            var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(2, 0, 10)) == -1);
+            var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(2, 1, 0)) == -1);
             var oldAssemblies = oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
             if (oldAssemblies.Any())
             {
@@ -616,8 +616,11 @@ namespace ModuleManager
                             continue;
                         }
 
+                        if (name.EndsWith(":Final"))
+                            name = name.Replace(":Final", ":FINAL");
+
                         // Ensure the stage is correct
-                        int stageIdx = name.ToUpper().IndexOf(Stage);
+                        int stageIdx = name.IndexOf(Stage);
                         if (stageIdx >= 0) 
                         {
                             name = name.Substring(0, stageIdx) + name.Substring(stageIdx + Stage.Length);
@@ -689,6 +692,7 @@ namespace ModuleManager
                 catch (Exception e)
                 {
                     print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
+                    mod.parent.configs.Remove(mod);
                 }
                 finally
                 {
