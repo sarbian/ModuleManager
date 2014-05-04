@@ -609,13 +609,12 @@ namespace ModuleManager
                         if (!IsBraquetBalanced(mod.type))
                         {
                             print("[ModuleManager] Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" + mod.name + "\n");
-                            addErrorFiles(mod.parent);
                             errorCount++;
                             continue;
                         }
 
                         // Ensure the stage is correct
-                        int stageIdx = name.IndexOf(Stage);
+                        int stageIdx = name.ToUpper().IndexOf(Stage);
                         if (stageIdx >= 0) 
                         {
                             name = name.Substring(0, stageIdx) + name.Substring(stageIdx + Stage.Length);
@@ -685,7 +684,6 @@ namespace ModuleManager
                 catch (Exception e)
                 {
                     print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
-                    addErrorFiles(mod.parent);
                 }
                 finally
                 {
