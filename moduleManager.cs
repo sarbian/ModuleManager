@@ -610,6 +610,8 @@ namespace ModuleManager
                         {
                             print("[ModuleManager] Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" + mod.name + "\n");
                             errorCount++;
+                            // And remove it so it's not tried anymore
+                            mod.parent.configs.Remove(mod);
                             continue;
                         }
 
@@ -679,6 +681,8 @@ namespace ModuleManager
                                 }
                             }
                         }
+                        // The patch was run so let's remove it from the database
+                        mod.parent.configs.Remove(mod);
                     }
                 }
                 catch (Exception e)
