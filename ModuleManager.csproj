@@ -44,7 +44,7 @@
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>copy "$(TargetPath)" "C:\Games\ksp-win\GameData"
-copy "$(TargetPath)" "C:\Games\ksp-win_dev\GameData"</PostBuildEvent>
+    <PostBuildEvent>copy "$(TargetPath)" "C:\Program Files (x86)\Steam\steamapps\common\Kerbal Space Program\KSP Debug\GameData\"
+</PostBuildEvent>
   </PropertyGroup>
 </Project>

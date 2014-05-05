@@ -657,80 +657,82 @@ namespace ModuleManager
                             continue;
                         }
 
-                        if (name.EndsWith(":Final"))
-                            name = name.Replace(":Final", ":FINAL");
-
                         // Ensure the stage is correct
-                        int stageIdx = name.IndexOf(Stage);
-                        if (stageIdx >= 0) 
+                        string upperName = name.ToUpper();
+
+                        int stageIdx = upperName.IndexOf(Stage);
+                        if (stageIdx >= 0)
                         {
                             name = name.Substring(0, stageIdx) + name.Substring(stageIdx + Stage.Length);
                         }
-                        else if(!(Stage == ":FIRST"
-                                   && !name.ToUpper().Contains(":BEFORE[")
-                                   && !name.ToUpper().Contains(":FOR[")
-                                   && !name.ToUpper().Contains(":AFTER[")
-                                   && !name.ToUpper().Contains(":FINAL")))
+                        else if (!(Stage == ":FIRST"
+                                    && !upperName.Contains(":BEFORE[")
+                                    && !upperName.Contains(":FOR[")
+                                    && !upperName.Contains(":AFTER[")
+                                    && !upperName.Contains(":FINAL")))
                         {
                             continue;
                         }
 
                         // TODO: do we want to ensure there's only one phase specifier?
-             
-                        // Remove the patch from the DB as we won't need it again
-                        mod.parent.configs.Remove(mod);
 
-                        char[] sep = new char[] { '[', ']' };
-                        string cond = "";
-
-                        if (name.Contains(":HAS["))
+                        try
                         {
-                            int start = name.IndexOf(":HAS[");
-                            cond = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
-                            name = name.Substring(0, start);
-                        }
+                            char[] sep = new char[] { '[', ']' };
+                            string cond = "";
 
-                        string[] splits = name.Split(sep, 3);
-                        string pattern = splits.Length > 1 ? splits[1] : null;
-                        string type = splits[0].Substring(1);
-
-                        foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
-                        {
-                            if (url.type == type
-                                && WildcardMatch(url.name, pattern)
-                                && CheckCondition(url.config, cond)
-                                && !IsPathInList(mod.url, excludePaths)
-                                )
+                            if (upperName.Contains(":HAS["))
                             {
-                                if (mod.type[0] == '@')
+                                int start = upperName.IndexOf(":HAS[");
+                                cond = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
+                                name = name.Substring(0, start);
+                            }
+
+                            string[] splits = name.Split(sep, 3);
+                            string pattern = splits.Length > 1 ? splits[1] : null;
+                            string type = splits[0].Substring(1);
+
+                            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
+                            {
+                                if (url.type == type
+                                    && WildcardMatch(url.name, pattern)
+                                    && CheckCondition(url.config, cond)
+                                    && !IsPathInList(mod.url, excludePaths)
+                                    )
                                 {
-                                    print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
-                                    patchCount++;
-                                    url.config = ModifyNode(url.config, mod.config);
-                                }
-                                else if (mod.type[0] == '$')
-                                {
-                                    ConfigNode clone = ModifyNode(url.config, mod.config);
-                                    if (url.config.name != mod.name)
+                                    if (mod.type[0] == '@')
                                     {
-                                        print("[ModuleManager] Copying Node " + url.config.name + " into " + clone.name);
-                                        url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
+                                        print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
+                                        patchCount++;
+                                        url.config = ModifyNode(url.config, mod.config);
                                     }
-                                    else
-                                    {                                            
-                                        errorCount++;
-                                        print("[ModuleManager] Error while processing " + mod.config.name + " the copy needs to have a different name than the parent (use @name = xxx)");
+                                    else if (mod.type[0] == '$')
+                                    {
+                                        ConfigNode clone = ModifyNode(url.config, mod.config);
+                                        if (url.config.name != mod.name)
+                                        {
+                                            print("[ModuleManager] Copying Node " + url.config.name + " into " + clone.name);
+                                            url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
+                                        }
+                                        else
+                                        {
+                                            errorCount++;
+                                            print("[ModuleManager] Error while processing " + mod.config.name + " the copy needs to have a different name than the parent (use @name = xxx)");
+                                        }
                                     }
-                                }
-                                else if (mod.type[0] == '!')
-                                {
-                                    print("[ModuleManager] Deleting Node " + url.config.name);
-                                    url.parent.configs.Remove(url);
+                                    else if (mod.type[0] == '!')
+                                    {
+                                        print("[ModuleManager] Deleting Node " + url.config.name);
+                                        url.parent.configs.Remove(url);
+                                    }
                                 }
                             }
                         }
-                        // The patch was run so let's remove it from the database
-                        mod.parent.configs.Remove(mod);
+                        finally
+                        {
+                            // The patch was either run or has failed, in any case let's remove it from the database
+                            mod.parent.configs.Remove(mod);
+                        }
                     }
                 }
                 catch (Exception e)
