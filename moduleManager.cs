@@ -20,12 +20,6 @@ namespace ModuleManager
         public static ConfigNode FindConfigNodeIn(ConfigNode src, string nodeType,
                                                    string nodeName = null, int index = 0)
         {
-#if DEBUG
-			if (nodeTag == null)
-				print ("Searching node for " + nodeType + "[" + nodeName + "]");
-			else
-				print ("Searching node for " + nodeType + "[" + nodeName + "," + nodeTag + "]");
-#endif
             int found = 0;
             foreach (ConfigNode n in src.GetNodes(nodeType))
             {
@@ -40,9 +34,6 @@ namespace ModuleManager
                 {
                     if (found == index)
                     {
-#if DEBUG
-                print ("found node " + found.ToString() + "!");
-#endif
                         return n;
                     }
                     else
@@ -560,9 +551,59 @@ namespace ModuleManager
 
             status = "ModuleManager applied " + patchCount + " patches and found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
 
+#if DEBUG
+            print("[ModuleManager] Running tests...");
+
+            // Do MM testcases
+            foreach (UrlDir.UrlConfig expect in GameDatabase.Instance.GetConfigs("MMTEST_EXPECT"))
+            {
+                // So for each of the expects, we expect all the configs before that node to match exactly.
+                UrlDir.UrlFile parent = expect.parent;
+                if(parent.configs.Count != expect.config.CountNodes +1) 
+                {
+                    print("[ModuleManager] Test " + parent.name + " failed as expecte number of nodes differs expected:" + expect.config.CountNodes + " found: " + parent.configs.Count);
+                    for (int i = 0; i < parent.configs.Count; ++i)
+                    {
+                        print(parent.configs[i].config);
+                    }
+                    continue;
+                }
+                for(int i = 0; i < expect.config.CountNodes; ++i) 
+                {
+                    ConfigNode gotNode = parent.configs[i].config;
+                    ConfigNode expectNode = expect.config.nodes[i];
+                    if (!CompareRecursive(expectNode, gotNode))
+                    {
+                        print("[ModuleManager] Test " + parent.name + "[" + i + "] failed as expected output and actual output differ.\nexpected:\n" + expectNode + "\nActually got:\n" + gotNode);
+                    }
+                }
+            }
+#endif
+
             print("[ModuleManager] " + status + "\n" + errors);
 
             loaded = true;
+        }
+
+        private bool CompareRecursive(ConfigNode expectNode, ConfigNode gotNode)
+        {
+            if (expectNode.values.Count != gotNode.values.Count || expectNode.nodes.Count != gotNode.nodes.Count)
+                return false;
+            for (int i = 0; i < expectNode.values.Count; ++i)
+            {
+                ConfigNode.Value eVal = expectNode.values[i];
+                ConfigNode.Value gVal = gotNode.values[i];
+                if (eVal.name != gVal.name || eVal.value != gVal.value)
+                    return false;
+            }
+            for (int i = 0; i < expectNode.nodes.Count; ++i)
+            {
+                ConfigNode eNode = expectNode.nodes[i];
+                ConfigNode gNode = gotNode.nodes[i];
+                if (!CompareRecursive(eNode, gNode))
+                    return false;
+            }
+            return true;
         }
 
         static string status = "Processing Module Manager patch\nPlease Wait...";
@@ -630,7 +671,10 @@ namespace ModuleManager
                         }
 
                         // TODO: do we want to ensure there's only one phase specifier?
-                                                
+             
+                        // Remove the patch from the DB as we won't need it again
+                        mod.parent.configs.Remove(mod);
+
                         char[] sep = new char[] { '[', ']' };
                         string cond = "";
 
@@ -710,24 +754,20 @@ namespace ModuleManager
                         mod.parent.configs.Remove(mod);
                         string type = mod.type;
 
-                        // NEEDS for ordinary nodes
                         if (!CheckNeeds(ref type))
                         {
-                            print("[ModuleManager] Deleting Node " + mod.url + " as it can't satisfy its NEEDS");
+                            print("[ModuleManager] Deleting Node in file " + mod.parent.url + " subnode: " + mod.type + " as it can't satisfy its NEEDS");
                             continue;
                         }
                         Debug.LogWarning(type);
 
                         ConfigNode copy = new ConfigNode(type);
-                        mod.config.CopyTo(copy);
-                        CheckNeeds(copy);
-
+                        ShallowCopy(mod.config, copy);
                         mod.parent.configs.Add(new UrlDir.UrlConfig(mod.parent, copy));
                     }
-                    else
-                    {
-                        CheckNeeds(mod.config);
-                    }
+
+                    // Recursivly check the contents
+                    CheckNeeds(mod.config, mod.parent.url, new List<string>() { mod.type });
                 }
                 catch (Exception ex)
                 {
@@ -736,35 +776,71 @@ namespace ModuleManager
             }
         }
 
-        private void CheckNeeds(ConfigNode subMod)
+        private void CheckNeeds(ConfigNode subMod, string url, List<string> path)
         {
-            ConfigNode copy = new ConfigNode();
-            for (int i = 0; i < subMod.values.Count; ++i)
+            try
             {
-                ConfigNode.Value val = subMod.values[i];
-                string name = val.name;
-                if (CheckNeeds(ref name))
-                    copy.AddValue(name, val.value);
-            }
+                path.Add(subMod.name + "[" + subMod.GetValue("name") + "]");
 
-            for (int i = 0; i < subMod.nodes.Count; ++i)
-            {
-                ConfigNode node = subMod.nodes[i];
-                string name = node.name;
-                if (CheckNeeds(ref name))
+                bool needsCopy = false;
+                ConfigNode copy = new ConfigNode();
+                for (int i = 0; i < subMod.values.Count; ++i)
                 {
-                    node.name = name;
-                    CheckNeeds(node);
-                    copy.AddNode(node);
+                    ConfigNode.Value val = subMod.values[i];
+                    string name = val.name;
+                    if (CheckNeeds(ref name))
+                        copy.AddValue(name, val.value);
+                    else
+                    {
+                        needsCopy = true;
+                        print("[ModuleManager] Deleting value in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + " value: " + val.name + " = " + val.value + " as it can't satisfy its NEEDS");
+                    }
                 }
-            }
 
-            subMod.ClearData();
-            copy.CopyTo(subMod);
+                for (int i = 0; i < subMod.nodes.Count; ++i)
+                {
+                    ConfigNode node = subMod.nodes[i];
+                    string name = node.name;
+                    if (CheckNeeds(ref name))
+                    {
+                        node.name = name;
+                        CheckNeeds(node, url, path);
+                        copy.AddNode(node);
+                    }
+                    else
+                    {
+                        needsCopy = true;
+                        print("[ModuleManager] Deleting node in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + "/" + node.name + " as it can't satisfy its NEEDS");
+                    }
+                }
+
+                if (needsCopy) 
+                    ShallowCopy(copy, subMod);
+            }
+            finally
+            {
+                path.RemoveAt(path.Count - 1);
+            }
         }
 
+        private static void ShallowCopy(ConfigNode from, ConfigNode to)
+        {
+            to.ClearData();
+            foreach (ConfigNode.Value value in from.values)
+                to.values.Add(value);
+            foreach (ConfigNode node in from.nodes)
+                to.nodes.Add(node);
+            from.CopyTo(to);
+        }
+
+        /// <summary>
+        /// Returns true if needs are satisfied.
+        /// </summary>
         private bool CheckNeeds(ref string name)
         {
+            if (name == null)
+                return true;
+
             int idxStart = name.IndexOf(":NEEDS[");
             if (idxStart < 0)
                 return true;
