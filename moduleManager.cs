@@ -435,12 +435,13 @@ namespace ModuleManager
             errorFiles = new Dictionary<string, int>();
 
             // Check for old version and MMSarbianExt
-            var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 6)) == -1);
+            var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(2, 1, 0)) == -1);
             var oldAssemblies = oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
             if (oldAssemblies.Any())
             {
                 var badPaths = oldAssemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
-                PopupDialog.SpawnPopupDialog("Old versions of Module Manager", "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray()), "OK", false, HighLogic.Skin);
+                status = "You have old versions of Module Manager (older than 2.0.10) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray());
+                PopupDialog.SpawnPopupDialog("Old versions of Module Manager", status, "OK", false, HighLogic.Skin);
                 loaded = true;
                 print("[ModuleManager] Old version of Module Manager present. Stopping");
                 return;
@@ -650,10 +651,14 @@ namespace ModuleManager
                         if (!IsBraquetBalanced(mod.type))
                         {
                             print("[ModuleManager] Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" + mod.name + "\n");
-                            addErrorFiles(mod.parent);
                             errorCount++;
+                            // And remove it so it's not tried anymore
+                            mod.parent.configs.Remove(mod);
                             continue;
                         }
+
+                        if (name.EndsWith(":Final"))
+                            name = name.Replace(":Final", ":FINAL");
 
                         // Ensure the stage is correct
                         int stageIdx = name.IndexOf(Stage);
@@ -724,12 +729,14 @@ namespace ModuleManager
                                 }
                             }
                         }
+                        // The patch was run so let's remove it from the database
+                        mod.parent.configs.Remove(mod);
                     }
                 }
                 catch (Exception e)
                 {
                     print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
-                    addErrorFiles(mod.parent);
+                    mod.parent.configs.Remove(mod);
                 }
                 finally
                 {
