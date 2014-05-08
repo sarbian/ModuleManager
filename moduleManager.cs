@@ -14,73 +14,467 @@ namespace ModuleManager
     [KSPAddonFixed(KSPAddon.Startup.Instantly, false, typeof(ConfigManager))]
     public class ConfigManager : MonoBehaviour
     {
-        //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType.
-        //If nodeName is not null, it will only find a node of type nodeType with the value name=nodeName.
-        //If nodeTag is not null, it will only find a node of type nodeType with the value name=nodeName and tag=nodeTag.
-        public static ConfigNode FindConfigNodeIn(ConfigNode src, string nodeType,
-                                                   string nodeName = null, int index = 0)
+        #region state
+
+        private bool loaded = false;
+
+        private int patchCount = 0;
+        private int errorCount = 0;
+        private int needsUnsatisfiedCount = 0;
+
+        private Dictionary<String, int> errorFiles;
+        private List<AssemblyName> mods;
+
+        private string status = "Processing Module Manager patch\nPlease Wait...";
+        private string errors = "";
+
+        #endregion
+
+        #region Top Level - Update
+        public void Update()
         {
-            int found = 0;
-            foreach (ConfigNode n in src.GetNodes(nodeType))
+            #region Initialization
+            /* 
+             * It should be a code to reload when the Reload Database debug button is used.
+             * But it seem to go balistic after the 2nd reload.
+             * 
+            if (PartLoader.Instance.Recompile == waitingReload)
             {
-                if (nodeName == null)
+                waitingReload = !waitingReload;
+                print("[ModuleManager] waitingReload change " + waitingReload + " loaded " + loaded);
+                if (!waitingReload)
                 {
-                    if (index == found)
-                        return n;
-                    else
-                        found++;
+                    loaded = false;
+                    print("[ModuleManager] loaded = false ");
                 }
-                else if (n.HasValue("name") && WildcardMatch(n.GetValue("name"), nodeName))
+            }
+             */
+
+            if (!GameDatabase.Instance.IsReady() && ((HighLogic.LoadedScene == GameScenes.MAINMENU) || (HighLogic.LoadedScene == GameScenes.SPACECENTER)))
+            {
+                return;
+            }
+
+            if (loaded)
+                return;
+
+            patchCount = 0;
+            errorCount = 0;
+            needsUnsatisfiedCount = 0;
+            errorFiles = new Dictionary<string, int>();
+            #endregion
+
+            #region Type election
+            // Check for old version and MMSarbianExt
+            var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(2, 1, 0)) == -1);
+            var oldAssemblies = oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
+            if (oldAssemblies.Any())
+            {
+                var badPaths = oldAssemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
+                status = "You have old versions of Module Manager (older than 2.0.10) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray());
+                PopupDialog.SpawnPopupDialog("Old versions of Module Manager", status, "OK", false, HighLogic.Skin);
+                loaded = true;
+                print("[ModuleManager] Old version of Module Manager present. Stopping");
+                return;
+            }
+
+            Assembly currentAssembly = Assembly.GetExecutingAssembly();
+            var eligible = from a in AssemblyLoader.loadedAssemblies
+                           let ass = a.assembly
+                           where ass.GetName().Name == currentAssembly.GetName().Name
+                           orderby ass.GetName().Version descending, a.path ascending
+                           select a;
+
+            // Elect the newest loaded version of MM to process all patch files.
+            // If there is a newer version loaded then don't do anything
+            // If there is a same version but earlier in the list, don't do anything either.
+            if (eligible.First().assembly != currentAssembly)
+            {
+                loaded = true;
+                print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " lost the election");
+                return;
+            }
+            else
+            {
+                string candidates = "";
+                foreach (AssemblyLoader.LoadedAssembly a in eligible)
+                    if (currentAssembly.Location != a.path)
+                        candidates += "Version " + a.assembly.GetName().Version + " " + a.path + " " + "\n";
+                if (candidates.Length > 0)
+                    print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
+            }
+            #endregion
+
+            #region Excluding directories
+            // Build a list of subdirectory that won't be processed
+            List<String> excludePaths = new List<string>();
+
+            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
+            {
+                if (mod.name == "MODULEMANAGER[LOCAL]")
                 {
-                    if (found == index)
-                    {
-                        return n;
-                    }
-                    else
-                    {
-                        found++;
+                    string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
+                    string excludepath = fullpath.Substring(0, fullpath.LastIndexOf('/'));
+                    excludePaths.Add(excludepath);
+                    print("excludepath: " + excludepath);
+                }
+            }
+            if (excludePaths.Any())
+                print("[ModuleManager] will not procces patch in these subdirectories:\n" + String.Join("\n", excludePaths.ToArray()));
+            #endregion 
+
+            #region List of mods
+            List<AssemblyName> modsWithDup = AssemblyLoader.loadedAssemblies.Select(a => (a.assembly.GetName())).ToList();
+
+            mods = new List<AssemblyName>();
+
+            foreach (AssemblyName a in modsWithDup)
+            {
+                if (!mods.Any(m => m.Name == a.Name))
+                    mods.Add(a);
+            }
+
+            string modlist = "compiling list of loaded mods...\nMod DLLs found:\n";
+            foreach (AssemblyName mod in mods)
+            {
+                modlist += "  " + mod.Name + " v" + mod.Version.ToString() + "\n";
+            }
+            modlist += "Non-DLL mods added:";
+            foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
+            {
+                if (cfgmod.type[0] == '@' || (cfgmod.type[0] == '$'))
+                {
+                    string name = RemoveWS(cfgmod.name);
+                    if (name.Contains(":FOR["))
+                    { // check for FOR[] blocks that don't match loaded DLLs and add them to the pass list
+
+                        string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
+                        dependency = dependency.Substring(0, dependency.IndexOf(']'));
+                        if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper()))) == null)
+                        { // found one, now add it to the list.
+                            AssemblyName newMod = new AssemblyName(dependency);
+                            newMod.Name = dependency;
+                            mods.Add(newMod);
+                            modlist += "\n  " + dependency;
+                        }
                     }
                 }
             }
-            return null;
-        }
+            log(modlist);
+            #endregion
 
-        public static bool IsBraquetBalanced(String str)
-        {
-            Stack<char> stack = new Stack<char>();
+            #region Check Needs
+            // Do filtering with NEEDS 
+            print("[ModuleManager] Checking NEEDS.");
 
-            char c;
-            for (int i = 0; i < str.Length; i++)
+            CheckNeeds(excludePaths);
+            #endregion
+
+            #region Applying patches
+            // :First node (and any node without a :pass)
+            ApplyPatch(excludePaths, ":FIRST");
+
+            foreach (AssemblyName mod in mods)
             {
-                c = str[i];
-                if (c == '[')
-                    stack.Push(c);
-                else if (c == ']')
-                    if (stack.Count == 0)
-                        return false;
-                    else if (stack.Peek() == '[')
-                        stack.Pop();
-                    else
-                        return false;
+                string upperModName = mod.Name.ToUpper();
+                ApplyPatch(excludePaths, ":BEFORE[" + upperModName + "]");
+                ApplyPatch(excludePaths, ":FOR[" + upperModName + "]");
+                ApplyPatch(excludePaths, ":AFTER[" + upperModName + "]");
             }
-            return stack.Count == 0;
+
+            // :Final node
+            ApplyPatch(excludePaths, ":FINAL");
+
+            PurgeUnused(excludePaths);
+            #endregion
+
+            #region Logging
+            if (errorCount > 0)
+                foreach (String file in errorFiles.Keys)
+                    errors += errorFiles[file] + " error" + (errorFiles[file] > 1 ? "s" : "") + " in GameData/" + file + "\n";
+
+
+            status = "ModuleManager: " 
+                + needsUnsatisfiedCount + " unsatisfied need" + (needsUnsatisfiedCount != 1 ? "s" : "") 
+                + ", " + patchCount + " patch" + (patchCount != 1 ? "es" : "") + " applied";
+            if(errorCount > 0)
+                status += ", found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
+
+            print("[ModuleManager] " + status + "\n" + errors);
+
+            loaded = true;
+            #endregion
+
+#if DEBUG
+            RunTestCases();
+#endif
+        }
+        #endregion
+
+        #region Needs checking
+        private void CheckNeeds(List<String> excludePaths)
+        {
+            // Check the NEEDS parts first.
+            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
+            {
+                try
+                {
+                    if (IsPathInList(mod.url, excludePaths))
+                        continue;
+
+                    if (mod.type.Contains(":NEEDS["))
+                    {
+                        mod.parent.configs.Remove(mod);
+                        string type = mod.type;
+
+                        if (!CheckNeeds(ref type))
+                        {
+                            print("[ModuleManager] Deleting Node in file " + mod.parent.url + " subnode: " + mod.type + " as it can't satisfy its NEEDS");
+                            needsUnsatisfiedCount++;
+                            continue;
+                        }
+
+                        ConfigNode copy = new ConfigNode(type);
+                        ShallowCopy(mod.config, copy);
+                        mod.parent.configs.Add(new UrlDir.UrlConfig(mod.parent, copy));
+                    }
+
+                    // Recursivly check the contents
+                    CheckNeeds(mod.config, mod.parent.url, new List<string>() { mod.type });
+                }
+                catch (Exception ex)
+                {
+                    print("[ModuleManager] Exception while checking needs : " + mod.url + "\n" + ex.ToString());
+                }
+            }
         }
 
-        // Added that to prevent a crash in KSP 'CopyTo' when a subnode has an empty name like
-        // Like a pair of curly bracket without a name before them
-        public static bool IsSane(ConfigNode node)
+        private void CheckNeeds(ConfigNode subMod, string url, List<string> path)
         {
-            if (node.name.Length == 0)
-                return false;
-            foreach (ConfigNode subnode in node.nodes)
-                if (!IsSane(subnode))
+            try
+            {
+                path.Add(subMod.name + "[" + subMod.GetValue("name") + "]");
+
+                bool needsCopy = false;
+                ConfigNode copy = new ConfigNode();
+                for (int i = 0; i < subMod.values.Count; ++i)
+                {
+                    ConfigNode.Value val = subMod.values[i];
+                    string name = val.name;
+                    if (CheckNeeds(ref name))
+                        copy.AddValue(name, val.value);
+                    else
+                    {
+                        needsCopy = true;
+                        print("[ModuleManager] Deleting value in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + " value: " + val.name + " = " + val.value + " as it can't satisfy its NEEDS");
+                        needsUnsatisfiedCount++;
+                    }
+                }
+
+                for (int i = 0; i < subMod.nodes.Count; ++i)
+                {
+                    ConfigNode node = subMod.nodes[i];
+                    string name = node.name;
+                    if (CheckNeeds(ref name))
+                    {
+                        node.name = name;
+                        CheckNeeds(node, url, path);
+                        copy.AddNode(node);
+                    }
+                    else
+                    {
+                        needsCopy = true;
+                        print("[ModuleManager] Deleting node in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + "/" + node.name + " as it can't satisfy its NEEDS");
+                        needsUnsatisfiedCount++;
+                    }
+                }
+
+                if (needsCopy)
+                    ShallowCopy(copy, subMod);
+            }
+            finally
+            {
+                path.RemoveAt(path.Count - 1);
+            }
+        }
+
+        /// <summary>
+        /// Returns true if needs are satisfied.
+        /// </summary>
+        private bool CheckNeeds(ref string name)
+        {
+            if (name == null)
+                return true;
+
+            int idxStart = name.IndexOf(":NEEDS[");
+            if (idxStart < 0)
+                return true;
+            int idxEnd = name.IndexOf(']', idxStart + 7);
+            string needsString = name.Substring(idxStart + 7, idxEnd - idxStart - 7).ToUpper();
+
+            name = name.Substring(0, idxStart) + name.Substring(idxEnd + 1);
+
+            // Check to see if all the needed dependencies are present.
+            foreach (string andDependencies in needsString.Split(',', '&'))
+            {
+                bool orMatch = false;
+                foreach (string orDependency in andDependencies.Split('|'))
+                {
+                    if (orDependency.Length == 0)
+                        continue;
+
+                    bool not = orDependency[0] == '!';
+                    string toFind = not ? orDependency.Substring(1) : orDependency;
+                    bool found = mods.Find(a => a.Name.ToUpper() == toFind) != null;
+
+                    if (not == !found)
+                    {
+                        orMatch = true;
+                        break;
+                    }
+                }
+                if (!orMatch)
                     return false;
+            }
+
             return true;
         }
 
-        public static string RemoveWS(string withWhite)
-        {   // Removes ALL whitespace of a string.
-            return new string(withWhite.ToCharArray().Where(c => !Char.IsWhiteSpace(c)).ToArray());
+        private void PurgeUnused(List<string> excludePaths)
+        {
+            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
+            {
+                if (IsPathInList(mod.url, excludePaths))
+                    continue;
+
+                int lastErrorCount = errorCount;
+
+                string name = RemoveWS(mod.type);
+
+                if (name[0] == '@' || (name[0] == '$') || (name[0] == '!'))
+                {
+
+                    mod.parent.configs.Remove(mod);
+                }
+            }
+        }
+
+        #endregion
+
+        #region Applying Patches
+        // Apply patch to all relevent nodes
+        public void ApplyPatch(List<String> excludePaths, string Stage)
+        {
+            print("[ModuleManager] " + Stage + (Stage == ":FIRST" ? " (default) pass" : " pass"));
+
+            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
+            {
+                int lastErrorCount = errorCount;
+
+                try
+                {
+                    string name = RemoveWS(mod.type);
+
+                    if (name[0] == '@' || (name[0] == '$') || (name[0] == '!'))
+                    {
+                        if (!IsBraquetBalanced(mod.type))
+                        {
+                            print("[ModuleManager] Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" + mod.name + "\n");
+                            errorCount++;
+                            // And remove it so it's not tried anymore
+                            mod.parent.configs.Remove(mod);
+                            continue;
+                        }
+
+                        // Ensure the stage is correct
+                        string upperName = name.ToUpper();
+
+                        int stageIdx = upperName.IndexOf(Stage);
+                        if (stageIdx >= 0)
+                        {
+                            name = name.Substring(0, stageIdx) + name.Substring(stageIdx + Stage.Length);
+                        }
+                        else if (!(Stage == ":FIRST"
+                                    && !upperName.Contains(":BEFORE[")
+                                    && !upperName.Contains(":FOR[")
+                                    && !upperName.Contains(":AFTER[")
+                                    && !upperName.Contains(":FINAL")))
+                        {
+                            continue;
+                        }
+
+                        // TODO: do we want to ensure there's only one phase specifier?
+
+                        try
+                        {
+                            char[] sep = new char[] { '[', ']' };
+                            string cond = "";
+
+                            if (upperName.Contains(":HAS["))
+                            {
+                                int start = upperName.IndexOf(":HAS[");
+                                cond = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
+                                name = name.Substring(0, start);
+                            }
+
+                            string[] splits = name.Split(sep, 3);
+                            string pattern = splits.Length > 1 ? splits[1] : null;
+                            string type = splits[0].Substring(1);
+
+                            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
+                            {
+                                if (url.type == type
+                                    && WildcardMatch(url.name, pattern)
+                                    && CheckCondition(url.config, cond)
+                                    && !IsPathInList(mod.url, excludePaths)
+                                    )
+                                {
+                                    if (mod.type[0] == '@')
+                                    {
+                                        print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
+                                        patchCount++;
+                                        url.config = ModifyNode(url.config, mod.config);
+                                    }
+                                    else if (mod.type[0] == '$')
+                                    {
+                                        ConfigNode clone = ModifyNode(url.config, mod.config);
+                                        if (url.config.name != mod.name)
+                                        {
+                                            print("[ModuleManager] Copying Node " + url.config.name + " into " + clone.name);
+                                            url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
+                                        }
+                                        else
+                                        {
+                                            errorCount++;
+                                            print("[ModuleManager] Error while processing " + mod.config.name + " the copy needs to have a different name than the parent (use @name = xxx)");
+                                        }
+                                    }
+                                    else if (mod.type[0] == '!')
+                                    {
+                                        print("[ModuleManager] Deleting Node " + url.config.name);
+                                        url.parent.configs.Remove(url);
+                                    }
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            // The patch was either run or has failed, in any case let's remove it from the database
+                            mod.parent.configs.Remove(mod);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
+                    mod.parent.configs.Remove(mod);
+                }
+                finally
+                {
+                    if (lastErrorCount < errorCount)
+                        addErrorFiles(mod.parent, errorCount - lastErrorCount);
+                }
+            }
         }
 
         // ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original, then returns the patched ConfigNode.
@@ -363,567 +757,55 @@ namespace ModuleManager
             }
             return newNode;
         }
+        #endregion
 
-        private static void InsertNode(ConfigNode newNode, ConfigNode subMod, int index)
+        #region Sanity checking & Utility functions
+
+        public static bool IsBraquetBalanced(String str)
         {
-            string modName = subMod.name;
+            Stack<char> stack = new Stack<char>();
 
-            ConfigNode[] oldValues = newNode.GetNodes(modName);
-            if (index < oldValues.Length)
+            char c;
+            for (int i = 0; i < str.Length; i++)
             {
-                newNode.RemoveNodes(modName);
-                int i = 0;
-                for (; i < index; ++i)
-                    newNode.AddNode(oldValues[i]);
-                newNode.AddNode(subMod);
-                for (; i < oldValues.Length; ++i)
-                    newNode.AddNode(oldValues[i]);
+                c = str[i];
+                if (c == '[')
+                    stack.Push(c);
+                else if (c == ']')
+                    if (stack.Count == 0)
+                        return false;
+                    else if (stack.Peek() == '[')
+                        stack.Pop();
+                    else
+                        return false;
             }
-            else
-            {
-                newNode.AddNode(subMod);
-            }
+            return stack.Count == 0;
         }
 
-        public static List<UrlDir.UrlConfig> AllConfigsStartingWith(string match)
+        // Added that to prevent a crash in KSP 'CopyTo' when a subnode has an empty name like
+        // Like a pair of curly bracket without a name before them
+        public static bool IsSane(ConfigNode node)
         {
-            List<UrlDir.UrlConfig> nodes = new List<UrlDir.UrlConfig>();
-            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs)
-            {
-                if (url.type.StartsWith(match))
-                    url.config.name = url.type;
-                nodes.Add(url);
-            }
-            return nodes;
-        }
-
-        bool loaded = false;
-
-        static int patchCount = 0;
-        static int errorCount = 0;
-        static Dictionary<String,int> errorFiles;
-        List<AssemblyName> mods;
-
-        public void Update()
-        {
-            /* 
-             * It should be a code to reload when the Reload Database debug button is used.
-             * But it seem to go balistic after the 2nd reload.
-             * 
-            if (PartLoader.Instance.Recompile == waitingReload)
-            {
-                waitingReload = !waitingReload;
-                print("[ModuleManager] waitingReload change " + waitingReload + " loaded " + loaded);
-                if (!waitingReload)
-                {
-                    loaded = false;
-                    print("[ModuleManager] loaded = false ");
-                }
-            }
-             */
-
-            if (!GameDatabase.Instance.IsReady() && ((HighLogic.LoadedScene == GameScenes.MAINMENU) || (HighLogic.LoadedScene == GameScenes.SPACECENTER)))
-            {
-                return;
-            }
-
-            if (loaded)
-                return;
-
-            patchCount = 0;
-            errorCount = 0;
-            errorFiles = new Dictionary<string, int>();
-
-            // Check for old version and MMSarbianExt
-            var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(2, 1, 0)) == -1);
-            var oldAssemblies = oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
-            if (oldAssemblies.Any())
-            {
-                var badPaths = oldAssemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
-                status = "You have old versions of Module Manager (older than 2.0.10) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray());
-                PopupDialog.SpawnPopupDialog("Old versions of Module Manager", status, "OK", false, HighLogic.Skin);
-                loaded = true;
-                print("[ModuleManager] Old version of Module Manager present. Stopping");
-                return;
-            }
-
-            Assembly currentAssembly = Assembly.GetExecutingAssembly();
-            var eligible = from a in AssemblyLoader.loadedAssemblies
-                           let ass = a.assembly
-                           where ass.GetName().Name == currentAssembly.GetName().Name
-                           orderby ass.GetName().Version descending, a.path ascending
-                           select a;
-
-            // Elect the newest loaded version of MM to process all patch files.
-            // If there is a newer version loaded then don't do anything
-            // If there is a same version but earlier in the list, don't do anything either.
-            if (eligible.First().assembly != currentAssembly)
-            {
-                loaded = true;
-                print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " lost the election");
-                return;
-            }
-            else
-            {
-                string candidates = "";
-                foreach (AssemblyLoader.LoadedAssembly a in eligible)
-                    if (currentAssembly.Location != a.path)
-                        candidates += "Version " + a.assembly.GetName().Version + " " + a.path + " " + "\n";
-                if (candidates.Length > 0)
-                    print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
-            }
-
-            // Build a list of subdirectory that won't be processed
-            List<String> excludePaths = new List<string>();
-
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
-            {
-                if (mod.name == "MODULEMANAGER[LOCAL]")
-                {
-                    string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
-                    string excludepath = fullpath.Substring(0, fullpath.LastIndexOf('/'));
-                    excludePaths.Add(excludepath);
-                    print("excludepath: " + excludepath);
-                }
-            }
-            if (excludePaths.Any())
-                print("[ModuleManager] will not procces patch in these subdirectories:\n" + String.Join("\n", excludePaths.ToArray()));
-
-            patchCount = 0;
-
-            List<AssemblyName> modsWithDup = AssemblyLoader.loadedAssemblies.Select(a => (a.assembly.GetName())).ToList();
-
-            mods = new List<AssemblyName>();
-
-            foreach (AssemblyName a in modsWithDup)
-            {
-                if (!mods.Any(m => m.Name == a.Name))
-                    mods.Add(a);
-            }
-
-            string modlist = "compiling list of loaded mods...\nMod DLLs found:\n";
-            foreach (AssemblyName mod in mods)
-            {
-                modlist += "  " + mod.Name + " v" + mod.Version.ToString() + "\n";
-            }
-            modlist += "Non-DLL mods added:";
-            foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
-            {
-                if (cfgmod.type[0] == '@' || (cfgmod.type[0] == '$'))
-                {
-                    string name = RemoveWS(cfgmod.name);
-                    if (name.Contains(":FOR["))
-                    { // check for FOR[] blocks that don't match loaded DLLs and add them to the pass list
-
-                        string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
-                        dependency = dependency.Substring(0, dependency.IndexOf(']'));
-                        if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper()))) == null)
-                        { // found one, now add it to the list.
-                            AssemblyName newMod = new AssemblyName(dependency);
-                            newMod.Name = dependency;
-                            mods.Add(newMod);
-                            modlist += "\n  " + dependency;
-                        }
-                    }
-                }
-            }
-            log(modlist);
-
-            // Do filtering with NEEDS 
-            CheckNeeds(excludePaths);
-
-            // :First node (and any node without a :pass)
-            ApplyPatch(excludePaths, ":FIRST");
-
-            foreach (AssemblyName mod in mods)
-            {
-                string upperModName = mod.Name.ToUpper();
-                ApplyPatch(excludePaths, ":BEFORE[" + upperModName + "]");
-                ApplyPatch(excludePaths, ":FOR[" + upperModName + "]");
-                ApplyPatch(excludePaths, ":AFTER[" + upperModName + "]");
-            }
-
-            // :Final node
-            ApplyPatch(excludePaths, ":FINAL");
-
-            PurgeUnused(excludePaths);
-
-            if (errorCount > 0)
-                foreach (String file in errorFiles.Keys)
-                    errors += errorFiles[file] + " error"+ (errorFiles[file]>1?"s":"") +" in GameData/" + file + "\n";
-
-
-            status = "ModuleManager applied " + patchCount + " patches and found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
-
-#if DEBUG
-            RunTestCases();
-#endif
-
-            print("[ModuleManager] " + status + "\n" + errors);
-
-            loaded = true;
-        }
-
-        private void RunTestCases()
-        {
-            print("[ModuleManager] Running tests...");
-
-            // Do MM testcases
-            foreach (UrlDir.UrlConfig expect in GameDatabase.Instance.GetConfigs("MMTEST_EXPECT"))
-            {
-                // So for each of the expects, we expect all the configs before that node to match exactly.
-                UrlDir.UrlFile parent = expect.parent;
-                if (parent.configs.Count != expect.config.CountNodes + 1)
-                {
-                    print("[ModuleManager] Test " + parent.name + " failed as expecte number of nodes differs expected:" + expect.config.CountNodes + " found: " + parent.configs.Count);
-                    for (int i = 0; i < parent.configs.Count; ++i)
-                    {
-                        print(parent.configs[i].config);
-                    }
-                    continue;
-                }
-                for (int i = 0; i < expect.config.CountNodes; ++i)
-                {
-                    ConfigNode gotNode = parent.configs[i].config;
-                    ConfigNode expectNode = expect.config.nodes[i];
-                    if (!CompareRecursive(expectNode, gotNode))
-                    {
-                        print("[ModuleManager] Test " + parent.name + "[" + i + "] failed as expected output and actual output differ.\nexpected:\n" + expectNode + "\nActually got:\n" + gotNode);
-                    }
-                }
-            }
-            print("[ModuleManager] tests complete.");
-        }
-
-        private void PurgeUnused(List<string> excludePaths)
-        {
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
-            {
-                int lastErrorCount = errorCount;
-
-                string name = RemoveWS(mod.type);
-
-                if (name[0] == '@' || (name[0] == '$') || (name[0] == '!') || name == "MMTEST" || name == "MMTEST_EXPECT")
-                {
-
-                    mod.parent.configs.Remove(mod);
-                }
-            }
-        }
-
-        private bool CompareRecursive(ConfigNode expectNode, ConfigNode gotNode)
-        {
-            if (expectNode.values.Count != gotNode.values.Count || expectNode.nodes.Count != gotNode.nodes.Count)
+            if (node.name.Length == 0)
                 return false;
-            for (int i = 0; i < expectNode.values.Count; ++i)
-            {
-                ConfigNode.Value eVal = expectNode.values[i];
-                ConfigNode.Value gVal = gotNode.values[i];
-                if (eVal.name != gVal.name || eVal.value != gVal.value)
+            foreach (ConfigNode subnode in node.nodes)
+                if (!IsSane(subnode))
                     return false;
-            }
-            for (int i = 0; i < expectNode.nodes.Count; ++i)
-            {
-                ConfigNode eNode = expectNode.nodes[i];
-                ConfigNode gNode = gotNode.nodes[i];
-                if (!CompareRecursive(eNode, gNode))
-                    return false;
-            }
             return true;
         }
 
-        static string status = "Processing Module Manager patch\nPlease Wait...";
-        static string errors = "";
-
-        public void OnGUI()
-        {
-            if (HighLogic.LoadedScene != GameScenes.LOADING) 
-                return;
-
-            var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
-            centeredStyle.alignment = TextAnchor.UpperCenter;
-            centeredStyle.fontSize = 16;
-            Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(status));
-            GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height), sizeOfLabel.x, sizeOfLabel.y), status, centeredStyle);
-
-            if (errorCount > 0)
-            {
-                var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
-                errorStyle.alignment = TextAnchor.UpperLeft;
-                errorStyle.fontSize = 16;
-                Vector2 sizeOfError = errorStyle.CalcSize(new GUIContent(errors));
-                GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height) + sizeOfLabel.y, sizeOfError.x, sizeOfError.y), errors, errorStyle);
-                
-            }
-
-        }
-
-        // Apply patch to all relevent nodes
-        public void ApplyPatch(List<String> excludePaths, string Stage)
-        {
-            print("[ModuleManager] " + Stage + (Stage == ":FIRST" ? " (default) pass" : " pass"));
-
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
-            {
-                int lastErrorCount = errorCount;
-
-                try
-                {
-                    string name = RemoveWS(mod.type);
-
-                    if (name[0] == '@' || (name[0] == '$') || (name[0] == '!'))
-                    {
-                        if (!IsBraquetBalanced(mod.type))
-                        {
-                            print("[ModuleManager] Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" + mod.name + "\n");
-                            errorCount++;
-                            // And remove it so it's not tried anymore
-                            mod.parent.configs.Remove(mod);
-                            continue;
-                        }
-
-                        // Ensure the stage is correct
-                        string upperName = name.ToUpper();
-
-                        int stageIdx = upperName.IndexOf(Stage);
-                        if (stageIdx >= 0)
-                        {
-                            name = name.Substring(0, stageIdx) + name.Substring(stageIdx + Stage.Length);
-                        }
-                        else if (!(Stage == ":FIRST"
-                                    && !upperName.Contains(":BEFORE[")
-                                    && !upperName.Contains(":FOR[")
-                                    && !upperName.Contains(":AFTER[")
-                                    && !upperName.Contains(":FINAL")))
-                        {
-                            continue;
-                        }
-
-                        // TODO: do we want to ensure there's only one phase specifier?
-
-                        try
-                        {
-                            char[] sep = new char[] { '[', ']' };
-                            string cond = "";
-
-                            if (upperName.Contains(":HAS["))
-                            {
-                                int start = upperName.IndexOf(":HAS[");
-                                cond = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
-                                name = name.Substring(0, start);
-                            }
-
-                            string[] splits = name.Split(sep, 3);
-                            string pattern = splits.Length > 1 ? splits[1] : null;
-                            string type = splits[0].Substring(1);
-
-                            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
-                            {
-                                if (url.type == type
-                                    && WildcardMatch(url.name, pattern)
-                                    && CheckCondition(url.config, cond)
-                                    && !IsPathInList(mod.url, excludePaths)
-                                    )
-                                {
-                                    if (mod.type[0] == '@')
-                                    {
-                                        print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
-                                        patchCount++;
-                                        url.config = ModifyNode(url.config, mod.config);
-                                    }
-                                    else if (mod.type[0] == '$')
-                                    {
-                                        ConfigNode clone = ModifyNode(url.config, mod.config);
-                                        if (url.config.name != mod.name)
-                                        {
-                                            print("[ModuleManager] Copying Node " + url.config.name + " into " + clone.name);
-                                            url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                        }
-                                        else
-                                        {
-                                            errorCount++;
-                                            print("[ModuleManager] Error while processing " + mod.config.name + " the copy needs to have a different name than the parent (use @name = xxx)");
-                                        }
-                                    }
-                                    else if (mod.type[0] == '!')
-                                    {
-                                        print("[ModuleManager] Deleting Node " + url.config.name);
-                                        url.parent.configs.Remove(url);
-                                    }
-                                }
-                            }
-                        }
-                        finally
-                        {
-                            // The patch was either run or has failed, in any case let's remove it from the database
-                            mod.parent.configs.Remove(mod);
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
-                    mod.parent.configs.Remove(mod);
-                }
-                finally
-                {
-                    if (lastErrorCount < errorCount)
-                        addErrorFiles(mod.parent, errorCount - lastErrorCount);
-                }
-            }
-        }
-
-        private void CheckNeeds(List<String> excludePaths)
-        {
-            // Check the NEEDS parts first.
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
-            {
-                try
-                {
-                    if (IsPathInList(mod.url, excludePaths))
-                        continue;
-
-                    if (mod.type.Contains(":NEEDS["))
-                    {
-                        mod.parent.configs.Remove(mod);
-                        string type = mod.type;
-
-                        if (!CheckNeeds(ref type))
-                        {
-                            print("[ModuleManager] Deleting Node in file " + mod.parent.url + " subnode: " + mod.type + " as it can't satisfy its NEEDS");
-                            continue;
-                        }
-
-                        ConfigNode copy = new ConfigNode(type);
-                        ShallowCopy(mod.config, copy);
-                        mod.parent.configs.Add(new UrlDir.UrlConfig(mod.parent, copy));
-                    }
-
-                    // Recursivly check the contents
-                    CheckNeeds(mod.config, mod.parent.url, new List<string>() { mod.type });
-                }
-                catch (Exception ex)
-                {
-                    print("[ModuleManager] Exception while checking needs : " + mod.url + "\n" + ex.ToString());                   
-                }
-            }
-        }
-
-        private void CheckNeeds(ConfigNode subMod, string url, List<string> path)
-        {
-            try
-            {
-                path.Add(subMod.name + "[" + subMod.GetValue("name") + "]");
-
-                bool needsCopy = false;
-                ConfigNode copy = new ConfigNode();
-                for (int i = 0; i < subMod.values.Count; ++i)
-                {
-                    ConfigNode.Value val = subMod.values[i];
-                    string name = val.name;
-                    if (CheckNeeds(ref name))
-                        copy.AddValue(name, val.value);
-                    else
-                    {
-                        needsCopy = true;
-                        print("[ModuleManager] Deleting value in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + " value: " + val.name + " = " + val.value + " as it can't satisfy its NEEDS");
-                    }
-                }
-
-                for (int i = 0; i < subMod.nodes.Count; ++i)
-                {
-                    ConfigNode node = subMod.nodes[i];
-                    string name = node.name;
-                    if (CheckNeeds(ref name))
-                    {
-                        node.name = name;
-                        CheckNeeds(node, url, path);
-                        copy.AddNode(node);
-                    }
-                    else
-                    {
-                        needsCopy = true;
-                        print("[ModuleManager] Deleting node in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + "/" + node.name + " as it can't satisfy its NEEDS");
-                    }
-                }
-
-                if (needsCopy) 
-                    ShallowCopy(copy, subMod);
-            }
-            finally
-            {
-                path.RemoveAt(path.Count - 1);
-            }
-        }
-
-        private static void ShallowCopy(ConfigNode from, ConfigNode to)
-        {
-            to.ClearData(); 
-            foreach (ConfigNode.Value value in from.values)
-                to.values.Add(value);
-            foreach (ConfigNode node in from.nodes)
-                to.nodes.Add(node);
-        }
-
-        /// <summary>
-        /// Returns true if needs are satisfied.
-        /// </summary>
-        private bool CheckNeeds(ref string name)
-        {
-            if (name == null)
-                return true;
-
-            int idxStart = name.IndexOf(":NEEDS[");
-            if (idxStart < 0)
-                return true;
-            int idxEnd = name.IndexOf(']', idxStart + 7);
-            string needsString = name.Substring(idxStart + 7, idxEnd - idxStart - 7).ToUpper();
-
-            name = name.Substring(0, idxStart) + name.Substring(idxEnd+1);
-            
-            // Check to see if all the needed dependencies are present.
-            foreach (string andDependencies in needsString.Split(',', '&'))
-            {
-                bool orMatch = false;
-                foreach (string orDependency in andDependencies.Split('|'))
-                {
-                    if (orDependency.Length == 0)
-                        continue;
-
-                    bool not = orDependency[0] == '!';
-                    string toFind = not ? orDependency.Substring(1) : orDependency;
-                    bool found = mods.Find(a => a.Name.ToUpper() == toFind) != null;
-
-                    if (not == !found)
-                    {
-                        orMatch = true;
-                        break;
-                    }
-                }
-                if (!orMatch)
-                    return false;
-            }
-
-            return true;
-        }
-
-
-        public void addErrorFiles(UrlDir.UrlFile file, int n=1)
-        {
-            string key = file.url + "." + file.fileExtension;
-            if (key[0] == '/')
-                key = key.Substring(1);
-            if (!errorFiles.ContainsKey(key))
-                errorFiles.Add(key, n);
-            else
-                errorFiles[key] = errorFiles[key] + n;
-
+        public static string RemoveWS(string withWhite)
+        {   // Removes ALL whitespace of a string.
+            return new string(withWhite.ToCharArray().Where(c => !Char.IsWhiteSpace(c)).ToArray());
         }
 
         public bool IsPathInList(string modPath, List<String> pathList)
         {
             return pathList.Any(modPath.StartsWith);
         }
+        #endregion
+
+        #region Condition checking
         // Split condiction while not getting lost in embeded brackets
         public static List<string> SplitCondition(string cond)
         {
@@ -1009,11 +891,177 @@ namespace ModuleManager
 
             return (regex.IsMatch(s));
         }
+        #endregion
+
+        #region Config Node Utilities
+        private static void InsertNode(ConfigNode newNode, ConfigNode subMod, int index)
+        {
+            string modName = subMod.name;
+
+            ConfigNode[] oldValues = newNode.GetNodes(modName);
+            if (index < oldValues.Length)
+            {
+                newNode.RemoveNodes(modName);
+                int i = 0;
+                for (; i < index; ++i)
+                    newNode.AddNode(oldValues[i]);
+                newNode.AddNode(subMod);
+                for (; i < oldValues.Length; ++i)
+                    newNode.AddNode(oldValues[i]);
+            }
+            else
+            {
+                newNode.AddNode(subMod);
+            }
+        }
+
+        private static void ShallowCopy(ConfigNode from, ConfigNode to)
+        {
+            to.ClearData();
+            foreach (ConfigNode.Value value in from.values)
+                to.values.Add(value);
+            foreach (ConfigNode node in from.nodes)
+                to.nodes.Add(node);
+        }
+
+        //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType.
+        //If nodeName is not null, it will only find a node of type nodeType with the value name=nodeName.
+        //If nodeTag is not null, it will only find a node of type nodeType with the value name=nodeName and tag=nodeTag.
+        public static ConfigNode FindConfigNodeIn(ConfigNode src, string nodeType,
+                                                   string nodeName = null, int index = 0)
+        {
+            int found = 0;
+            foreach (ConfigNode n in src.GetNodes(nodeType))
+            {
+                if (nodeName == null)
+                {
+                    if (index == found)
+                        return n;
+                    else
+                        found++;
+                }
+                else if (n.HasValue("name") && WildcardMatch(n.GetValue("name"), nodeName))
+                {
+                    if (found == index)
+                    {
+                        return n;
+                    }
+                    else
+                    {
+                        found++;
+                    }
+                }
+            }
+            return null;
+        }
+
+        private static bool CompareRecursive(ConfigNode expectNode, ConfigNode gotNode)
+        {
+            if (expectNode.values.Count != gotNode.values.Count || expectNode.nodes.Count != gotNode.nodes.Count)
+                return false;
+            for (int i = 0; i < expectNode.values.Count; ++i)
+            {
+                ConfigNode.Value eVal = expectNode.values[i];
+                ConfigNode.Value gVal = gotNode.values[i];
+                if (eVal.name != gVal.name || eVal.value != gVal.value)
+                    return false;
+            }
+            for (int i = 0; i < expectNode.nodes.Count; ++i)
+            {
+                ConfigNode eNode = expectNode.nodes[i];
+                ConfigNode gNode = gotNode.nodes[i];
+                if (!CompareRecursive(eNode, gNode))
+                    return false;
+            }
+            return true;
+        }
+
+        #endregion
+
+        #region logging
+
+        public void addErrorFiles(UrlDir.UrlFile file, int n = 1)
+        {
+            string key = file.url + "." + file.fileExtension;
+            if (key[0] == '/')
+                key = key.Substring(1);
+            if (!errorFiles.ContainsKey(key))
+                errorFiles.Add(key, n);
+            else
+                errorFiles[key] = errorFiles[key] + n;
+
+        }
 
         public static void log(String s)
         {
             print("[ModuleManager] " + s);
         }
+        #endregion
+
+        #region GUI stuff.
+
+        public void OnGUI()
+        {
+            if (HighLogic.LoadedScene != GameScenes.LOADING)
+                return;
+
+            var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
+            centeredStyle.alignment = TextAnchor.UpperCenter;
+            centeredStyle.fontSize = 16;
+            Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(status));
+            GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height), sizeOfLabel.x, sizeOfLabel.y), status, centeredStyle);
+
+            if (errorCount > 0)
+            {
+                var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
+                errorStyle.alignment = TextAnchor.UpperLeft;
+                errorStyle.fontSize = 16;
+                Vector2 sizeOfError = errorStyle.CalcSize(new GUIContent(errors));
+                GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height) + sizeOfLabel.y, sizeOfError.x, sizeOfError.y), errors, errorStyle);
+
+            }
+
+        }
+
+
+        #endregion
+
+        #region Tests
+
+        private void RunTestCases()
+        {
+            print("[ModuleManager] Running tests...");
+
+            // Do MM testcases
+            foreach (UrlDir.UrlConfig expect in GameDatabase.Instance.GetConfigs("MMTEST_EXPECT"))
+            {
+                // So for each of the expects, we expect all the configs before that node to match exactly.
+                UrlDir.UrlFile parent = expect.parent;
+                if (parent.configs.Count != expect.config.CountNodes + 1)
+                {
+                    print("[ModuleManager] Test " + parent.name + " failed as expecte number of nodes differs expected:" + expect.config.CountNodes + " found: " + parent.configs.Count);
+                    for (int i = 0; i < parent.configs.Count; ++i)
+                    {
+                        print(parent.configs[i].config);
+                    }
+                    continue;
+                }
+                for (int i = 0; i < expect.config.CountNodes; ++i)
+                {
+                    ConfigNode gotNode = parent.configs[i].config;
+                    ConfigNode expectNode = expect.config.nodes[i];
+                    if (!CompareRecursive(expectNode, gotNode))
+                    {
+                        print("[ModuleManager] Test " + parent.name + "[" + i + "] failed as expected output and actual output differ.\nexpected:\n" + expectNode + "\nActually got:\n" + gotNode);
+                    }
+                }
+                // Purge the tests
+                parent.configs.Clear();
+            }
+            print("[ModuleManager] tests complete.");
+        }
+
+        #endregion
     }
 
     /// <summary>

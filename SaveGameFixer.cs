@@ -68,6 +68,7 @@ namespace ModuleManager
         }
         #endregion
 
+        #region Finding the part
         private string savesRoot;
 
         private void UpdateSaves()
@@ -178,6 +179,7 @@ namespace ModuleManager
                 PopLogContext();
             }
         }
+        #endregion
 
         private bool UpdatePart(ConfigNode part)
         {
