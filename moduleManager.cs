@@ -481,8 +481,7 @@ namespace ModuleManager
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
         public ConfigNode ModifyNode(ConfigNode original, ConfigNode mod)
         {
-            ConfigNode newNode = new ConfigNode(original.name);
-            ShallowCopy(original, newNode);
+            ConfigNode newNode = DeepCopy(original);
             
             string vals = "[ModuleManager] modding values";
             foreach (ConfigNode.Value val in mod.values)
@@ -905,6 +904,19 @@ namespace ModuleManager
                 to.values.Add(value);
             foreach (ConfigNode node in from.nodes)
                 to.nodes.Add(node);
+        }
+
+        private static ConfigNode DeepCopy(ConfigNode from)
+        {
+            ConfigNode to = new ConfigNode(from.name);
+            foreach (ConfigNode.Value value in from.values)
+                to.AddValue(value.name, value.value);
+            foreach (ConfigNode node in from.nodes)
+            {
+                ConfigNode newNode = DeepCopy(node);
+                to.nodes.Add(newNode);
+            }
+            return to;
         }
 
         //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType.
