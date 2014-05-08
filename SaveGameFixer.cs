@@ -210,155 +210,163 @@ namespace ModuleManager
                 partName = partName.Substring(0, partName.LastIndexOf('_'));
             }
 
-            AvailablePart available = PartLoader.getPartInfoByName(partName);
-
-            if (available == null)
+            try
             {
-                WriteLogMessage("Backup created - part has been deleted and ship will be destroyed.");
-                return false;
-            }
+                PushLogContext("Part: " + partName);
 
-            PartModuleList prefabModules = available.partPrefab.Modules;
+                AvailablePart available = PartLoader.getPartInfoByName(partName);
 
-            // Do we need to do anything?
-            if (prefabModules.Count == savedModules.Length && backupModules.Length == 0)
-            {
-                for (int i = 0; i < savedModules.Length; ++i)
-                    if (savedModules[i] != null && savedModules[i].GetValue("name") != prefabModules[i].moduleName)
-                        goto needUpdate;
-                return false;
-            needUpdate: ;
-            }
-
-            // Yes we do!
-#if false
-            string prefabNames = "Prefab modules: ";
-            for (int i = 0; i < prefabModules.Count; ++i)
-                prefabNames += (prefabModules[i] as PartModule).moduleName + ",";
-            prefabNames = prefabNames.Substring(0, prefabNames.Length-1);
-
-            Debug.Log("[SaveGameFixer] Fixing Part: " + partName + " in file: " + source + "\n" + prefabNames
-                + "\nSaved modules: " + string.Join(",", (from s in savedModules select (s==null?"***":s.GetValue("name"))).ToArray())
-                + "\nBackup modules: " + string.Join(",", (from s in backupModules select (s==null?"***":s.GetValue("name"))).ToArray())
-                //+ "\nConfig: \n" + part
-                );
-#endif
-            bool hasChanged = false;
-
-            // Discard any backups that are already in saved modules
-            for (int i = 0; i < backupModules.Length; ++i)
-                for (int j = 0; j < savedModules.Length; ++j)
-                    if (savedModules[j] != null && backupModules[i].GetValue("name") == savedModules[j].GetValue("name"))
-                    {
-                        backupModules[i] = null;
-                        backupRemain--;
-                        hasChanged = true;
-                    }
-
-
-            part.RemoveNodes("MODULE");
-
-            ConfigNode moduleBackupConfig = null;
-
-            for (int i = 0; i < prefabModules.Count; ++i)
-            {
-                if (prefabModules[i] is ModuleConfigBackup)
+                if (available == null)
                 {
-                    moduleBackupConfig = new ConfigNode("MODULE");
-                    moduleBackupConfig.AddValue("name", typeof(ModuleConfigBackup).Name);
-                    part.AddNode(moduleBackupConfig);
-                    continue;
+                    WriteLogMessage("Backup created - part \"" + partName + "\" has been deleted and ship will be destroyed.");
+                    return false;
                 }
-                for (int j = 0; j < savedModules.Length; ++j)
-                    if (savedModules[j] != null && savedModules[j].GetValue("name") == prefabModules[i].moduleName) 
-                    {
-                        // The module is saved normally
-                        if (i != j)
+
+                PartModuleList prefabModules = available.partPrefab.Modules;
+
+                // Do we need to do anything?
+                if (prefabModules.Count == savedModules.Length && backupModules.Length == 0)
+                {
+                    for (int i = 0; i < savedModules.Length; ++i)
+                        if (savedModules[i] != null && savedModules[i].GetValue("name") != prefabModules[i].moduleName)
+                            goto needUpdate;
+                    return false;
+                needUpdate: ;
+                }
+
+                // Yes we do!
+#if false
+                string prefabNames = "Prefab modules: ";
+                for (int i = 0; i < prefabModules.Count; ++i)
+                    prefabNames += (prefabModules[i] as PartModule).moduleName + ",";
+                prefabNames = prefabNames.Substring(0, prefabNames.Length-1);
+
+                Debug.Log("[SaveGameFixer] Fixing Part: " + partName + " in file: " + source + "\n" + prefabNames
+                    + "\nSaved modules: " + string.Join(",", (from s in savedModules select (s==null?"***":s.GetValue("name"))).ToArray())
+                    + "\nBackup modules: " + string.Join(",", (from s in backupModules select (s==null?"***":s.GetValue("name"))).ToArray())
+                    //+ "\nConfig: \n" + part
+                    );
+#endif
+                bool hasChanged = false;
+
+                // Discard any backups that are already in saved modules
+                for (int i = 0; i < backupModules.Length; ++i)
+                    for (int j = 0; j < savedModules.Length; ++j)
+                        if (savedModules[j] != null && backupModules[i].GetValue("name") == savedModules[j].GetValue("name"))
                         {
-                            WriteLogMessage("Module \"" + savedModules[j].GetValue("name") + "\" has had order changed. " + j + "=>" + i);
+                            backupModules[i] = null;
+                            backupRemain--;
                             hasChanged = true;
                         }
 
-                        part.AddNode(savedModules[j]);
-                        savedModules[j] = null;
-                        savedRemain--;
-                        goto foundModule;
-                    }
-                for (int j = 0; j < backupModules.Length; ++j)
-                    if (backupModules[j] != null && backupModules[j].GetValue("name") == prefabModules[i].moduleName)
-                    {
-                        // The module will be restored from backup
-                        WriteLogMessage("Module \"" + backupModules[j].GetValue("name") + "\" has been restored from backup. ");
-                        hasChanged = true;
 
-                        backupModules[j].AddValue("MM_RESTORED", "true");
-                        part.AddNode(backupModules[j]);
-                        backupModules[j] = null;
-                        backupRemain--;
-                        goto foundModule;
-                    }
-                // Can't find it anywhere, reinitialize
-                WriteLogMessage("Module \"" + prefabModules[i].moduleName + "\" is not present in the save and will be reinitialized. ");
-                hasChanged = true;
+                part.RemoveNodes("MODULE");
 
-                ConfigNode newNode = new ConfigNode("MODULE");
-                newNode.AddValue("name", prefabModules[i].moduleName);
-                newNode.AddValue("MM_REINITIALIZE", "true");
-                part.AddNode(newNode);
-            foundModule: ;
-            }
+                ConfigNode moduleBackupConfig = null;
 
-            if (savedRemain > 0 || backupRemain > 0)
-            {
-
-                // Discard saves for modules that are explicitly marked as dynamic or have a module available to be used. 
-                // Modules that are explicitly maked as not dynamic (MM_DYNAMIC = false) will be saved in the backup regardless
-                // of if their PartModule class is available.
-                for (int i = 0; i < savedModules.Length; ++i)
-                    if (savedModules[i] != null && savedModules[i].GetValue("MM_DYNAMIC") != "false" 
-                        && (savedModules[i].GetValue("MM_DYNAMIC") == "true" || AssemblyLoader.GetClassByName(typeof(PartModule), savedModules[i].GetValue("name")) != null))
-                    {
-                        savedModules[i] = null;
-                        --savedRemain;
-                    }
-
-                if (savedRemain > 0)
+                for (int i = 0; i < prefabModules.Count; ++i)
                 {
-                    if (moduleBackupConfig == null)
+                    if (prefabModules[i] is ModuleConfigBackup)
                     {
-                        available.partPrefab.AddModule(typeof(ModuleConfigBackup).Name);
                         moduleBackupConfig = new ConfigNode("MODULE");
                         moduleBackupConfig.AddValue("name", typeof(ModuleConfigBackup).Name);
                         part.AddNode(moduleBackupConfig);
+                        continue;
                     }
-                    // copy the old backups
-                    for (int i = 0; i < backupModules.Length; ++i)
-                        if (backupModules[i] != null)
-                            moduleBackupConfig.AddNode(backupModules[i]);
-                    // backup anything in saved that's left over
-                    for (int i = 0; i < savedModules.Length; ++i)
-                        if (savedModules[i] != null)
+                    for (int j = 0; j < savedModules.Length; ++j)
+                        if (savedModules[j] != null && savedModules[j].GetValue("name") == prefabModules[i].moduleName)
                         {
-                            savedModules[i].RemoveValues("MM_RESTORED");
-                            moduleBackupConfig.AddNode(savedModules[i]);
+                            // The module is saved normally
+                            if (i != j)
+                            {
+                                WriteLogMessage("Module \"" + savedModules[j].GetValue("name") + "\" has had order changed. " + j + "=>" + i);
+                                hasChanged = true;
+                            }
 
-                            WriteLogMessage("Module \"" + savedModules[i].GetValue("name") + "\" is present in the part but is no longer available. Saved config to backup, will be restored if you reinstall the mod.");
-                            hasChanged = true;
+                            part.AddNode(savedModules[j]);
+                            savedModules[j] = null;
+                            savedRemain--;
+                            goto foundModule;
                         }
+                    for (int j = 0; j < backupModules.Length; ++j)
+                        if (backupModules[j] != null && backupModules[j].GetValue("name") == prefabModules[i].moduleName)
+                        {
+                            // The module will be restored from backup
+                            WriteLogMessage("Module \"" + backupModules[j].GetValue("name") + "\" has been restored from backup. ");
+                            hasChanged = true;
+
+                            backupModules[j].AddValue("MM_RESTORED", "true");
+                            part.AddNode(backupModules[j]);
+                            backupModules[j] = null;
+                            backupRemain--;
+                            goto foundModule;
+                        }
+                    // Can't find it anywhere, reinitialize
+                    WriteLogMessage("Module \"" + prefabModules[i].moduleName + "\" is not present in the save and will be reinitialized. ");
+                    hasChanged = true;
+
+                    ConfigNode newNode = new ConfigNode("MODULE");
+                    newNode.AddValue("name", prefabModules[i].moduleName);
+                    newNode.AddValue("MM_REINITIALIZE", "true");
+                    part.AddNode(newNode);
+                foundModule: ;
                 }
+
+                if (savedRemain > 0 || backupRemain > 0)
+                {
+
+                    // Discard saves for modules that are explicitly marked as dynamic or have a module available to be used. 
+                    // Modules that are explicitly maked as not dynamic (MM_DYNAMIC = false) will be saved in the backup regardless
+                    // of if their PartModule class is available.
+                    for (int i = 0; i < savedModules.Length; ++i)
+                        if (savedModules[i] != null && savedModules[i].GetValue("MM_DYNAMIC") != "false"
+                            && (savedModules[i].GetValue("MM_DYNAMIC") == "true" || AssemblyLoader.GetClassByName(typeof(PartModule), savedModules[i].GetValue("name")) != null))
+                        {
+                            savedModules[i] = null;
+                            --savedRemain;
+                        }
+
+                    if (savedRemain > 0)
+                    {
+                        if (moduleBackupConfig == null)
+                        {
+                            available.partPrefab.AddModule(typeof(ModuleConfigBackup).Name);
+                            moduleBackupConfig = new ConfigNode("MODULE");
+                            moduleBackupConfig.AddValue("name", typeof(ModuleConfigBackup).Name);
+                            part.AddNode(moduleBackupConfig);
+                        }
+                        // copy the old backups
+                        for (int i = 0; i < backupModules.Length; ++i)
+                            if (backupModules[i] != null)
+                                moduleBackupConfig.AddNode(backupModules[i]);
+                        // backup anything in saved that's left over
+                        for (int i = 0; i < savedModules.Length; ++i)
+                            if (savedModules[i] != null)
+                            {
+                                savedModules[i].RemoveValues("MM_RESTORED");
+                                moduleBackupConfig.AddNode(savedModules[i]);
+
+                                WriteLogMessage("Module \"" + savedModules[i].GetValue("name") + "\" is present in the part but is no longer available. Saved config to backup, will be restored if you reinstall the mod.");
+                                hasChanged = true;
+                            }
+                    }
+                }
+
+                if (!hasChanged)
+                    return false;
+
+                // Stick the resources back at the end just to be consistent
+                ConfigNode[] resources = part.GetNodes("RESOURCE");
+                part.RemoveNodes("RESOURCE");
+                foreach (ConfigNode r in resources)
+                    part.AddNode(r);
+
+                //Debug.Log("[SaveGameFixer] Result:\n" + part);
             }
-
-            if (!hasChanged)
-                return false;
-            
-            // Stick the resources back at the end just to be consistent
-            ConfigNode[] resources = part.GetNodes("RESOURCE");
-            part.RemoveNodes("RESOURCE");
-            foreach (ConfigNode r in resources)
-                part.AddNode(r);
-
-            //Debug.Log("[SaveGameFixer] Result:\n" + part);
-
+            finally
+            {
+                PopLogContext();
+            }
             return true;
         }
 
