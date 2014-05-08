@@ -221,8 +221,11 @@ namespace ModuleManager
                     WriteLogMessage("Backup created - part \"" + partName + "\" has been deleted and ship will be destroyed.");
                     return false;
                 }
-
+                
                 PartModuleList prefabModules = available.partPrefab.Modules;
+
+                if (prefabModules == null)
+                    return false;
 
                 // Do we need to do anything?
                 if (prefabModules.Count == savedModules.Length && backupModules.Length == 0)
@@ -458,7 +461,6 @@ namespace ModuleManager
             string relPath = file.Substring(savesRoot.Length, file.Length - savesRoot.Length);
 
             string backupTo = Path.Combine(backupDir, relPath);
-            Debug.LogWarning(backupTo);
             Directory.CreateDirectory(Path.GetDirectoryName(backupTo));
 
             File.Copy(file, backupTo);
