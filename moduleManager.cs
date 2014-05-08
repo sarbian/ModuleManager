@@ -481,13 +481,8 @@ namespace ModuleManager
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
         public ConfigNode ModifyNode(ConfigNode original, ConfigNode mod)
         {
-            if (!IsSane(original) || !IsSane(mod))
-            {
-                print("[ModuleManager] A node has an empty name. Skipping it. Original: " + original);
-                return original;
-            }
-
-            ConfigNode newNode = original.CreateCopy();
+            ConfigNode newNode = new ConfigNode(original.name);
+            ShallowCopy(original, newNode);
             
             string vals = "[ModuleManager] modding values";
             foreach (ConfigNode.Value val in mod.values)
@@ -780,18 +775,6 @@ namespace ModuleManager
                         return false;
             }
             return stack.Count == 0;
-        }
-
-        // Added that to prevent a crash in KSP 'CopyTo' when a subnode has an empty name like
-        // Like a pair of curly bracket without a name before them
-        public static bool IsSane(ConfigNode node)
-        {
-            if (node.name.Length == 0)
-                return false;
-            foreach (ConfigNode subnode in node.nodes)
-                if (!IsSane(subnode))
-                    return false;
-            return true;
         }
 
         public static string RemoveWS(string withWhite)
