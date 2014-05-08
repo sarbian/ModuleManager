@@ -660,12 +660,12 @@ namespace ModuleManager
                         // Ensure the stage is correct
                         string upperName = name.ToUpper();
 
-                        int stageIdx = upperName.IndexOf(Stage);
+                        int stageIdx = upperName.IndexOf(Stage.ToUpper());
                         if (stageIdx >= 0)
                         {
                             name = name.Substring(0, stageIdx) + name.Substring(stageIdx + Stage.Length);
                         }
-                        else if (!(Stage == ":FIRST"
+                        else if (!(Stage.ToUpper() == ":FIRST"
                                     && !upperName.Contains(":BEFORE[")
                                     && !upperName.Contains(":FOR[")
                                     && !upperName.Contains(":AFTER[")
