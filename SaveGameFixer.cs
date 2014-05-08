@@ -12,6 +12,8 @@ namespace ModuleManager
     internal class SaveGameFixer : MonoBehaviour
     {
 
+        #region type election and other bootstrap stuff.
+
         // This is stolen unchanged from KSPAPIExtensions
         private static bool RunTypeElection(Type targetCls, String assemName)
         {
@@ -64,26 +66,40 @@ namespace ModuleManager
                 enabled = false;
             }
         }
+        #endregion
 
+        private string savesRoot;
 
         private void UpdateSaves()
         {
-            foreach (string saveDir in Directory.GetDirectories(KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "saves")) 
+            savesRoot = Path.Combine(Path.GetFullPath(KSPUtil.ApplicationRootPath), "saves" + Path.DirectorySeparatorChar);
+
+            foreach (string saveDir in Directory.GetDirectories(savesRoot)) 
                 UpdateSaveDir(saveDir);
         }
 
+
         private void UpdateSaveDir(string saveDir)
         {
-            char ds = Path.DirectorySeparatorChar;
+            try
+            {
+                PushLogContext("Save Game: " + saveDir.Substring(savesRoot.Length, saveDir.Length-savesRoot.Length));
 
-            // .craft files
-            UpdateCraftDir(saveDir + ds + "Ships" + ds + "VAB");
-            UpdateCraftDir(saveDir + ds + "Ships" + ds + "SPH");
-            UpdateCraftDir(saveDir + ds + "Subassemblies");
+                char ds = Path.DirectorySeparatorChar;
 
-            foreach (string sfsFile in Directory.GetFiles(saveDir))
-                if (sfsFile.EndsWith(".sfs"))
-                    UpdateSFS(sfsFile);
+                // .craft files
+                UpdateCraftDir(saveDir + ds + "Ships" + ds + "VAB");
+                UpdateCraftDir(saveDir + ds + "Ships" + ds + "SPH");
+                UpdateCraftDir(saveDir + ds + "Subassemblies");
+
+                foreach (string sfsFile in Directory.GetFiles(saveDir))
+                    if (sfsFile.EndsWith(".sfs"))
+                        UpdateSFS(sfsFile);
+            }
+            finally
+            {
+                PopLogContext();
+            }
         }
 
         private void UpdateCraftDir(string dir)
@@ -102,34 +118,68 @@ namespace ModuleManager
                     UpdateCraft(vabCraft);
         }
 
+        private void UpdateCraft(string vabCraft)
+        {
+            try
+            {
+                PushLogContext("Craft file: " + vabCraft.Substring(savesRoot.Length, vabCraft.Length-savesRoot.Length));
+                ConfigNode craft = ConfigNode.Load(vabCraft);
+
+                bool modified = false;
+                foreach (ConfigNode part in craft.GetNodes("PART"))
+                    modified |= UpdatePart(part);
+
+                if (modified)
+                    BackupAndReplace(vabCraft, craft);
+            }
+            finally
+            {
+                PopLogContext();
+            }
+        }
+
         private void UpdateSFS(string sfsFile)
         {
             ConfigNode sfs = ConfigNode.Load(sfsFile);
 
-            bool modified = false;
-            foreach (ConfigNode game in sfs.GetNodes("GAME"))
-                foreach (ConfigNode flightState in game.GetNodes("FLIGHTSTATE"))
-                    foreach (ConfigNode vessel in flightState.GetNodes("VESSEL"))
-                        foreach (ConfigNode part in vessel.GetNodes("PART"))
-                            modified |= UpdatePart(part, sfsFile);
+            try
+            {
+                PushLogContext("Save file: " + sfsFile.Substring(savesRoot.Length, sfsFile.Length-savesRoot.Length));
 
-            if (modified)
-                sfs.Save(sfsFile);
+                bool modified = false;
+                foreach (ConfigNode game in sfs.GetNodes("GAME"))
+                    foreach (ConfigNode flightState in game.GetNodes("FLIGHTSTATE"))
+                        foreach (ConfigNode vessel in flightState.GetNodes("VESSEL"))
+                            modified |= UpdateVessel(vessel);
+
+                if (modified)
+                    BackupAndReplace(sfsFile, sfs);
+            }
+            finally
+            {
+                PopLogContext();
+            }
+                
         }
 
-        private void UpdateCraft(string vabCraft)
+        private bool UpdateVessel(ConfigNode vessel)
         {
-            ConfigNode craft = ConfigNode.Load(vabCraft);
+            try
+            {
+                PushLogContext("Vessel: " + vessel.GetValue("name"));
 
-            bool modified = false;
-            foreach (ConfigNode part in craft.GetNodes("PART"))
-                modified |= UpdatePart(part, vabCraft);
-
-            if(modified)
-                craft.Save(vabCraft);
+                bool modified = false;
+                foreach (ConfigNode part in vessel.GetNodes("PART"))
+                    modified |= UpdatePart(part);
+                return modified;
+            }
+            finally
+            {
+                PopLogContext();
+            }
         }
 
-        private bool UpdatePart(ConfigNode part, string source)
+        private bool UpdatePart(ConfigNode part)
         {
             // The modules saved with the part
             ConfigNode[] savedModules = part.GetNodes("MODULE");
@@ -162,7 +212,7 @@ namespace ModuleManager
 
             if (available == null)
             {
-                Debug.LogWarning("Unable to find part: " + partName);
+                WriteLogMessage("Backup created - part has been deleted and ship will be destroyed.");
                 return false;
             }
 
@@ -191,6 +241,18 @@ namespace ModuleManager
                 //+ "\nConfig: \n" + part
                 );
 #endif
+            bool hasChanged = false;
+
+            // Discard any backups that are already in saved modules
+            for (int i = 0; i < backupModules.Length; ++i)
+                for (int j = 0; j < savedModules.Length; ++j)
+                    if (savedModules[j] != null && backupModules[i].GetValue("name") == savedModules[j].GetValue("name"))
+                    {
+                        backupModules[i] = null;
+                        backupRemain--;
+                        hasChanged = true;
+                    }
+
 
             part.RemoveNodes("MODULE");
 
@@ -209,23 +271,34 @@ namespace ModuleManager
                     if (savedModules[j] != null && savedModules[j].GetValue("name") == prefabModules[i].moduleName) 
                     {
                         // The module is saved normally
+                        if (i != j)
+                        {
+                            WriteLogMessage("Module \"" + savedModules[j].GetValue("name") + "\" has had order changed. " + j + "=>" + i);
+                            hasChanged = true;
+                        }
+
                         part.AddNode(savedModules[j]);
                         savedModules[j] = null;
                         savedRemain--;
                         goto foundModule;
                     }
-                if (backupModules != null)
-                    for (int j = 0; j < backupModules.Length; ++j)
-                        if (backupModules[j] != null && backupModules[j].GetValue("name") == prefabModules[i].moduleName)
-                        {
-                            // The module will be restored from backup
-                            backupModules[j].AddValue("MM_RESTORED", "true");
-                            part.AddNode(backupModules[j]);
-                            backupModules[j] = null;
-                            backupRemain--;
-                            goto foundModule;
-                        }
+                for (int j = 0; j < backupModules.Length; ++j)
+                    if (backupModules[j] != null && backupModules[j].GetValue("name") == prefabModules[i].moduleName)
+                    {
+                        // The module will be restored from backup
+                        WriteLogMessage("Module \"" + backupModules[j].GetValue("name") + "\" has been restored from backup. ");
+                        hasChanged = true;
+
+                        backupModules[j].AddValue("MM_RESTORED", "true");
+                        part.AddNode(backupModules[j]);
+                        backupModules[j] = null;
+                        backupRemain--;
+                        goto foundModule;
+                    }
                 // Can't find it anywhere, reinitialize
+                WriteLogMessage("Module \"" + prefabModules[i].moduleName + "\" is not present in the save and will be reinitialized. ");
+                hasChanged = true;
+
                 ConfigNode newNode = new ConfigNode("MODULE");
                 newNode.AddValue("name", prefabModules[i].moduleName);
                 newNode.AddValue("MM_REINITIALIZE", "true");
@@ -235,23 +308,46 @@ namespace ModuleManager
 
             if (savedRemain > 0 || backupRemain > 0)
             {
-                if (moduleBackupConfig == null)
-                {
-                    available.partPrefab.AddModule(typeof(ModuleConfigBackup).Name);
-                    moduleBackupConfig = new ConfigNode("MODULE");
-                    moduleBackupConfig.AddValue("name", typeof(ModuleConfigBackup).Name);
-                    part.AddNode(moduleBackupConfig);
-                }
+
+                // Discard saves for modules that are explicitly marked as dynamic or have a module available to be used. 
+                // Modules that are explicitly maked as not dynamic (MM_DYNAMIC = false) will be saved in the backup regardless
+                // of if their PartModule class is available.
                 for (int i = 0; i < savedModules.Length; ++i)
-                    if (savedModules[i] != null && savedModules[i].GetValue("MM_DYNAMIC") != "true")
+                    if (savedModules[i] != null && savedModules[i].GetValue("MM_DYNAMIC") != "false" 
+                        && (savedModules[i].GetValue("MM_DYNAMIC") == "true" || AssemblyLoader.GetClassByName(typeof(PartModule), savedModules[i].GetValue("name")) != null))
                     {
-                        savedModules[i].RemoveValues("MM_RESTORED");
-                        moduleBackupConfig.AddNode(savedModules[i]);
+                        savedModules[i] = null;
+                        --savedRemain;
                     }
-                for (int i = 0; i < backupModules.Length; ++i)
-                    if (backupModules[i] != null)
-                        moduleBackupConfig.AddNode(backupModules[i]);
+
+                if (savedRemain > 0)
+                {
+                    if (moduleBackupConfig == null)
+                    {
+                        available.partPrefab.AddModule(typeof(ModuleConfigBackup).Name);
+                        moduleBackupConfig = new ConfigNode("MODULE");
+                        moduleBackupConfig.AddValue("name", typeof(ModuleConfigBackup).Name);
+                        part.AddNode(moduleBackupConfig);
+                    }
+                    // copy the old backups
+                    for (int i = 0; i < backupModules.Length; ++i)
+                        if (backupModules[i] != null)
+                            moduleBackupConfig.AddNode(backupModules[i]);
+                    // backup anything in saved that's left over
+                    for (int i = 0; i < savedModules.Length; ++i)
+                        if (savedModules[i] != null)
+                        {
+                            savedModules[i].RemoveValues("MM_RESTORED");
+                            moduleBackupConfig.AddNode(savedModules[i]);
+
+                            WriteLogMessage("Module \"" + savedModules[i].GetValue("name") + "\" is present in the part but is no longer available. Saved config to backup, will be restored if you reinstall the mod.");
+                            hasChanged = true;
+                        }
+                }
             }
+
+            if (!hasChanged)
+                return false;
             
             // Stick the resources back at the end just to be consistent
             ConfigNode[] resources = part.GetNodes("RESOURCE");
@@ -264,10 +360,105 @@ namespace ModuleManager
             return true;
         }
 
+        #region Backups
 
+        private List<string> logContext = new List<string>();
+        private int logCtxCur = 0;
+        private string backupDir = null;
+        private string logFile = null;
+
+        private void PushLogContext(string p)
+        {
+            logContext.Add(p);
+        }
+
+        private void PopLogContext()
+        {
+            logContext.RemoveAt(logContext.Count - 1);
+            if (logCtxCur > logContext.Count)
+                logCtxCur = logContext.Count;
+        }
+
+        private void WriteLogMessage(string logMessage)
+        {
+            if (backupDir == null)
+            {
+                backupDir = Path.Combine(KSPUtil.ApplicationRootPath, string.Format("saves_backup{1}{0:yyyyMMdd-HHmmss}", DateTime.Now, Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(backupDir);
+                logFile = Path.Combine(backupDir, "backup.log");
+            }
+
+            StringBuilder sb = new StringBuilder();
+
+            // Write any pending log headers
+            string indent;
+            for (; logCtxCur < logContext.Count; logCtxCur++)
+            {
+                indent = new String(' ', 4 * logCtxCur);
+                sb.Append(indent).AppendLine(logContext[logCtxCur]);
+                Debug.Log("[SaveGameFixer]" + indent + logContext[logCtxCur]);
+            }
+            indent = new String(' ', 4 * logCtxCur);
+            sb.Append(indent).AppendLine(logMessage);
+            Debug.Log("[SaveGameFixer]" + indent + logMessage);
+
+            File.AppendAllText(logFile, sb.ToString());
+        }
+
+        private static void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
+        {
+            // Get the subdirectories for the specified directory.
+            DirectoryInfo dir = new DirectoryInfo(sourceDirName);
+            DirectoryInfo[] dirs = dir.GetDirectories();
+
+            if (!dir.Exists)
+            {
+                throw new DirectoryNotFoundException(
+                    "Source directory does not exist or could not be found: "
+                    + sourceDirName);
+            }
+
+            // If the destination directory doesn't exist, create it. 
+            if (!Directory.Exists(destDirName))
+            {
+                Directory.CreateDirectory(destDirName);
+            }
+
+            // Get the files in the directory and copy them to the new location.
+            FileInfo[] files = dir.GetFiles();
+            foreach (FileInfo file in files)
+            {
+                string temppath = Path.Combine(destDirName, file.Name);
+                file.CopyTo(temppath, false);
+            }
+
+            // If copying subdirectories, copy them and their contents to new location. 
+            if (copySubDirs)
+            {
+                foreach (DirectoryInfo subdir in dirs)
+                {
+                    string temppath = Path.Combine(destDirName, subdir.Name);
+                    DirectoryCopy(subdir.FullName, temppath, copySubDirs);
+                }
+            }
+        }
+
+        private void BackupAndReplace(string file, ConfigNode config)
+        {
+            string relPath = file.Substring(savesRoot.Length, file.Length - savesRoot.Length);
+
+            string backupTo = Path.Combine(backupDir, relPath);
+            Debug.LogWarning(backupTo);
+            Directory.CreateDirectory(Path.GetDirectoryName(backupTo));
+
+            File.Copy(file, backupTo);
+
+            config.Save(file);
+        }
+
+
+        #endregion
     }
-
-
 
     internal class ModuleConfigBackup : PartModule
     {
