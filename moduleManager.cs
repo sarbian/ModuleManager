@@ -537,13 +537,16 @@ namespace ModuleManager
 
             foreach (AssemblyName mod in mods)
             {
-                ApplyPatch(excludePaths, ":BEFORE[" + mod.Name + "]");
-                ApplyPatch(excludePaths, ":FOR[" + mod.Name + "]");
-                ApplyPatch(excludePaths, ":AFTER[" + mod.Name + "]");
+                string upperModName = mod.Name.ToUpper();
+                ApplyPatch(excludePaths, ":BEFORE[" + upperModName + "]");
+                ApplyPatch(excludePaths, ":FOR[" + upperModName + "]");
+                ApplyPatch(excludePaths, ":AFTER[" + upperModName + "]");
             }
 
             // :Final node
             ApplyPatch(excludePaths, ":FINAL");
+
+            PurgeUnused(excludePaths);
 
             if (errorCount > 0)
                 foreach (String file in errorFiles.Keys)
@@ -553,6 +556,16 @@ namespace ModuleManager
             status = "ModuleManager applied " + patchCount + " patches and found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
 
 #if DEBUG
+            RunTestCases();
+#endif
+
+            print("[ModuleManager] " + status + "\n" + errors);
+
+            loaded = true;
+        }
+
+        private void RunTestCases()
+        {
             print("[ModuleManager] Running tests...");
 
             // Do MM testcases
@@ -560,7 +573,7 @@ namespace ModuleManager
             {
                 // So for each of the expects, we expect all the configs before that node to match exactly.
                 UrlDir.UrlFile parent = expect.parent;
-                if(parent.configs.Count != expect.config.CountNodes +1) 
+                if (parent.configs.Count != expect.config.CountNodes + 1)
                 {
                     print("[ModuleManager] Test " + parent.name + " failed as expecte number of nodes differs expected:" + expect.config.CountNodes + " found: " + parent.configs.Count);
                     for (int i = 0; i < parent.configs.Count; ++i)
@@ -569,7 +582,7 @@ namespace ModuleManager
                     }
                     continue;
                 }
-                for(int i = 0; i < expect.config.CountNodes; ++i) 
+                for (int i = 0; i < expect.config.CountNodes; ++i)
                 {
                     ConfigNode gotNode = parent.configs[i].config;
                     ConfigNode expectNode = expect.config.nodes[i];
@@ -579,11 +592,23 @@ namespace ModuleManager
                     }
                 }
             }
-#endif
+            print("[ModuleManager] tests complete.");
+        }
 
-            print("[ModuleManager] " + status + "\n" + errors);
+        private void PurgeUnused(List<string> excludePaths)
+        {
+            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
+            {
+                int lastErrorCount = errorCount;
 
-            loaded = true;
+                string name = RemoveWS(mod.type);
+
+                if (name[0] == '@' || (name[0] == '$') || (name[0] == '!') || name == "MMTEST" || name == "MMTEST_EXPECT")
+                {
+
+                    mod.parent.configs.Remove(mod);
+                }
+            }
         }
 
         private bool CompareRecursive(ConfigNode expectNode, ConfigNode gotNode)
@@ -660,12 +685,12 @@ namespace ModuleManager
                         // Ensure the stage is correct
                         string upperName = name.ToUpper();
 
-                        int stageIdx = upperName.IndexOf(Stage.ToUpper());
+                        int stageIdx = upperName.IndexOf(Stage);
                         if (stageIdx >= 0)
                         {
                             name = name.Substring(0, stageIdx) + name.Substring(stageIdx + Stage.Length);
                         }
-                        else if (!(Stage.ToUpper() == ":FIRST"
+                        else if (!(Stage == ":FIRST"
                                     && !upperName.Contains(":BEFORE[")
                                     && !upperName.Contains(":FOR[")
                                     && !upperName.Contains(":AFTER[")
@@ -768,7 +793,6 @@ namespace ModuleManager
                             print("[ModuleManager] Deleting Node in file " + mod.parent.url + " subnode: " + mod.type + " as it can't satisfy its NEEDS");
                             continue;
                         }
-                        Debug.LogWarning(type);
 
                         ConfigNode copy = new ConfigNode(type);
                         ShallowCopy(mod.config, copy);
@@ -834,12 +858,11 @@ namespace ModuleManager
 
         private static void ShallowCopy(ConfigNode from, ConfigNode to)
         {
-            to.ClearData();
+            to.ClearData(); 
             foreach (ConfigNode.Value value in from.values)
                 to.values.Add(value);
             foreach (ConfigNode node in from.nodes)
                 to.nodes.Add(node);
-            from.CopyTo(to);
         }
 
         /// <summary>
