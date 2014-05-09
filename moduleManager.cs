@@ -492,105 +492,83 @@ namespace ModuleManager
                 string valName;
                 Command cmd = ParseCommand(val.name, out valName);
 
-                if(cmd == Command.Insert)
-                {
-                    int index = int.MaxValue;
-                    if (valName.Contains(",") && int.TryParse(valName.Split(',')[1], out index))
-                    {
-                        // In this case insert the value at position index (with the same node names)
-                        valName = valName.Split(',')[0];
+                int index;
 
-                        string [] oldValues = newNode.GetValues(valName); 
-                        if (index < oldValues.Length) 
-                        {
-                            newNode.RemoveValues(valName);
-                            int i = 0;
-                            for(; i < index; ++i) 
-                                newNode.AddValue(valName, oldValues[i]);
-                            newNode.AddValue(valName, val.value);
-                            for(; i < oldValues.Length; ++i)
-                                newNode.AddValue(valName, oldValues[i]);
-                            continue;
-                        }
-                    }
 
-                    newNode.AddValue(valName, val.value);
-                }
+                // In this case insert the value at position index (with the same node names)
+                if (valName.Contains(",") && int.TryParse(valName.Split(',')[1], out index))
+                    valName = valName.Split(',')[0];
                 else
-                {  // Parsing: 
-                    // Format is @key = value or @key *= value or @key += value or @key -= value 
-                    // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value 
-                    int index = 0;
-                    if (valName.Contains(","))
-                    {
-                        int.TryParse(valName.Split(',')[1], out index);
-                        valName = valName.Split(',')[0];
-                    }
+                    index = int.MaxValue;
 
-                    switch (cmd)
-                    {
-                        case Command.Edit:
-                        case Command.Copy:
-                            string value = val.value;
-                            char op = ' ';
-                            if (valName.EndsWith(" *")) // @key *= val
-                                op = '*';
-                            else if (valName.EndsWith(" +")) // @key += val
-                                op = '+';
-                            else if (valName.EndsWith(" -")) // @key -= val
-                                op = '-';
-                            else if (valName.EndsWith(" ^"))
-                                op = '^';
+                switch (cmd)
+                {
+                    case Command.Insert:
+                        InsertValue(newNode, index, valName, val.value);
+                        break;
+                    case Command.Edit:
+                    case Command.Copy:
+                        // Format is @key = value or @key *= value or @key += value or @key -= value 
+                        // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value 
 
-                            string ovalue = original.GetValue(valName, index);
-                            if (op != ' ')
+                        string value = val.value;
+                        char op = ' ';
+                        if (valName.EndsWith(" *")) // @key *= val
+                            op = '*';
+                        else if (valName.EndsWith(" +")) // @key += val
+                            op = '+';
+                        else if (valName.EndsWith(" -")) // @key -= val
+                            op = '-';
+                        else if (valName.EndsWith(" ^"))
+                            op = '^';
+
+                        string ovalue = original.GetValue(valName, index);
+                        if (op != ' ')
+                        {
+                            valName = valName.Split(' ')[0];
+
+                            if (ovalue != null)
                             {
-                                valName = valName.Split(' ')[0];
-
-                                if (ovalue != null)
+                                double s, os;
+                                if (op == '^')
                                 {
-                                    double s, os;
-                                    if (op == '^')
+                                    try
                                     {
-                                        try
-                                        {
-                                            string[] split = value.Split(value[0]);
-                                            value = Regex.Replace(ovalue, split[1], split[2]);
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            print("[ModuleManager] Failed to do a regexp replacement: " + mod.name + " : original value=\"" + ovalue + "\" regexp=\"" + value + "\" \nNote - to use regexp, the first char is used to subdivide the string (much like sed)\n" + ex.ToString());
-                                        }
+                                        string[] split = value.Split(value[0]);
+                                        value = Regex.Replace(ovalue, split[1], split[2]);
                                     }
-                                    else if (double.TryParse(value, out s) && double.TryParse(ovalue, out os))
+                                    catch (Exception ex)
                                     {
-                                        if (op == '*')
-                                            value = (s * os).ToString();
-                                        else if (op == '+')
-                                            value = (s + os).ToString();
-                                        else if (op == '-')
-                                            value = (s - os).ToString();
+                                        print("[ModuleManager] Failed to do a regexp replacement: " + mod.name + " : original value=\"" + ovalue + "\" regexp=\"" + value + "\" \nNote - to use regexp, the first char is used to subdivide the string (much like sed)\n" + ex.ToString());
                                     }
-                                    vals += ": " + ovalue + " -> " + value;
                                 }
-
+                                else if (double.TryParse(value, out s) && double.TryParse(ovalue, out os))
+                                {
+                                    if (op == '*')
+                                        value = (s * os).ToString();
+                                    else if (op == '+')
+                                        value = (s + os).ToString();
+                                    else if (op == '-')
+                                        value = (s - os).ToString();
+                                }
+                                vals += ": " + ovalue + " -> " + value;
                             }
-                            if (cmd == Command.Edit)
-                                newNode.SetValue(valName, value, index);
-                            else if(ovalue != null)
-                                newNode.AddValue(valName, value);
 
-                            break;
-                        case Command.Delete:
-                            newNode.RemoveValues(valName);
-                            break;
-                        case Command.Replace:
-                            newNode.RemoveValues(valName);
-                            newNode.AddValue(valName, val.value);
-                            break;
-                    }
+                        }
+                        if (cmd == Command.Edit)
+                            newNode.SetValue(valName, value, index);
+                        else if(ovalue != null)
+                            newNode.AddValue(valName, value);
+
+                        break;
+                    case Command.Delete:
+                        newNode.RemoveValues(valName);
+                        break;
+                    case Command.Replace:
+                        newNode.RemoveValues(valName);
+                        newNode.AddValue(valName, val.value);
+                        break;
                 }
-
             }
             //print(vals);
 
@@ -633,9 +611,6 @@ namespace ModuleManager
                     string msg = "";
 
                     List<ConfigNode> subNodes = new List<ConfigNode>();
-                    //if (subMod.name[0] == '@' && subMod.name[0] != '%')
-                    //    subNode = null;
-
                     // three ways to specify:
                     // NODE,n will match the nth node (NODE is the same as NODE,0)
                     // NODE,* will match ALL nodes
@@ -759,6 +734,7 @@ namespace ModuleManager
             }
             return newNode;
         }
+
         #endregion
 
         #region Command Parsing
@@ -950,6 +926,24 @@ namespace ModuleManager
             }
         }
 
+        private static void InsertValue(ConfigNode newNode, int index, string name, string value)
+        {
+            string[] oldValues = newNode.GetValues(name);
+            if (index < oldValues.Length)
+            {
+                newNode.RemoveValues(name);
+                int i = 0;
+                for (; i < index; ++i)
+                    newNode.AddValue(name, oldValues[i]);
+                newNode.AddValue(name, value);
+                for (; i < oldValues.Length; ++i)
+                    newNode.AddValue(name, oldValues[i]);
+                return;
+            }
+
+            newNode.AddValue(name, value);
+        }
+
         private static void ShallowCopy(ConfigNode from, ConfigNode to)
         {
             to.ClearData();
@@ -978,29 +972,38 @@ namespace ModuleManager
         public static ConfigNode FindConfigNodeIn(ConfigNode src, string nodeType,
                                                    string nodeName = null, int index = 0)
         {
-            int found = 0;
-            foreach (ConfigNode n in src.GetNodes(nodeType))
+            ConfigNode [] nodes = src.GetNodes(nodeType);
+            if (nodeName == null)
             {
-                if (nodeName == null)
+                if(index >= 0)
+                    return nodes[Math.Min(index, nodes.Length-1)];
+                else 
+                    return nodes[Math.Max(0, nodes.Length+index)];
+            }
+            ConfigNode last = null;
+            if (index >= 0)
+            {
+                for (int i = 0; i < nodes.Length; ++i)
                 {
-                    if (index == found)
-                        return n;
-                    else
-                        found++;
+                    if (nodes[i].HasValue("name") && WildcardMatch(nodes[i].GetValue("name"), nodeName))
+                    {
+                        last = nodes[i];
+                        if (index-- == 0)
+                            return last;
+                    }
                 }
-                else if (n.HasValue("name") && WildcardMatch(n.GetValue("name"), nodeName))
+                return last;
+            }
+            for (int i = nodes.Length-1; i >= 0; --i)
+            {
+                if (nodes[i].HasValue("name") && WildcardMatch(nodes[i].GetValue("name"), nodeName))
                 {
-                    if (found == index)
-                    {
-                        return n;
-                    }
-                    else
-                    {
-                        found++;
-                    }
+                    last = nodes[i];
+                    if (++index == 0)
+                        return last;
                 }
             }
-            return null;
+            return last;
         }
 
         private static bool CompareRecursive(ConfigNode expectNode, ConfigNode gotNode)
