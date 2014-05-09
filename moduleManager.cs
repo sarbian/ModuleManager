@@ -64,6 +64,7 @@ namespace ModuleManager
             errorFiles = new Dictionary<string, int>();
             #endregion
 
+
             #region Type election
             // Check for old version and MMSarbianExt
             var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 5, 0)) == -1);
@@ -347,15 +348,10 @@ namespace ModuleManager
                 if (IsPathInList(mod.url, excludePaths))
                     continue;
 
-                int lastErrorCount = errorCount;
-
                 string name = RemoveWS(mod.type);
 
-                if (name[0] == '@' || (name[0] == '$') || (name[0] == '!'))
-                {
-
+                if (ParseCommand(name, out name) != Command.Insert)
                     mod.parent.configs.Remove(mod);
-                }
             }
         }
 
@@ -374,8 +370,10 @@ namespace ModuleManager
                 try
                 {
                     string name = RemoveWS(mod.type);
+                    string tmp;
+                    Command cmd = ParseCommand(name, out tmp);
 
-                    if (name[0] == '@' || (name[0] == '$') || (name[0] == '!'))
+                    if (cmd != Command.Insert)
                     {
                         if (!IsBraquetBalanced(mod.type))
                         {
@@ -429,30 +427,33 @@ namespace ModuleManager
                                     && !IsPathInList(mod.url, excludePaths)
                                     )
                                 {
-                                    if (mod.type[0] == '@')
+                                    switch (cmd)
                                     {
-                                        print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
-                                        patchCount++;
-                                        url.config = ModifyNode(url.config, mod.config);
-                                    }
-                                    else if (mod.type[0] == '$')
-                                    {
-                                        ConfigNode clone = ModifyNode(url.config, mod.config);
-                                        if (url.config.name != mod.name)
-                                        {
-                                            print("[ModuleManager] Copying Node " + url.config.name + " into " + clone.name);
-                                            url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                        }
-                                        else
-                                        {
-                                            errorCount++;
-                                            print("[ModuleManager] Error while processing " + mod.config.name + " the copy needs to have a different name than the parent (use @name = xxx)");
-                                        }
-                                    }
-                                    else if (mod.type[0] == '!')
-                                    {
-                                        print("[ModuleManager] Deleting Node " + url.config.name);
-                                        url.parent.configs.Remove(url);
+                                        case Command.Edit:
+                                            print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
+                                            patchCount++;
+                                            url.config = ModifyNode(url.config, mod.config);
+                                            break;
+                                        case Command.Copy:
+                                            ConfigNode clone = ModifyNode(url.config, mod.config);
+                                            if (url.config.name != mod.name)
+                                            {
+                                                print("[ModuleManager] Copying Node " + url.config.name + " into " + clone.name);
+                                                url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
+                                            }
+                                            else
+                                            {
+                                                errorCount++;
+                                                print("[ModuleManager] Error while processing " + mod.config.name + " the copy needs to have a different name than the parent (use @name = xxx)");
+                                            }
+                                            break;
+                                        case Command.Delete:
+                                            print("[ModuleManager] Deleting Node " + url.config.name);
+                                            url.parent.configs.Remove(url);
+                                            break;
+                                        case Command.Replace:
+                                            // TODO: do something sensible here.
+                                            break;
                                     }
                                 }
                             }
@@ -488,9 +489,10 @@ namespace ModuleManager
             {
                 vals += "\n   " + val.name + "= " + val.value;
                 
-                string valName = val.name;
+                string valName;
+                Command cmd = ParseCommand(val.name, out valName);
 
-                if (valName[0] != '@' && valName[0] != '!' && valName[0] != '%')
+                if(cmd == Command.Insert || cmd == Command.Copy)
                 {
                     int index = int.MaxValue;
                     if (valName.Contains(",") && int.TryParse(valName.Split(',')[1], out index))
@@ -526,61 +528,63 @@ namespace ModuleManager
                         valName = valName.Split(',')[0];
                     }
 
-                    if (val.name[0] == '@')
+                    switch (cmd)
                     {
-                        string value = val.value;
-                        char op = ' ';
-                        if (valName.EndsWith(" *")) // @key *= val
-                            op = '*';
-                        else if (valName.EndsWith(" +")) // @key += val
-                            op = '+';
-                        else if (valName.EndsWith(" -")) // @key -= val
-                            op = '-';
-                        else if (valName.EndsWith(" ^"))
-                            op = '^';
+                        case Command.Edit: 
+                            string value = val.value;
+                            char op = ' ';
+                            if (valName.EndsWith(" *")) // @key *= val
+                                op = '*';
+                            else if (valName.EndsWith(" +")) // @key += val
+                                op = '+';
+                            else if (valName.EndsWith(" -")) // @key -= val
+                                op = '-';
+                            else if (valName.EndsWith(" ^"))
+                                op = '^';
 
-                        if (op != ' ')
-                        {
-                            valName = valName.Split(' ')[0];
-
-                            string ovalue = original.GetValue(valName, index);
-                            if (ovalue != null)
+                            if (op != ' ')
                             {
-                                double s, os;
-                                if (op == '^')
+                                valName = valName.Split(' ')[0];
+
+                                string ovalue = original.GetValue(valName, index);
+                                if (ovalue != null)
                                 {
-                                    try
+                                    double s, os;
+                                    if (op == '^')
                                     {
-                                        string[] split = value.Split(value[0]);
-                                        value = Regex.Replace(ovalue, split[1], split[2]);
+                                        try
+                                        {
+                                            string[] split = value.Split(value[0]);
+                                            value = Regex.Replace(ovalue, split[1], split[2]);
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            print("[ModuleManager] Failed to do a regexp replacement: " + mod.name + " : original value=\"" + ovalue + "\" regexp=\"" + value + "\" \nNote - to use regexp, the first char is used to subdivide the string (much like sed)\n" + ex.ToString());
+                                        }
                                     }
-                                    catch (Exception ex)
+                                    else if (double.TryParse(value, out s) && double.TryParse(ovalue, out os))
                                     {
-                                        print("[ModuleManager] Failed to do a regexp replacement: " + mod.name + " : original value=\"" + ovalue + "\" regexp=\"" + value + "\" \nNote - to use regexp, the first char is used to subdivide the string (much like sed)\n" + ex.ToString());
+                                        if (op == '*')
+                                            value = (s * os).ToString();
+                                        else if (op == '+')
+                                            value = (s + os).ToString();
+                                        else if (op == '-')
+                                            value = (s - os).ToString();
                                     }
+                                    vals += ": " + ovalue + " -> " + value;
                                 }
-                                else if (double.TryParse(value, out s) && double.TryParse(ovalue, out os))
-                                {
-                                    if (op == '*')
-                                        value = (s * os).ToString();
-                                    else if (op == '+')
-                                        value = (s + os).ToString();
-                                    else if (op == '-')
-                                        value = (s - os).ToString();
-                                }
-                                vals += ": " + ovalue + " -> " + value;
+
                             }
 
-                        }
-
-                        newNode.SetValue(valName, value, index);
-                    }
-                    else if (val.name[0] == '!')
-                        newNode.RemoveValues(valName);
-                    else if (val.name[0] == '%')
-                    {
-                        newNode.RemoveValues(valName);
-                        newNode.AddValue(valName, val.value);
+                            newNode.SetValue(valName, value, index);
+                            break;
+                        case Command.Delete:
+                            newNode.RemoveValues(valName);
+                            break;
+                        case Command.Replace:
+                            newNode.RemoveValues(valName);
+                            newNode.AddValue(valName, val.value);
+                            break;
                     }
                 }
 
@@ -598,16 +602,17 @@ namespace ModuleManager
                     continue;
                 }
 
-                char cmd = subMod.name[0];
-                string name = subMod.name;
+                string subName = subMod.name;
+                string tmp;
+                Command command = ParseCommand(subName, out tmp);
 
-                if (cmd != '@' && cmd != '!' && cmd != '%' && cmd != '$') 
+                if (command == Command.Insert) 
                 {
                     int index = int.MaxValue;
-                    if (name.Contains(",") && int.TryParse(name.Split(',')[1], out index))
+                    if (subName.Contains(",") && int.TryParse(subName.Split(',')[1], out index))
                     {
                         // In this case insert the value at position index (with the same node names)
-                        subMod.name = name = name.Split(',')[0];
+                        subMod.name = subName = subName.Split(',')[0];
 
                         InsertNode(newNode, subMod, index);
                     }
@@ -632,37 +637,37 @@ namespace ModuleManager
                     // NODE,n will match the nth node (NODE is the same as NODE,0)
                     // NODE,* will match ALL nodes
                     // NODE:HAS[condition] will match ALL nodes with condition
-                    if (name.Contains(":HAS["))
+                    if (subName.Contains(":HAS["))
                     {
-                        int start = name.IndexOf(":HAS[");
-                        cond = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
-                        name = name.Substring(0, start);
+                        int start = subName.IndexOf(":HAS[");
+                        cond = subName.Substring(start + 5, subName.LastIndexOf(']') - start - 5);
+                        subName = subName.Substring(0, start);
                     }
-                    else if (name.Contains(","))
+                    else if (subName.Contains(","))
                     {
-                        tag = name.Split(',')[1];
-                        name = name.Split(',')[0];
+                        tag = subName.Split(',')[1];
+                        subName = subName.Split(',')[0];
                         int.TryParse(tag, out index);
                     }
 
-                    if (name.Contains("["))
+                    if (subName.Contains("["))
                     {
                         // format @NODETYPE[Name] {...} 
                         // or @NODETYPE[Name, index] {...} 
-                        nodeType = name.Substring(1).Split('[')[0];
-                        nodeName = name.Split('[')[1].Replace("]", "");
+                        nodeType = subName.Substring(1).Split('[')[0];
+                        nodeName = subName.Split('[')[1].Replace("]", "");
                     }
                     else
                     {
                         // format @NODETYPE {...} or ! instead of @
-                        nodeType = name.Substring(1);
+                        nodeType = subName.Substring(1);
                         nodeName = null;
                     }
 
 
                     if (tag == "*" || cond.Length > 0)
                     { // get ALL nodes
-                        if (cmd == '%')
+                        if (command == Command.Replace)
                         {
                             msg += "  cannot wildcard a % node: " + subMod.name + "\n";
                         }
@@ -682,7 +687,7 @@ namespace ModuleManager
                         if (n != null) subNodes.Add(n);
                     }
 
-                    if (cmd == '@' || cmd == '!' || cmd == '$')
+                    if (command != Command.Replace)
                     { // find each original subnode to modify, modify it and add the modified.
 
                         if (subNodes.Count == 0)   // no nodes to modify!
@@ -692,18 +697,18 @@ namespace ModuleManager
                         {
                             msg += "  Applying subnode " + subMod.name + "\n";
                             ConfigNode newSubNode;
-                            switch(cmd) {
-                                case '@':
-                                    // @ edits in place
+                            switch(command) {
+                                case Command.Edit:
+                                    // Edit in place
                                     newSubNode = ModifyNode(subNode, subMod);
                                     subNode.ClearData();
                                     newSubNode.CopyTo(subNode);
                                     break;
-                                case '!':
+                                case Command.Delete:
                                     // Delete the node
                                     newNode.nodes.Remove(subNode);
                                     break;
-                                case '$':
+                                case Command.Copy:
                                     // Copy the node
                                     newSubNode = ModifyNode(subNode, subMod);
                                     newNode.nodes.Add(newSubNode);
@@ -711,7 +716,7 @@ namespace ModuleManager
                             }
                         }
                     }
-                    else // cmd == '%'
+                    else // command == Command.Replace
                     {
                         // if the original exists modify it
                         if (subNodes.Count > 0)
@@ -751,6 +756,51 @@ namespace ModuleManager
             }
             return newNode;
         }
+        #endregion
+
+        #region Command Parsing
+
+        private enum Command
+        {
+            Insert,
+            Delete,
+            Edit,
+            Replace,
+            Copy
+        }
+
+        private static Command ParseCommand(string name, out string valueName)
+        {
+            if (name.Length == 0)
+            {
+                valueName = string.Empty;
+                return Command.Insert;
+            }
+            Command ret;
+            switch (name[0])
+            {
+                case '@':
+                    ret = Command.Edit;
+                    break;
+                case '%':
+                    ret = Command.Replace;
+                    break;
+                case '-':
+                case '!':
+                    ret = Command.Delete;
+                    break;
+                case '+':
+                case '$':
+                    ret = Command.Copy;
+                    break;
+                default:
+                    valueName = name;
+                    return Command.Insert;
+            }
+            valueName = name.Substring(1);
+            return ret;
+        }
+
         #endregion
 
         #region Sanity checking & Utility functions
