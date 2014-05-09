@@ -492,7 +492,7 @@ namespace ModuleManager
                 string valName;
                 Command cmd = ParseCommand(val.name, out valName);
 
-                if(cmd == Command.Insert || cmd == Command.Copy)
+                if(cmd == Command.Insert)
                 {
                     int index = int.MaxValue;
                     if (valName.Contains(",") && int.TryParse(valName.Split(',')[1], out index))
@@ -520,7 +520,6 @@ namespace ModuleManager
                 {  // Parsing: 
                     // Format is @key = value or @key *= value or @key += value or @key -= value 
                     // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value 
-                    valName = valName.Substring(1);
                     int index = 0;
                     if (valName.Contains(","))
                     {
@@ -530,7 +529,8 @@ namespace ModuleManager
 
                     switch (cmd)
                     {
-                        case Command.Edit: 
+                        case Command.Edit:
+                        case Command.Copy:
                             string value = val.value;
                             char op = ' ';
                             if (valName.EndsWith(" *")) // @key *= val
@@ -542,11 +542,11 @@ namespace ModuleManager
                             else if (valName.EndsWith(" ^"))
                                 op = '^';
 
+                            string ovalue = original.GetValue(valName, index);
                             if (op != ' ')
                             {
                                 valName = valName.Split(' ')[0];
 
-                                string ovalue = original.GetValue(valName, index);
                                 if (ovalue != null)
                                 {
                                     double s, os;
@@ -575,8 +575,11 @@ namespace ModuleManager
                                 }
 
                             }
+                            if (cmd == Command.Edit)
+                                newNode.SetValue(valName, value, index);
+                            else if(ovalue != null)
+                                newNode.AddValue(valName, value);
 
-                            newNode.SetValue(valName, value, index);
                             break;
                         case Command.Delete:
                             newNode.RemoveValues(valName);
