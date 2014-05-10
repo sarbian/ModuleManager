@@ -488,7 +488,8 @@ namespace ModuleManager
         public ConfigNode ModifyNode(ConfigNode original, ConfigNode mod)
         {
             ConfigNode newNode = DeepCopy(original);
-            
+
+            #region Values
             string vals = "[ModuleManager] modding values";
             foreach (ConfigNode.Value modVal in mod.values)
             {
@@ -586,7 +587,7 @@ namespace ModuleManager
                             // If there is an index, use it.
                             ConfigNode.Value v = FindValueIn(newNode, valName, index);
                             if (v != null)
-                                newNode.values.Remove(modVal);
+                                newNode.values.Remove(v);
                         }
                         else
                         {
@@ -597,7 +598,9 @@ namespace ModuleManager
                 }
             }
             //print(vals);
+            #endregion
 
+            #region Nodes
             foreach (ConfigNode subMod in mod.nodes)
             {
                 subMod.name = RemoveWS(subMod.name);
@@ -751,6 +754,8 @@ namespace ModuleManager
                     //print(msg);
                 }
             }
+            #endregion
+
             return newNode;
         }
 
@@ -1077,13 +1082,12 @@ namespace ModuleManager
         private static ConfigNode.Value FindValueIn(ConfigNode newNode, string valName, int index)
         {
             ConfigNode.Value v = null;
-            int upto = 0;
             for (int i = 0; i < newNode.values.Count; ++i)
                 if (WildcardMatch(newNode.values[i].name, valName))
                 {
                     v = newNode.values[i];
-                    if (upto++ == index)
-                        break;
+                    if (--index < 0)
+                        return v;
                 }
             return v;
         }
