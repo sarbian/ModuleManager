@@ -589,7 +589,20 @@ namespace ModuleManager
                             if (v != null)
                                 newNode.values.Remove(v);
                         }
-                        else
+                        else if (valName.Contains('*') || valName.Contains('?'))
+                        {
+                            // Delete all matching wildcard
+                            ConfigNode.Value last = null;
+                            while (true)
+                            {
+                                ConfigNode.Value v = FindValueIn(newNode, valName, index++);
+                                if (v == last)
+                                    break;
+                                last = v;
+                                newNode.values.Remove(v);
+                            }
+                        }
+                        else 
                         {
                             // Default is to delete ALL values that match. (backwards compatibility)
                             newNode.RemoveValues(valName);
