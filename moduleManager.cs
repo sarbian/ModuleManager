@@ -485,88 +485,81 @@ namespace ModuleManager
             ConfigNode newNode = DeepCopy(original);
             
             string vals = "[ModuleManager] modding values";
-            foreach (ConfigNode.Value val in mod.values)
+            foreach (ConfigNode.Value modVal in mod.values)
             {
-                vals += "\n   " + val.name + "= " + val.value;
+                vals += "\n   " + modVal.name + "= " + modVal.value;
                 
                 string valName;
-                Command cmd = ParseCommand(val.name, out valName);
+                Command cmd = ParseCommand(modVal.name, out valName);
 
-                int index;
+                if (cmd == Command.Replace)
+                {
+                    if(valName.Contains(','))
+                    {
+                        print("[ModuleManager] Cannot use index with replace (%) value: " + mod.name);
+                        continue;
+                    }
+                    if (valName.Contains('*') || valName.Contains('?'))
+                    {
+                        print("[ModuleManager] Cannot use wildcards with replace (%) value: " + mod.name);
+                        continue;
+                    }
+                    // Replace is pretty simplistic.
+                    newNode.RemoveValues(valName);
+                    newNode.AddValue(valName, modVal.value);
+                    continue;
+                }
 
+                int index, insertIndex;
 
                 // In this case insert the value at position index (with the same node names)
-                if (valName.Contains(",") && int.TryParse(valName.Split(',')[1], out index))
+                if (valName.Contains(",") && int.TryParse(valName.Split(',')[1], out index)) 
+                {
+                    insertIndex = index;
                     valName = valName.Split(',')[0];
+                }
                 else
-                    index = int.MaxValue;
+                {
+                    index = 0;
+                    insertIndex = int.MaxValue;
+                }
 
                 switch (cmd)
                 {
                     case Command.Insert:
-                        InsertValue(newNode, index, valName, val.value);
+                        InsertValue(newNode, insertIndex, valName, modVal.value);
                         break;
                     case Command.Edit:
                     case Command.Copy:
                         // Format is @key = value or @key *= value or @key += value or @key -= value 
                         // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value 
 
-                        string value = val.value;
-                        char op = ' ';
-                        if (valName.EndsWith(" *")) // @key *= val
-                            op = '*';
-                        else if (valName.EndsWith(" +")) // @key += val
-                            op = '+';
-                        else if (valName.EndsWith(" -")) // @key -= val
-                            op = '-';
-                        else if (valName.EndsWith(" ^"))
-                            op = '^';
+                        ConfigNode.Value origVal;
+                        string value = FindAndReplaceValue(mod, ref valName, modVal.value, newNode, index, out origVal);
 
-                        string ovalue = original.GetValue(valName, index);
-                        if (op != ' ')
+                        if (value != null)
                         {
-                            valName = valName.Split(' ')[0];
+                            if(origVal.value != value)
+                                vals += ": " + origVal.value + " -> " + value;
 
-                            if (ovalue != null)
-                            {
-                                double s, os;
-                                if (op == '^')
-                                {
-                                    try
-                                    {
-                                        string[] split = value.Split(value[0]);
-                                        value = Regex.Replace(ovalue, split[1], split[2]);
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        print("[ModuleManager] Failed to do a regexp replacement: " + mod.name + " : original value=\"" + ovalue + "\" regexp=\"" + value + "\" \nNote - to use regexp, the first char is used to subdivide the string (much like sed)\n" + ex.ToString());
-                                    }
-                                }
-                                else if (double.TryParse(value, out s) && double.TryParse(ovalue, out os))
-                                {
-                                    if (op == '*')
-                                        value = (s * os).ToString();
-                                    else if (op == '+')
-                                        value = (s + os).ToString();
-                                    else if (op == '-')
-                                        value = (s - os).ToString();
-                                }
-                                vals += ": " + ovalue + " -> " + value;
-                            }
-
+                            if (cmd != Command.Copy)
+                                origVal.value = value;
+                            else
+                                newNode.AddValue(valName, value);
                         }
-                        if (cmd == Command.Edit)
-                            newNode.SetValue(valName, value, index);
-                        else if(ovalue != null)
-                            newNode.AddValue(valName, value);
-
+                        
                         break;
                     case Command.Delete:
-                        newNode.RemoveValues(valName);
-                        break;
-                    case Command.Replace:
-                        newNode.RemoveValues(valName);
-                        newNode.AddValue(valName, val.value);
+                        // Default is to delete ALL values that match. (backwards compatibility)
+                        // If there is an index, use it.
+                        if (index != insertIndex)
+                        {
+                            ConfigNode.Value v = FindValueIn(newNode, valName, index);
+                            if (v != null)
+                                newNode.values.Remove(modVal);
+                        }
+                        else
+                            newNode.RemoveValues(valName);
                         break;
                 }
             }
@@ -651,18 +644,23 @@ namespace ModuleManager
                         }
                         else
                         {
-                            ConfigNode n;
-                            do
+                            ConfigNode n, last = null;
+                            while(true)
                             {
                                 n = FindConfigNodeIn(newNode, nodeType, nodeName, index++);
-                                if (n != null && CheckCondition(n, cond)) subNodes.Add(n);
-                            } while (n != null && index < newNode.nodes.Count);
+                                if (n == last || n == null)
+                                    break;
+                                if (CheckCondition(n, cond))
+                                    subNodes.Add(n);
+                                last = n;
+                            }
                         }
                     }
                     else
                     { // just get one node
                         ConfigNode n = FindConfigNodeIn(newNode, nodeType, nodeName, index);
-                        if (n != null) subNodes.Add(n);
+                        if (n != null)
+                            subNodes.Add(n);
                     }
 
                     if (command != Command.Replace)
@@ -707,23 +705,11 @@ namespace ModuleManager
                         else
                         { // if not add the mod node without the % in its name                            
                             msg += "  Adding subnode " + subMod.name + "\n";
-                            string newType;
-                            string newName;
-                            if (subMod.name.Contains("["))
-                            {
-                                newType = subMod.name.Substring(1).Split('[')[0];
-                                newName = subMod.name.Split('[')[1].Replace("]", "");
-                            }
-                            else
-                            {
-                                newType = subMod.name.Substring(1);
-                                newName = null;
-                            }
 
-                            ConfigNode copy = new ConfigNode(newType);
+                            ConfigNode copy = new ConfigNode(nodeType);
 
-                            if (newName != null)
-                                copy.AddValue("name", newName);
+                            if (nodeName != null)
+                                copy.AddValue("name", nodeName);
 
                             ConfigNode newSubNode = ModifyNode(copy, subMod);
                             newNode.nodes.Add(newSubNode);
@@ -733,6 +719,60 @@ namespace ModuleManager
                 }
             }
             return newNode;
+        }
+
+        private static string FindAndReplaceValue(ConfigNode mod, ref string valName, string value, ConfigNode newNode, int index, out ConfigNode.Value origVal)
+        {
+            char op = ' ';
+            if (valName.EndsWith(" *")) // @key *= val
+                op = '*';
+            else if (valName.EndsWith(" +")) // @key += val
+                op = '+';
+            else if (valName.EndsWith(" -")) // @key -= val
+                op = '-';
+            else if (valName.EndsWith(" ^"))
+                op = '^';
+
+            if(op != ' ')
+                valName = valName.Substring(0, valName.IndexOf(' '));
+
+            origVal = FindValueIn(newNode, valName, index);
+            if (origVal == null)
+                return null;
+            string ovalue = origVal.value;
+
+            if (op != ' ')
+            {
+                double s, os;
+                if (op == '^')
+                {
+                    try
+                    {
+                        string[] split = value.Split(value[0]);
+                        value = Regex.Replace(ovalue, split[1], split[2]);
+                    }
+                    catch (Exception ex)
+                    {
+                        print("[ModuleManager] Failed to do a regexp replacement: " + mod.name + " : original value=\"" + ovalue + "\" regexp=\"" + value + "\" \nNote - to use regexp, the first char is used to subdivide the string (much like sed)\n" + ex.ToString());
+                        return null;
+                    }
+                }
+                else if (double.TryParse(value, out s) && double.TryParse(ovalue, out os))
+                {
+                    if (op == '*')
+                        value = (s * os).ToString();
+                    else if (op == '+')
+                        value = (s + os).ToString();
+                    else if (op == '-')
+                        value = (s - os).ToString();
+                }
+                else
+                {
+                    print("[ModuleManager] Failed to do a maths replacement: " + mod.name + " : original value=\"" + ovalue + "\" operator=" + op + " mod value=\"" + value + "\"");
+                    return null;
+                }
+            }
+            return value;
         }
 
         #endregion
@@ -940,7 +980,6 @@ namespace ModuleManager
                     newNode.AddValue(name, oldValues[i]);
                 return;
             }
-
             newNode.AddValue(name, value);
         }
 
@@ -988,7 +1027,7 @@ namespace ModuleManager
                     if (nodes[i].HasValue("name") && WildcardMatch(nodes[i].GetValue("name"), nodeName))
                     {
                         last = nodes[i];
-                        if (index-- == 0)
+                        if (--index < 0)
                             return last;
                     }
                 }
@@ -999,11 +1038,25 @@ namespace ModuleManager
                 if (nodes[i].HasValue("name") && WildcardMatch(nodes[i].GetValue("name"), nodeName))
                 {
                     last = nodes[i];
-                    if (++index == 0)
+                    if (++index >= 0)
                         return last;
                 }
             }
             return last;
+        }
+
+        private static ConfigNode.Value FindValueIn(ConfigNode newNode, string valName, int index)
+        {
+            ConfigNode.Value v = null;
+            int upto = 0;
+            for (int i = 0; i < newNode.values.Count; ++i)
+                if (WildcardMatch(newNode.values[i].name, valName))
+                {
+                    v = newNode.values[i];
+                    if (upto++ == index)
+                        break;
+                }
+            return v;
         }
 
         private static bool CompareRecursive(ConfigNode expectNode, ConfigNode gotNode)
