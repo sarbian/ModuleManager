@@ -195,9 +195,11 @@ namespace ModuleManager
                     errors += errorFiles[file] + " error" + (errorFiles[file] > 1 ? "s" : "") + " in GameData/" + file + "\n";
 
 
-            status = "ModuleManager: " 
-                + needsUnsatisfiedCount + " unsatisfied need" + (needsUnsatisfiedCount != 1 ? "s" : "") 
-                + ", " + patchCount + " patch" + (patchCount != 1 ? "es" : "") + " applied";
+            status = "ModuleManager: "
+                + patchCount + " patch" + (patchCount != 1 ? "es" : "") + " applied"
+                + ", "
+                + needsUnsatisfiedCount + " hidden item" + (needsUnsatisfiedCount != 1 ? "s" : "");
+
             if(errorCount > 0)
                 status += ", found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
 
@@ -478,6 +480,9 @@ namespace ModuleManager
             }
         }
 
+        // Name is group 1, index is group 2, operator is group 3
+        private static Regex parseValue = new Regex(@"([\w\?\*]*)(?:,(-?[0-9]+))?(?:\s([+\-*/^]))?");
+
         // ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original, then returns the patched ConfigNode.
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
         public ConfigNode ModifyNode(ConfigNode original, ConfigNode mod)
@@ -492,42 +497,66 @@ namespace ModuleManager
                 string valName;
                 Command cmd = ParseCommand(modVal.name, out valName);
 
-                if (cmd == Command.Replace)
+                Match match = parseValue.Match(valName);
+                if (!match.Success)
                 {
-                    if(valName.Contains(','))
-                    {
-                        print("[ModuleManager] Cannot use index with replace (%) value: " + mod.name);
-                        continue;
-                    }
-                    if (valName.Contains('*') || valName.Contains('?'))
-                    {
-                        print("[ModuleManager] Cannot use wildcards with replace (%) value: " + mod.name);
-                        continue;
-                    }
-                    // Replace is pretty simplistic.
-                    newNode.RemoveValues(valName);
-                    newNode.AddValue(valName, modVal.value);
+                    print("[ModuleManager] Cannot parse value modifying command: " + valName);
                     continue;
                 }
 
-                int index, insertIndex;
+                // Get the bits and pieces from the regexp
+
+                valName = match.Groups[1].Value;
 
                 // In this case insert the value at position index (with the same node names)
-                if (valName.Contains(",") && int.TryParse(valName.Split(',')[1], out index)) 
+                int index = 0;
+                if (match.Groups[2].Success)
                 {
-                    insertIndex = index;
-                    valName = valName.Split(',')[0];
+                    // can have "node,n *" (for *= ect)
+                    if(!int.TryParse(match.Groups[2].Value, out index)) 
+                    {
+                        Debug.LogError("Unable to parse number as number. Very odd.");
+                        continue;
+                    }
                 }
-                else
+
+                char op = ' ';
+                if (match.Groups[3].Success)
                 {
-                    index = 0;
-                    insertIndex = int.MaxValue;
+                    op = match.Groups[3].Value[0];
                 }
 
                 switch (cmd)
                 {
                     case Command.Insert:
-                        InsertValue(newNode, insertIndex, valName, modVal.value);
+                        if (match.Groups[3].Success || valName.Contains('*') || valName.Contains('?'))
+                        {
+                            if (match.Groups[3].Success)
+                                print("[ModuleManager] Cannot use operators with insert value: " + mod.name);
+                            if (valName.Contains('*') || valName.Contains('?'))
+                                print("[ModuleManager] Cannot use wildcards (* or ?) with insert value: " + mod.name);
+                        }
+                        else
+                        {
+                            // Insert at the end by default
+                            InsertValue(newNode, match.Groups[2].Success ? index : int.MaxValue, valName, modVal.value);
+                        }
+                        break;
+                    case Command.Replace:
+                        if (match.Groups[2].Success || match.Groups[3].Success || valName.Contains('*') || valName.Contains('?'))
+                        {
+                            if (match.Groups[2].Success)
+                                print("[ModuleManager] Cannot use index with replace (%) value: " + mod.name);
+                            if (match.Groups[3].Success)
+                                print("[ModuleManager] Cannot use operators with replace (%) value: " + mod.name);
+                            if (valName.Contains('*') || valName.Contains('?'))
+                                print("[ModuleManager] Cannot use wildcards (* or ?) with replace (%) value: " + mod.name);
+                        }
+                        else
+                        {
+                            newNode.RemoveValues(valName);
+                            newNode.AddValue(valName, modVal.value);
+                        }
                         break;
                     case Command.Edit:
                     case Command.Copy:
@@ -535,7 +564,7 @@ namespace ModuleManager
                         // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value 
 
                         ConfigNode.Value origVal;
-                        string value = FindAndReplaceValue(mod, ref valName, modVal.value, newNode, index, out origVal);
+                        string value = FindAndReplaceValue(mod, ref valName, modVal.value, newNode, op, index, out origVal);
 
                         if (value != null)
                         {
@@ -550,16 +579,20 @@ namespace ModuleManager
                         
                         break;
                     case Command.Delete:
-                        // Default is to delete ALL values that match. (backwards compatibility)
-                        // If there is an index, use it.
-                        if (index != insertIndex)
+                        if (match.Groups[3].Success)
+                            print("[ModuleManager] Cannot use operators with delete (- or !) value: " + mod.name);
+                        else if (match.Groups[2].Success)
                         {
+                            // If there is an index, use it.
                             ConfigNode.Value v = FindValueIn(newNode, valName, index);
                             if (v != null)
                                 newNode.values.Remove(modVal);
                         }
                         else
+                        {
+                            // Default is to delete ALL values that match. (backwards compatibility)
                             newNode.RemoveValues(valName);
+                        }
                         break;
                 }
             }
@@ -721,21 +754,8 @@ namespace ModuleManager
             return newNode;
         }
 
-        private static string FindAndReplaceValue(ConfigNode mod, ref string valName, string value, ConfigNode newNode, int index, out ConfigNode.Value origVal)
+        private static string FindAndReplaceValue(ConfigNode mod, ref string valName, string value, ConfigNode newNode, char op, int index, out ConfigNode.Value origVal)
         {
-            char op = ' ';
-            if (valName.EndsWith(" *")) // @key *= val
-                op = '*';
-            else if (valName.EndsWith(" +")) // @key += val
-                op = '+';
-            else if (valName.EndsWith(" -")) // @key -= val
-                op = '-';
-            else if (valName.EndsWith(" ^"))
-                op = '^';
-
-            if(op != ' ')
-                valName = valName.Substring(0, valName.IndexOf(' '));
-
             origVal = FindValueIn(newNode, valName, index);
             if (origVal == null)
                 return null;
@@ -759,12 +779,21 @@ namespace ModuleManager
                 }
                 else if (double.TryParse(value, out s) && double.TryParse(ovalue, out os))
                 {
-                    if (op == '*')
-                        value = (s * os).ToString();
-                    else if (op == '+')
-                        value = (s + os).ToString();
-                    else if (op == '-')
-                        value = (s - os).ToString();
+                    switch (op)
+                    {
+                        case '*':
+                            value = (s * os).ToString();
+                            break;
+                        case '/':
+                            value = (s / os).ToString();
+                            break;
+                        case '+':
+                            value = (s + os).ToString();
+                            break;
+                        case '-':
+                            value = (s - os).ToString();
+                            break;
+                    }
                 }
                 else
                 {
