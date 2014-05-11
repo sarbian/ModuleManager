@@ -109,3 +109,5 @@ UpgradeLog*.XML
 
 ModuleManager.csproj
 ModuleManager.csproj.user
+
+ModuleManager.*.dll
