@@ -530,12 +530,9 @@ namespace ModuleManager
                 switch (cmd)
                 {
                     case Command.Insert:
-                        if (match.Groups[3].Success || valName.Contains('*') || valName.Contains('?'))
+                        if (match.Groups[3].Success)
                         {
-                            if (match.Groups[3].Success)
-                                print("[ModuleManager] Cannot use operators with insert value: " + mod.name);
-                            if (valName.Contains('*') || valName.Contains('?'))
-                                print("[ModuleManager] Cannot use wildcards (* or ?) with insert value: " + mod.name);
+                            print("[ModuleManager] Cannot use operators with insert value: " + mod.name);
                         }
                         else
                         {
