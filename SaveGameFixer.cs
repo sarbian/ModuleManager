@@ -126,12 +126,11 @@ namespace ModuleManager
                 PushLogContext("Craft file: " + vabCraft.Substring(savesRoot.Length, vabCraft.Length-savesRoot.Length));
                 ConfigNode craft = ConfigNode.Load(vabCraft);
 
-                bool modified = false;
+                bool needsBackup = false, needsSave = false;
                 foreach (ConfigNode part in craft.GetNodes("PART"))
-                    modified |= UpdatePart(part);
+                    UpdatePart(part, ref needsBackup, ref needsSave);
 
-                if (modified)
-                    BackupAndReplace(vabCraft, craft);
+                BackupAndReplace(vabCraft, craft, needsBackup, needsSave);
             }
             finally
             {
@@ -147,14 +146,13 @@ namespace ModuleManager
             {
                 PushLogContext("Save file: " + sfsFile.Substring(savesRoot.Length, sfsFile.Length-savesRoot.Length));
 
-                bool modified = false;
+                bool needsBackup = false, needsSave = false;
                 foreach (ConfigNode game in sfs.GetNodes("GAME"))
                     foreach (ConfigNode flightState in game.GetNodes("FLIGHTSTATE"))
                         foreach (ConfigNode vessel in flightState.GetNodes("VESSEL"))
-                            modified |= UpdateVessel(vessel);
+                            UpdateVessel(vessel, ref needsBackup, ref needsSave);
 
-                if (modified)
-                    BackupAndReplace(sfsFile, sfs);
+                BackupAndReplace(sfsFile, sfs, needsBackup, needsSave);
             }
             finally
             {
@@ -163,16 +161,14 @@ namespace ModuleManager
                 
         }
 
-        private bool UpdateVessel(ConfigNode vessel)
+        private void UpdateVessel(ConfigNode vessel, ref bool needsBackup, ref bool needsSave)
         {
             try
             {
                 PushLogContext("Vessel: " + vessel.GetValue("name"));
 
-                bool modified = false;
                 foreach (ConfigNode part in vessel.GetNodes("PART"))
-                    modified |= UpdatePart(part);
-                return modified;
+                    UpdatePart(part, ref needsBackup, ref needsSave);
             }
             finally
             {
@@ -181,7 +177,7 @@ namespace ModuleManager
         }
         #endregion
 
-        private bool UpdatePart(ConfigNode part)
+        private void UpdatePart(ConfigNode part, ref bool needsBackup, ref bool needsSave)
         {
             // The modules saved with the part
             ConfigNode[] savedModules = part.GetNodes("MODULE");
@@ -219,13 +215,13 @@ namespace ModuleManager
                 if (available == null)
                 {
                     WriteLogMessage("Backup created - part \"" + partName + "\" has been deleted and ship will be destroyed.");
-                    return false;
+                    needsBackup = true;
                 }
                 
                 PartModuleList prefabModules = available.partPrefab.Modules;
 
                 if (prefabModules == null)
-                    return false;
+                    return;
 
                 // Do we need to do anything?
                 if (prefabModules.Count == savedModules.Length && backupModules.Length == 0)
@@ -233,7 +229,7 @@ namespace ModuleManager
                     for (int i = 0; i < savedModules.Length; ++i)
                         if (savedModules[i] != null && savedModules[i].GetValue("name") != prefabModules[i].moduleName)
                             goto needUpdate;
-                    return false;
+                    return;
                 needUpdate: ;
                 }
 
@@ -250,16 +246,16 @@ namespace ModuleManager
                     //+ "\nConfig: \n" + part
                     );
 #endif
-                bool hasChanged = false;
 
                 // Discard any backups that are already in saved modules
                 for (int i = 0; i < backupModules.Length; ++i)
                     for (int j = 0; j < savedModules.Length; ++j)
                         if (savedModules[j] != null && backupModules[i].GetValue("name") == savedModules[j].GetValue("name"))
                         {
+                            WriteDebugMessage("Discarding module backup \"" + backupModules[i].GetValue("name") + "\" as exists in the save already.");
                             backupModules[i] = null;
                             backupRemain--;
-                            hasChanged = true;
+                            needsSave = true;
                         }
 
 
@@ -282,8 +278,8 @@ namespace ModuleManager
                             // The module is saved normally
                             if (i != j)
                             {
-                                WriteLogMessage("Module \"" + savedModules[j].GetValue("name") + "\" has had order changed. " + j + "=>" + i);
-                                hasChanged = true;
+                                WriteDebugMessage("Module \"" + savedModules[j].GetValue("name") + "\" has had order changed. " + j + "=>" + i);
+                                needsSave = true;
                             }
 
                             part.AddNode(savedModules[j]);
@@ -296,7 +292,8 @@ namespace ModuleManager
                         {
                             // The module will be restored from backup
                             WriteLogMessage("Module \"" + backupModules[j].GetValue("name") + "\" has been restored from backup. ");
-                            hasChanged = true;
+                            needsBackup = true;
+                            needsSave = true;
 
                             backupModules[j].AddValue("MM_RESTORED", "true");
                             part.AddNode(backupModules[j]);
@@ -306,7 +303,8 @@ namespace ModuleManager
                         }
                     // Can't find it anywhere, reinitialize
                     WriteLogMessage("Module \"" + prefabModules[i].moduleName + "\" is not present in the save and will be reinitialized. ");
-                    hasChanged = true;
+                    needsBackup = true;
+                    needsSave = true;
 
                     ConfigNode newNode = new ConfigNode("MODULE");
                     newNode.AddValue("name", prefabModules[i].moduleName);
@@ -350,13 +348,14 @@ namespace ModuleManager
                                 moduleBackupConfig.AddNode(savedModules[i]);
 
                                 WriteLogMessage("Module \"" + savedModules[i].GetValue("name") + "\" is present in the part but is no longer available. Saved config to backup, will be restored if you reinstall the mod.");
-                                hasChanged = true;
+                                needsSave = true;
+                                needsBackup = true;
                             }
                     }
                 }
 
-                if (!hasChanged)
-                    return false;
+                if (!needsSave)
+                    return;
 
                 // Stick the resources back at the end just to be consistent
                 ConfigNode[] resources = part.GetNodes("RESOURCE");
@@ -370,7 +369,6 @@ namespace ModuleManager
             {
                 PopLogContext();
             }
-            return true;
         }
 
         #region Backups
@@ -392,8 +390,19 @@ namespace ModuleManager
                 logCtxCur = logContext.Count;
         }
 
-        private void WriteLogMessage(string logMessage)
+        private void WriteDebugMessage(string logMessage)
         {
+            WriteLogMessage(logMessage, true);
+        }
+
+        private void WriteLogMessage(string logMessage, bool debugMsg = false)
+        {
+#if DEBUG
+            string dbg = debugMsg ? "[dbg]" : "[log]";
+
+#else
+            string dbg = string.Empty;
+#endif
             if (backupDir == null)
             {
                 backupDir = Path.Combine(KSPUtil.ApplicationRootPath, string.Format("saves_backup{1}{0:yyyyMMdd-HHmmss}", DateTime.Now, Path.DirectorySeparatorChar));
@@ -407,65 +416,34 @@ namespace ModuleManager
             string indent;
             for (; logCtxCur < logContext.Count; logCtxCur++)
             {
-                indent = new String(' ', 4 * logCtxCur);
+                indent = new String(' ', 4 * logCtxCur + dbg.Length);
                 sb.Append(indent).AppendLine(logContext[logCtxCur]);
                 Debug.Log("[SaveGameFixer]" + indent + logContext[logCtxCur]);
             }
             indent = new String(' ', 4 * logCtxCur);
-            sb.Append(indent).AppendLine(logMessage);
-            Debug.Log("[SaveGameFixer]" + indent + logMessage);
+            sb.Append(dbg).Append(indent).AppendLine(logMessage);
+            Debug.Log("[SaveGameFixer]" + dbg + indent + logMessage);
 
             File.AppendAllText(logFile, sb.ToString());
         }
 
-        private static void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
+        private void BackupAndReplace(string file, ConfigNode config, bool needsBackup, bool needsSave)
         {
-            // Get the subdirectories for the specified directory.
-            DirectoryInfo dir = new DirectoryInfo(sourceDirName);
-            DirectoryInfo[] dirs = dir.GetDirectories();
-
-            if (!dir.Exists)
+#if !DEBUG
+            if (needsBackup)
+#endif
             {
-                throw new DirectoryNotFoundException(
-                    "Source directory does not exist or could not be found: "
-                    + sourceDirName);
+
+                string relPath = file.Substring(savesRoot.Length, file.Length - savesRoot.Length);
+
+                string backupTo = Path.Combine(backupDir, relPath);
+                Directory.CreateDirectory(Path.GetDirectoryName(backupTo));
+
+                File.Copy(file, backupTo);
             }
 
-            // If the destination directory doesn't exist, create it. 
-            if (!Directory.Exists(destDirName))
-            {
-                Directory.CreateDirectory(destDirName);
-            }
-
-            // Get the files in the directory and copy them to the new location.
-            FileInfo[] files = dir.GetFiles();
-            foreach (FileInfo file in files)
-            {
-                string temppath = Path.Combine(destDirName, file.Name);
-                file.CopyTo(temppath, false);
-            }
-
-            // If copying subdirectories, copy them and their contents to new location. 
-            if (copySubDirs)
-            {
-                foreach (DirectoryInfo subdir in dirs)
-                {
-                    string temppath = Path.Combine(destDirName, subdir.Name);
-                    DirectoryCopy(subdir.FullName, temppath, copySubDirs);
-                }
-            }
-        }
-
-        private void BackupAndReplace(string file, ConfigNode config)
-        {
-            string relPath = file.Substring(savesRoot.Length, file.Length - savesRoot.Length);
-
-            string backupTo = Path.Combine(backupDir, relPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(backupTo));
-
-            File.Copy(file, backupTo);
-
-            config.Save(file);
+            if(needsSave)
+                config.Save(file);
         }
 
 
