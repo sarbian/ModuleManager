@@ -403,12 +403,7 @@ namespace ModuleManager
 #else
             string dbg = string.Empty;
 #endif
-            if (backupDir == null)
-            {
-                backupDir = Path.Combine(KSPUtil.ApplicationRootPath, string.Format("saves_backup{1}{0:yyyyMMdd-HHmmss}", DateTime.Now, Path.DirectorySeparatorChar));
-                Directory.CreateDirectory(backupDir);
-                logFile = Path.Combine(backupDir, "backup.log");
-            }
+            CreateBackupDir();
 
             StringBuilder sb = new StringBuilder();
 
@@ -427,12 +422,23 @@ namespace ModuleManager
             File.AppendAllText(logFile, sb.ToString());
         }
 
+        private void CreateBackupDir()
+        {
+            if (backupDir == null)
+            {
+                backupDir = Path.Combine(KSPUtil.ApplicationRootPath, string.Format("saves_backup{1}{0:yyyyMMdd-HHmmss}", DateTime.Now, Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(backupDir);
+                logFile = Path.Combine(backupDir, "backup.log");
+            }
+        }
+
         private void BackupAndReplace(string file, ConfigNode config, bool needsBackup, bool needsSave)
         {
 #if !DEBUG
             if (needsBackup)
 #endif
             {
+                CreateBackupDir();
 
                 string relPath = file.Substring(savesRoot.Length, file.Length - savesRoot.Length);
 
