@@ -45,12 +45,20 @@ namespace ModuleManager
             return true;
         }
 
+        private static bool hasRun = false;
+
         internal void Awake()
         {
             try
             {
                 if (!RunTypeElection(typeof(SaveGameFixer), "ModuleManager"))
                     return;
+
+                // Guard against multiple copies of the same DLL
+                if (hasRun)
+                    return;
+                hasRun = true;
+
                 // So at this point we know we have won the election, and will be using the class versions as in this assembly.
 
                 UpdateSaves();
@@ -68,8 +76,28 @@ namespace ModuleManager
         }
         #endregion
 
-        #region Finding the part
+        #region State
+
+        // Files and directories
         private string savesRoot;
+        private string backupDir = null;
+        private string logFile = null;
+
+        // Bits and pieces for logging
+        private StringBuilder backupLog = new StringBuilder();
+        private List<string> logContext = new List<string>();
+        private int logCtxCur = 0;
+
+        // Flags
+        private bool logOnly = true;
+        private bool needsBackup = false;
+        private bool needsSave = false;
+        private bool partMissing = false;
+
+        #endregion
+
+        #region Finding the part
+
 
         private void UpdateSaves()
         {
@@ -77,6 +105,13 @@ namespace ModuleManager
 
             foreach (string saveDir in Directory.GetDirectories(savesRoot)) 
                 UpdateSaveDir(saveDir);
+
+            // Write the backup log if needed
+            if (!logOnly && backupLog.Length > 0)
+            {
+                CreateBackupDir();
+                File.AppendAllText(logFile, backupLog.ToString());
+            }
         }
 
 
@@ -85,7 +120,7 @@ namespace ModuleManager
             try
             {
                 PushLogContext("Save Game: " + saveDir.Substring(savesRoot.Length, saveDir.Length-savesRoot.Length));
-
+                
                 char ds = Path.DirectorySeparatorChar;
 
                 // .craft files
@@ -126,11 +161,21 @@ namespace ModuleManager
                 PushLogContext("Craft file: " + vabCraft.Substring(savesRoot.Length, vabCraft.Length-savesRoot.Length));
                 ConfigNode craft = ConfigNode.Load(vabCraft);
 
-                bool needsBackup = false, needsSave = false;
-                foreach (ConfigNode part in craft.GetNodes("PART"))
-                    UpdatePart(part, ref needsBackup, ref needsSave);
+                needsBackup = false; needsSave = false; partMissing = false;
 
-                BackupAndReplace(vabCraft, craft, needsBackup, needsSave);
+                foreach (ConfigNode part in craft.GetNodes("PART"))
+                    UpdatePart(part);
+
+                // If a part is missing don't do anything special. The game just locks the craft, it doesn't destory them.
+                if (partMissing)
+                {
+                    WriteDebugMessage("Craft has mising parts in the VAB, the craft file will be locked.");
+                    WriteDebugMessage("Delete the craft to get rid of this message.");
+                }
+
+                BackupAndReplace(vabCraft, craft);
+
+
             }
             finally
             {
@@ -141,18 +186,28 @@ namespace ModuleManager
         private void UpdateSFS(string sfsFile)
         {
             ConfigNode sfs = ConfigNode.Load(sfsFile);
-
             try
             {
                 PushLogContext("Save file: " + sfsFile.Substring(savesRoot.Length, sfsFile.Length-savesRoot.Length));
 
-                bool needsBackup = false, needsSave = false;
+                needsBackup = false; needsSave = false; partMissing = false;
+
                 foreach (ConfigNode game in sfs.GetNodes("GAME"))
                     foreach (ConfigNode flightState in game.GetNodes("FLIGHTSTATE"))
                         foreach (ConfigNode vessel in flightState.GetNodes("VESSEL"))
-                            UpdateVessel(vessel, ref needsBackup, ref needsSave);
+                            UpdateVessel(vessel);
 
-                BackupAndReplace(sfsFile, sfs, needsBackup, needsSave);
+                // Backup if missing parts.
+                // TODO: handle missing parts more gracefully, like missing modules are handled.
+                if (partMissing) 
+                {
+                    WriteLogMessage("Save game has vessels with missing parts. These vessels will be deleted on loading the save.");
+                    WriteLogMessage("The persistence file has been backed up. Note that this will keep occuring every load until");
+                    WriteLogMessage("either the save game is loaded and the ships are destroyed, or the missing parts are not missing.");
+                    needsBackup = true;
+                }
+
+                BackupAndReplace(sfsFile, sfs);
             }
             finally
             {
@@ -161,14 +216,14 @@ namespace ModuleManager
                 
         }
 
-        private void UpdateVessel(ConfigNode vessel, ref bool needsBackup, ref bool needsSave)
+        private void UpdateVessel(ConfigNode vessel)
         {
             try
             {
                 PushLogContext("Vessel: " + vessel.GetValue("name"));
 
                 foreach (ConfigNode part in vessel.GetNodes("PART"))
-                    UpdatePart(part, ref needsBackup, ref needsSave);
+                    UpdatePart(part);
             }
             finally
             {
@@ -177,7 +232,7 @@ namespace ModuleManager
         }
         #endregion
 
-        private void UpdatePart(ConfigNode part, ref bool needsBackup, ref bool needsSave)
+        private void UpdatePart(ConfigNode part)
         {
             // The modules saved with the part
             ConfigNode[] savedModules = part.GetNodes("MODULE");
@@ -214,8 +269,9 @@ namespace ModuleManager
 
                 if (available == null)
                 {
-                    WriteLogMessage("Backup created - part \"" + partName + "\" has been deleted and ship will be destroyed.");
-                    needsBackup = true;
+                    WriteLogMessage("Part \"" + partName + "\" has been deleted.");
+                    partMissing = true;
+                    return;
                 }
                 
                 PartModuleList prefabModules = available.partPrefab.Modules;
@@ -232,20 +288,7 @@ namespace ModuleManager
                     return;
                 needUpdate: ;
                 }
-
                 // Yes we do!
-#if false
-                string prefabNames = "Prefab modules: ";
-                for (int i = 0; i < prefabModules.Count; ++i)
-                    prefabNames += (prefabModules[i] as PartModule).moduleName + ",";
-                prefabNames = prefabNames.Substring(0, prefabNames.Length-1);
-
-                Debug.Log("[SaveGameFixer] Fixing Part: " + partName + " in file: " + source + "\n" + prefabNames
-                    + "\nSaved modules: " + string.Join(",", (from s in savedModules select (s==null?"***":s.GetValue("name"))).ToArray())
-                    + "\nBackup modules: " + string.Join(",", (from s in backupModules select (s==null?"***":s.GetValue("name"))).ToArray())
-                    //+ "\nConfig: \n" + part
-                    );
-#endif
 
                 // Discard any backups that are already in saved modules
                 for (int i = 0; i < backupModules.Length; ++i)
@@ -373,11 +416,6 @@ namespace ModuleManager
 
         #region Backups
 
-        private List<string> logContext = new List<string>();
-        private int logCtxCur = 0;
-        private string backupDir = null;
-        private string logFile = null;
-
         private void PushLogContext(string p)
         {
             logContext.Add(p);
@@ -397,29 +435,20 @@ namespace ModuleManager
 
         private void WriteLogMessage(string logMessage, bool debugMsg = false)
         {
-#if DEBUG
-            string dbg = debugMsg ? "[dbg]" : "[log]";
-
-#else
-            string dbg = string.Empty;
-#endif
-            CreateBackupDir();
-
-            StringBuilder sb = new StringBuilder();
-
             // Write any pending log headers
             string indent;
             for (; logCtxCur < logContext.Count; logCtxCur++)
             {
-                indent = new String(' ', 4 * logCtxCur + dbg.Length);
-                sb.Append(indent).AppendLine(logContext[logCtxCur]);
-                Debug.Log("[SaveGameFixer]" + indent + logContext[logCtxCur]);
+                indent = new String(' ', 4 * logCtxCur);
+                backupLog.Append(' ').Append(indent).AppendLine(logContext[logCtxCur]);
+                Debug.Log(indent + logContext[logCtxCur]);
             }
             indent = new String(' ', 4 * logCtxCur);
-            sb.Append(dbg).Append(indent).AppendLine(logMessage);
-            Debug.Log("[SaveGameFixer]" + dbg + indent + logMessage);
-
-            File.AppendAllText(logFile, sb.ToString());
+            backupLog.Append(debugMsg ? ' ' : '*').Append(indent).AppendLine(logMessage);
+            if (debugMsg)
+                Debug.Log(indent + logMessage);
+            else
+                Debug.LogWarning(indent + logMessage);
         }
 
         private void CreateBackupDir()
@@ -432,11 +461,10 @@ namespace ModuleManager
             }
         }
 
-        private void BackupAndReplace(string file, ConfigNode config, bool needsBackup, bool needsSave)
+        private void BackupAndReplace(string file, ConfigNode config)
         {
-#if !DEBUG
+
             if (needsBackup)
-#endif
             {
                 CreateBackupDir();
 
@@ -446,12 +474,13 @@ namespace ModuleManager
                 Directory.CreateDirectory(Path.GetDirectoryName(backupTo));
 
                 File.Copy(file, backupTo);
+
+                logOnly = false;
             }
 
             if(needsSave)
                 config.Save(file);
         }
-
 
         #endregion
     }
