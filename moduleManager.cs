@@ -75,10 +75,7 @@ namespace ModuleManager
             }
 
             if (loaded)
-            {
-                Destroy(gameObject);
                 return;
-            }
 
             patchCount = 0;
             errorCount = 0;
