@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using UnityEngine;
 
@@ -51,13 +52,17 @@ namespace ModuleManager
         {
             try
             {
-                if (!RunTypeElection(typeof(SaveGameFixer), "ModuleManager"))
-                    return;
-
                 // Guard against multiple copies of the same DLL
                 if (hasRun)
+                {
+                    Assembly currentAssembly = Assembly.GetExecutingAssembly();
+                    Debug.Log("[SaveGameFixer] Multiple copies of current version. Using the first copy. Version: " + currentAssembly.GetName().Version);
                     return;
+                }
                 hasRun = true;
+
+                if (!RunTypeElection(typeof(SaveGameFixer), "ModuleManager"))
+                    return;
 
                 // So at this point we know we have won the election, and will be using the class versions as in this assembly.
 

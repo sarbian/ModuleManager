@@ -31,8 +31,27 @@ namespace ModuleManager
         #endregion
 
         #region Top Level - Update
+        private static bool loadedInScene = false;
+
+        internal void Awake()
+        {
+            // Ensure that only one copy of the service is run per scene change.
+            if (loadedInScene)
+            {
+                Assembly currentAssembly = Assembly.GetExecutingAssembly();
+                log("[ModuleManager] Multiple copies of current version. Using the first copy. Version: " + currentAssembly.GetName().Version);
+                Destroy(gameObject);
+                return;
+            }
+            Update();
+            loadedInScene = true;
+        }
+
         public void Update()
         {
+            // Unset the loadedInScene flag. All the other copies will have this sorted out during Start, so safe to do here.
+            loadedInScene = false;
+
             #region Initialization
             /* 
              * It should be a code to reload when the Reload Database debug button is used.
@@ -56,7 +75,10 @@ namespace ModuleManager
             }
 
             if (loaded)
+            {
+                Destroy(gameObject);
                 return;
+            }
 
             patchCount = 0;
             errorCount = 0;
@@ -64,8 +86,9 @@ namespace ModuleManager
             errorFiles = new Dictionary<string, int>();
             #endregion
 
-
             #region Type election
+
+
             // Check for old version and MMSarbianExt
             var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 5, 0)) == -1);
             var oldAssemblies = oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
@@ -93,6 +116,7 @@ namespace ModuleManager
             {
                 loaded = true;
                 print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " lost the election");
+                Destroy(gameObject);
                 return;
             }
             else
@@ -104,6 +128,7 @@ namespace ModuleManager
                 if (candidates.Length > 0)
                     print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
             }
+
             #endregion
 
             #region Excluding directories
@@ -212,6 +237,7 @@ namespace ModuleManager
             RunTestCases();
 #endif
         }
+
         #endregion
 
         #region Needs checking
@@ -1149,7 +1175,7 @@ namespace ModuleManager
 
         public void OnGUI()
         {
-            if (HighLogic.LoadedScene != GameScenes.LOADING)
+            if (HighLogic.LoadedScene != GameScenes.LOADING || !loaded)
                 return;
 
             var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
