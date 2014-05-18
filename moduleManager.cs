@@ -162,25 +162,38 @@ namespace ModuleManager
             {
                 modlist += "  " + mod.Name + " v" + mod.Version.ToString() + "\n";
             }
-            modlist += "Non-DLL mods added:";
+            modlist += "Non-DLL mods added:\n";
             foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
             {
-                if (cfgmod.type[0] == '@' || (cfgmod.type[0] == '$'))
+                string name;
+                if (ParseCommand(cfgmod.type, out name) != Command.Insert && name.Contains(":FOR["))
                 {
-                    string name = RemoveWS(cfgmod.name);
-                    if (name.Contains(":FOR["))
-                    { // check for FOR[] blocks that don't match loaded DLLs and add them to the pass list
+                    name = RemoveWS(name);
+                    // check for FOR[] blocks that don't match loaded DLLs and add them to the pass list
 
-                        string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
-                        dependency = dependency.Substring(0, dependency.IndexOf(']'));
-                        if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper()))) == null)
-                        { // found one, now add it to the list.
-                            AssemblyName newMod = new AssemblyName(dependency);
-                            newMod.Name = dependency;
-                            mods.Add(newMod);
-                            modlist += "\n  " + dependency;
-                        }
+                    string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
+                    dependency = dependency.Substring(0, dependency.IndexOf(']'));
+                    if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper()))) == null)
+                    { // found one, now add it to the list.
+                        AssemblyName newMod = new AssemblyName(dependency);
+                        newMod.Name = dependency;
+                        mods.Add(newMod);
+                        modlist += "  " + dependency + "\n";
                     }
+                }
+            }
+            modlist += "Mods by directory (subdirs of GameData):\n";
+            string gameData = Path.Combine(Path.GetFullPath(KSPUtil.ApplicationRootPath), "GameData");
+            foreach (string subdir in Directory.GetDirectories(gameData))
+            {
+                string name = Path.GetFileName(subdir);
+                string upperName = RemoveWS(name.ToUpper());
+                if (mods.Find(a => RemoveWS(a.Name.ToUpper()) == upperName) == null)
+                {
+                    AssemblyName newMod = new AssemblyName(name);
+                    newMod.Name = name;
+                    mods.Add(newMod);
+                    modlist += "  " + name + "\n";
                 }
             }
             log(modlist);
