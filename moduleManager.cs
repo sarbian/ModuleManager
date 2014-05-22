@@ -1092,6 +1092,7 @@ namespace ModuleManager
                                                    string nodeName = null, int index = 0)
         {
             ConfigNode [] nodes = src.GetNodes(nodeType);
+            if (nodes.Length == 0) return null;
             if (nodeName == null)
             {
                 if(index >= 0)
