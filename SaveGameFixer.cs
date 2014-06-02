@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -29,7 +28,7 @@ namespace ModuleManager
                               select ass).ToArray();
             var winner = candidates.First();
 
-            if (targetCls.Assembly != winner.assembly)
+            if (!ReferenceEquals(targetCls.Assembly, winner.assembly))
                 return false;
 
             if (candidates.Length > 1)
@@ -46,7 +45,7 @@ namespace ModuleManager
             return true;
         }
 
-        private static bool hasRun = false;
+        private static bool hasRun;
 
         internal void Awake()
         {
@@ -75,7 +74,7 @@ namespace ModuleManager
             finally
             {
                 // Destroy ourself because there's no reason to still hang around
-                UnityEngine.Object.Destroy(gameObject);
+                Destroy(gameObject);
                 enabled = false;
             }
         }
@@ -84,20 +83,21 @@ namespace ModuleManager
         #region State
 
         // Files and directories
-        private string savesRoot;
-        private string backupDir = null;
-        private string logFile = null;
+        private readonly string gameDataRoot = Path.Combine(Path.GetFullPath(KSPUtil.ApplicationRootPath), "GameData" + Path.DirectorySeparatorChar);
+        private readonly string savesRoot = Path.Combine(Path.GetFullPath(KSPUtil.ApplicationRootPath), "saves" + Path.DirectorySeparatorChar);
+        private string backupDir;
+        private string logFile;
 
         // Bits and pieces for logging
-        private StringBuilder backupLog = new StringBuilder();
-        private List<string> logContext = new List<string>();
-        private int logCtxCur = 0;
+        private readonly StringBuilder backupLog = new StringBuilder();
+        private readonly List<string> logContext = new List<string>();
+        private int logCtxCur;
 
         // Flags
         private bool logOnly = true;
-        private bool needsBackup = false;
-        private bool needsSave = false;
-        private bool partMissing = false;
+        private bool needsBackup;
+        private bool needsSave;
+        private bool partMissing;
 
         #endregion
 
@@ -106,8 +106,6 @@ namespace ModuleManager
 
         private void UpdateSaves()
         {
-            savesRoot = Path.Combine(Path.GetFullPath(KSPUtil.ApplicationRootPath), "saves" + Path.DirectorySeparatorChar);
-
             foreach (string saveDir in Directory.GetDirectories(savesRoot)) 
                 UpdateSaveDir(saveDir);
 
@@ -134,8 +132,11 @@ namespace ModuleManager
                 UpdateCraftDir(saveDir + ds + "Subassemblies");
 
                 foreach (string sfsFile in Directory.GetFiles(saveDir))
-                    if (sfsFile.EndsWith(".sfs"))
-                        UpdateSFS(sfsFile);
+                {
+                    string filename = Path.GetFileName(sfsFile);
+                    if(filename == "persistent.sfs" || filename == "quicksave.sfs")
+                        UpdateSFS(sfsFile);                    
+                }
             }
             finally
             {
@@ -154,7 +155,7 @@ namespace ModuleManager
             {
                 return;
             }
-            foreach (string vabCraft in Directory.GetFiles(dir))
+            foreach (string vabCraft in files)
                 if (vabCraft.EndsWith(".craft"))
                     UpdateCraft(vabCraft);
         }
@@ -296,9 +297,10 @@ namespace ModuleManager
                 // Yes we do!
 
                 // Discard any backups that are already in saved modules
+                // ReSharper disable once ForCanBeConvertedToForeach
                 for (int i = 0; i < backupModules.Length; ++i)
                     for (int j = 0; j < savedModules.Length; ++j)
-                        if (savedModules[j] != null && backupModules[i].GetValue("name") == savedModules[j].GetValue("name"))
+                        if (savedModules[j] != null && backupModules[i] != null && backupModules[i].GetValue("name") == savedModules[j].GetValue("name"))
                         {
                             WriteDebugMessage("Discarding module backup \"" + backupModules[i].GetValue("name") + "\" as exists in the save already.");
                             backupModules[i] = null;
@@ -385,10 +387,12 @@ namespace ModuleManager
                             part.AddNode(moduleBackupConfig);
                         }
                         // copy the old backups
+                        // ReSharper disable once ForCanBeConvertedToForeach
                         for (int i = 0; i < backupModules.Length; ++i)
                             if (backupModules[i] != null)
                                 moduleBackupConfig.AddNode(backupModules[i]);
                         // backup anything in saved that's left over
+                        // ReSharper disable once ForCanBeConvertedToForeach
                         for (int i = 0; i < savedModules.Length; ++i)
                             if (savedModules[i] != null)
                             {
@@ -476,6 +480,7 @@ namespace ModuleManager
                 string relPath = file.Substring(savesRoot.Length, file.Length - savesRoot.Length);
 
                 string backupTo = Path.Combine(backupDir, relPath);
+                // ReSharper disable once AssignNullToNotNullAttribute
                 Directory.CreateDirectory(Path.GetDirectoryName(backupTo));
 
                 File.Copy(file, backupTo);
