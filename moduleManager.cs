@@ -9,6 +9,53 @@ using UnityEngine;
 
 namespace ModuleManager
 {
+    public class LoadingSystemTest : LoadingSystem
+    {
+        private bool ready;
+
+        public override bool IsReady()
+        {
+            return ready;
+        }
+
+        public override float ProgressFraction()
+        {
+            return 0;
+        }
+
+        public override string ProgressTitle()
+        {
+            return "Quacking System " + (ready?"Ready":"NotReady");
+        }
+
+        public override void StartLoad()
+        {
+            
+        }
+
+        public void OnGUI()
+        {
+            Rect screenRect = new Rect(0, 365, 438, (Screen.height - 365));
+
+            GUILayout.Window(GetHashCode(), screenRect, GUIWindow, "Click me when ready");
+        }
+
+        private void GUIWindow(int id)
+        {
+            GUILayout.BeginVertical();
+            {
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("Click Me"))
+                {
+                    ready = true;
+                };
+                GUILayout.EndHorizontal();
+            }
+            GUILayout.EndHorizontal();
+        }
+
+    }
+
     // Once MUST be true for the election process to work when 2+ dll of the same version are loaded
     // But I need it to be false for the reload database thingy
     [KSPAddonFixed(KSPAddon.Startup.Instantly, false, typeof(ConfigManager))]
@@ -43,6 +90,36 @@ namespace ModuleManager
                 Destroy(gameObject);
                 return;
             }
+
+            LoadingScreen screen = FindObjectOfType<LoadingScreen>();
+            if(screen != null)
+                Debug.LogWarning("Found screen");
+            Type lsType = typeof (LoadingScreen);
+            List<LoadingSystem> list = (
+                from fld in lsType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic) 
+                where fld.FieldType == typeof (List<LoadingSystem>) 
+                select (List<LoadingSystem>) fld.GetValue(screen)).FirstOrDefault();
+            if (list != null)
+            {
+                Debug.LogWarning("Found list");
+
+                // So you can insert a LoadingSystem object in this list at any point.
+                // GameDatabase is first in the list, and PartLoader is second
+                // We could insert ModuleManager after GameDatabase to get it to run there
+                // and SaveGameFixer after PartLoader.
+
+                // It might actually be better to do an override of GameDatabase and run MM at the end
+                // That way whenever the database is reloaded then MM will automatically run
+                // I can do this but it would be a bit more hacky / complicated.
+
+                LoadingSystemTest lst = screen.gameObject.AddComponent<LoadingSystemTest>();
+                list.Add(lst);
+            }
+            else
+            {
+                Debug.LogWarning("Didn't find list");
+            }
+
             Update();
             loadedInScene = true;
         }
