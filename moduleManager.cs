@@ -240,6 +240,8 @@ namespace ModuleManager
 
             print("[ModuleManager] " + status + "\n" + errors);
 
+            OutputAllConfigs();
+
             loaded = true;
             #endregion
 
@@ -1246,6 +1248,17 @@ namespace ModuleManager
         }
 
         #endregion
+
+        private static void OutputAllConfigs()
+        {
+            string path = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "_MMCfgOutput" + Path.DirectorySeparatorChar;
+            Directory.CreateDirectory(path);
+
+            foreach (var d in GameDatabase.Instance.root.AllConfigs)
+            {
+                File.WriteAllText(path + d.url.Replace('/', '.') + ".cfg", d.config.ToString());
+            }
+        }
     }
 
     /// <summary>
