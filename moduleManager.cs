@@ -1003,8 +1003,12 @@ namespace ModuleManager
                         return false;
                     case '~':
                         // ~breakingForce[]  breakingForce is not present
+                        // or: ~breakingForce[100]  will be true if it's present but not 100, too.
                         if (!(node.HasValue(type)))
                             return CheckCondition(node, remainCond);
+                        if(name != null && node.GetValue(type).Equals(name))
+                            return CheckCondition(node, remainCond);
+                            
                         return false;
                     default:
                         return false;
