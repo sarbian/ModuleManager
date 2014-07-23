@@ -65,8 +65,7 @@ namespace ModuleManager
 
                 // So at this point we know we have won the election, and will be using the class versions as in this assembly.
 
-                // Disabled for now since .24 fix the module loading order.
-                // UpdateSaves();
+                UpdateSaves();
             }
             catch (Exception ex)
             {
