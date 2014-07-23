@@ -66,6 +66,11 @@ namespace ModuleManager
                 // So at this point we know we have won the election, and will be using the class versions as in this assembly.
 
                 UpdateSaves();
+
+				char ds = Path.DirectorySeparatorChar;
+
+				UpdateCraftDir(string.Format("{0}{1}Ships{1}VAB", KSPUtil.ApplicationRootPath, ds));
+				UpdateCraftDir(string.Format("{0}{1}Ships{1}SPH", KSPUtil.ApplicationRootPath, ds));
             }
             catch (Exception ex)
             {
