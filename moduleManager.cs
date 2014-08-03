@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,7 +12,7 @@ namespace ModuleManager
 {
     // Once MUST be true for the election process to work when 2+ dll of the same version are loaded
     // But I need it to be false for the reload database thingy
-    [KSPAddonFixed(KSPAddon.Startup.Instantly, false, typeof(ConfigManager))]
+    [KSPAddon(KSPAddon.Startup.EveryScene, false)]
     public class ConfigManager : MonoBehaviour
     {
         #region state
@@ -27,6 +28,8 @@ namespace ModuleManager
 
         private string status = "Processing Module Manager patch\nPlease Wait...";
         private string errors = "";
+
+        private Rect windowPos = new Rect(80f, 60f, 240f, 40f);
 
         #endregion
 
@@ -1190,25 +1193,65 @@ namespace ModuleManager
 
         public void OnGUI()
         {
-            if (HighLogic.LoadedScene != GameScenes.LOADING || !loaded)
-                return;
-
-            var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
-            centeredStyle.alignment = TextAnchor.UpperCenter;
-            centeredStyle.fontSize = 16;
-            Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(status));
-            GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height), sizeOfLabel.x, sizeOfLabel.y), status, centeredStyle);
-
-            if (errorCount > 0)
+            if (HighLogic.LoadedScene == GameScenes.LOADING && loaded)
             {
-                var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
-                errorStyle.alignment = TextAnchor.UpperLeft;
-                errorStyle.fontSize = 16;
-                Vector2 sizeOfError = errorStyle.CalcSize(new GUIContent(errors));
-                GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height) + sizeOfLabel.y, sizeOfError.x, sizeOfError.y), errors, errorStyle);
 
+                var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
+                centeredStyle.alignment = TextAnchor.UpperCenter;
+                centeredStyle.fontSize = 16;
+                Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(status));
+                GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height), sizeOfLabel.x, sizeOfLabel.y), status, centeredStyle);
+
+                if (errorCount > 0)
+                {
+                    var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
+                    errorStyle.alignment = TextAnchor.UpperLeft;
+                    errorStyle.fontSize = 16;
+                    Vector2 sizeOfError = errorStyle.CalcSize(new GUIContent(errors));
+                    GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height) + sizeOfLabel.y, sizeOfError.x, sizeOfError.y), errors, errorStyle);
+
+                }
             }
 
+            if (HighLogic.LoadedScene == GameScenes.SPACECENTER)
+            {
+                windowPos = GUILayout.Window(GetType().FullName.GetHashCode(), windowPos, WindowGUI, "ModuleManager", GUILayout.Width(200), GUILayout.Height(20));
+            }
+        }
+
+        protected void WindowGUI(int windowID)
+        {
+            GUILayout.BeginVertical();
+
+            if (GUILayout.Button("Reload Database"))
+            {
+                print("Starting Reload");
+                StartCoroutine(DataBaseReloadWithMM());
+            }
+            GUILayout.EndVertical();
+            GUI.DragWindow();
+        }
+
+        IEnumerator DataBaseReloadWithMM()
+        {
+            print("Reload Step");
+
+            GameDatabase.Instance.Recompile = true;
+            GameDatabase.Instance.StartLoad();
+
+            // wait for it to finish
+            while (!GameDatabase.Instance.IsReady())
+                yield return null;
+
+            loaded = false;
+            Update();
+
+            print("DB Reload OK with patchCount=" + patchCount + " errorCount=" + errorCount + " needsUnsatisfiedCount=" + needsUnsatisfiedCount);
+
+            PartLoader.Instance.StartLoad();
+
+            while (!PartLoader.Instance.IsReady())
+                yield return null;
         }
 
 
