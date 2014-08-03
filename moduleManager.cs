@@ -1228,6 +1228,10 @@ namespace ModuleManager
                 print("Starting Reload");
                 StartCoroutine(DataBaseReloadWithMM());
             }
+            if (GUILayout.Button("Dump Database to File"))
+            {
+                OutputAllConfigs();
+            }
             GUILayout.EndVertical();
             GUI.DragWindow();
         }
@@ -1293,6 +1297,17 @@ namespace ModuleManager
         }
 
         #endregion
+
+        private static void OutputAllConfigs()
+        {
+            string path = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "_MMCfgOutput" + Path.DirectorySeparatorChar;
+            Directory.CreateDirectory(path);
+
+            foreach (var d in GameDatabase.Instance.root.AllConfigs)
+            {
+                File.WriteAllText(path + d.url.Replace('/', '.') + ".cfg", d.config.ToString());
+            }
+        }
     }
 
     /// <summary>
