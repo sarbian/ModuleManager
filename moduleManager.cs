@@ -30,6 +30,7 @@ namespace ModuleManager
         private string status = "Processing Module Manager patch\nPlease Wait...";
         private string errors = "";
 
+        public bool showUI = false;
         private Rect windowPos = new Rect(80f, 60f, 240f, 40f);
 
         #endregion
@@ -77,6 +78,12 @@ namespace ModuleManager
         {
             // Unset the loadedInScene flag. All the other copies will have this sorted out during Start, so safe to do here.
             loadedInScene = false;
+
+
+            if (GameSettings.MODIFIER_KEY.GetKey() && Input.GetKeyDown(KeyCode.F11))
+            {
+                showUI = !showUI;
+            }
 
             #region Initialization
             /* 
@@ -1237,7 +1244,7 @@ namespace ModuleManager
                 }
             }
 
-            if (HighLogic.LoadedScene == GameScenes.SPACECENTER && !inRnDCenter)
+            if (showUI && HighLogic.LoadedScene == GameScenes.SPACECENTER && !inRnDCenter)
             {
                 windowPos = GUILayout.Window(GetType().FullName.GetHashCode(), windowPos, WindowGUI, "ModuleManager", GUILayout.Width(200), GUILayout.Height(20));
             }
