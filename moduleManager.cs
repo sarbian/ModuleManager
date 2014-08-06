@@ -18,7 +18,7 @@ namespace ModuleManager
         #region state
 
         private bool loaded = false;
-		private bool inRnDCenter = false;
+        private bool inRnDCenter = false;
 
         private int patchCount = 0;
         private int errorCount = 0;
@@ -37,15 +37,15 @@ namespace ModuleManager
         #region Top Level - Update
         private static bool loadedInScene = false;
 
-		internal void OnRnDCenterSpawn()
-		{
-			inRnDCenter = true;
-		}
-		
-		internal void OnRnDCenterDespawn()
-		{
-			inRnDCenter = false;
-		}
+        internal void OnRnDCenterSpawn()
+        {
+            inRnDCenter = true;
+        }
+
+        internal void OnRnDCenterDespawn()
+        {
+            inRnDCenter = false;
+        }
 
         internal void Awake()
         {
@@ -58,20 +58,20 @@ namespace ModuleManager
                 return;
             }
 
-			// Subscrive to the RnD center spawn/despawn events
-			GameEvents.onGUIRnDComplexSpawn.Add(OnRnDCenterSpawn);
-			GameEvents.onGUIRnDComplexDespawn.Add(OnRnDCenterDespawn);
+            // Subscrive to the RnD center spawn/despawn events
+            GameEvents.onGUIRnDComplexSpawn.Add(OnRnDCenterSpawn);
+            GameEvents.onGUIRnDComplexDespawn.Add(OnRnDCenterDespawn);
 
             Update();
             loadedInScene = true;
         }
 
-		// Unsubscribe from events when the behavior dies
-		internal void OnDestroy()
-		{
-			GameEvents.onGUIRnDComplexSpawn.Remove(OnRnDCenterSpawn);
-			GameEvents.onGUIRnDComplexDespawn.Remove(OnRnDCenterDespawn);
-		}
+        // Unsubscribe from events when the behavior dies
+        internal void OnDestroy()
+        {
+            GameEvents.onGUIRnDComplexSpawn.Remove(OnRnDCenterSpawn);
+            GameEvents.onGUIRnDComplexDespawn.Remove(OnRnDCenterDespawn);
+        }
 
         public void Update()
         {
@@ -170,7 +170,7 @@ namespace ModuleManager
             }
             if (excludePaths.Any())
                 print("[ModuleManager] will not procces patch in these subdirectories:\n" + String.Join("\n", excludePaths.ToArray()));
-            #endregion 
+            #endregion
 
             #region List of mods
             List<AssemblyName> modsWithDup = AssemblyLoader.loadedAssemblies.Select(a => (a.assembly.GetName())).ToList();
@@ -261,7 +261,7 @@ namespace ModuleManager
                 + ", "
                 + needsUnsatisfiedCount + " hidden item" + (needsUnsatisfiedCount != 1 ? "s" : "");
 
-            if(errorCount > 0)
+            if (errorCount > 0)
                 status += ", found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
 
             print("[ModuleManager] " + status + "\n" + errors);
@@ -556,7 +556,7 @@ namespace ModuleManager
             foreach (ConfigNode.Value modVal in mod.values)
             {
                 vals += "\n   " + modVal.name + "= " + modVal.value;
-                
+
                 string valName;
                 Command cmd = ParseCommand(modVal.name, out valName);
 
@@ -576,7 +576,7 @@ namespace ModuleManager
                 if (match.Groups[2].Success)
                 {
                     // can have "node,n *" (for *= ect)
-                    if(!int.TryParse(match.Groups[2].Value, out index)) 
+                    if (!int.TryParse(match.Groups[2].Value, out index))
                     {
                         Debug.LogError("Unable to parse number as number. Very odd.");
                         continue;
@@ -628,7 +628,7 @@ namespace ModuleManager
 
                         if (value != null)
                         {
-                            if(origVal.value != value)
+                            if (origVal.value != value)
                                 vals += ": " + origVal.value + " -> " + value;
 
                             if (cmd != Command.Copy)
@@ -636,7 +636,7 @@ namespace ModuleManager
                             else
                                 newNode.AddValue(valName, value);
                         }
-                        
+
                         break;
                     case Command.Delete:
                         if (match.Groups[3].Success)
@@ -661,7 +661,7 @@ namespace ModuleManager
                                 newNode.values.Remove(v);
                             }
                         }
-                        else 
+                        else
                         {
                             // Default is to delete ALL values that match. (backwards compatibility)
                             newNode.RemoveValues(valName);
@@ -688,7 +688,7 @@ namespace ModuleManager
                 string tmp;
                 Command command = ParseCommand(subName, out tmp);
 
-                if (command == Command.Insert) 
+                if (command == Command.Insert)
                 {
                     int index = int.MaxValue;
                     if (subName.Contains(",") && int.TryParse(subName.Split(',')[1], out index))
@@ -753,7 +753,7 @@ namespace ModuleManager
                         else
                         {
                             ConfigNode n, last = null;
-                            while(true)
+                            while (true)
                             {
                                 n = FindConfigNodeIn(newNode, nodeType, nodeName, index++);
                                 if (n == last || n == null)
@@ -781,7 +781,8 @@ namespace ModuleManager
                         {
                             msg += "  Applying subnode " + subMod.name + "\n";
                             ConfigNode newSubNode;
-                            switch(command) {
+                            switch (command)
+                            {
                                 case Command.Edit:
                                     // Edit in place
                                     newSubNode = ModifyNode(subNode, subMod);
@@ -1032,9 +1033,9 @@ namespace ModuleManager
                         // or: ~breakingForce[100]  will be true if it's present but not 100, too.
                         if (!(node.HasValue(type)))
                             return CheckCondition(node, remainCond);
-                        if(name != null && node.GetValue(type).Equals(name))
+                        if (name != null && node.GetValue(type).Equals(name))
                             return CheckCondition(node, remainCond);
-                            
+
                         return false;
                     default:
                         return false;
@@ -1121,14 +1122,14 @@ namespace ModuleManager
         public static ConfigNode FindConfigNodeIn(ConfigNode src, string nodeType,
                                                    string nodeName = null, int index = 0)
         {
-            ConfigNode [] nodes = src.GetNodes(nodeType);
+            ConfigNode[] nodes = src.GetNodes(nodeType);
             if (nodes.Length == 0) return null;
             if (nodeName == null)
             {
-                if(index >= 0)
-                    return nodes[Math.Min(index, nodes.Length-1)];
-                else 
-                    return nodes[Math.Max(0, nodes.Length+index)];
+                if (index >= 0)
+                    return nodes[Math.Min(index, nodes.Length - 1)];
+                else
+                    return nodes[Math.Max(0, nodes.Length + index)];
             }
             ConfigNode last = null;
             if (index >= 0)
@@ -1144,7 +1145,7 @@ namespace ModuleManager
                 }
                 return last;
             }
-            for (int i = nodes.Length-1; i >= 0; --i)
+            for (int i = nodes.Length - 1; i >= 0; --i)
             {
                 if (nodes[i].HasValue("name") && WildcardMatch(nodes[i].GetValue("name"), nodeName))
                 {
@@ -1259,7 +1260,7 @@ namespace ModuleManager
             GUI.DragWindow();
         }
 
-        IEnumerator DataBaseReloadWithMM(bool dump=false)
+        IEnumerator DataBaseReloadWithMM(bool dump = false)
         {
             print("Reload Step");
 
