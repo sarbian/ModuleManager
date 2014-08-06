@@ -77,7 +77,7 @@ namespace ModuleManager
                 return;
             }
 
-            if (loaded)
+            if (loaded || PartLoader.Instance.IsReady())
                 return;
 
             patchCount = 0;
@@ -1230,13 +1230,13 @@ namespace ModuleManager
             }
             if (GUILayout.Button("Dump Database to File"))
             {
-                OutputAllConfigs();
+                StartCoroutine(DataBaseReloadWithMM(true));
             }
             GUILayout.EndVertical();
             GUI.DragWindow();
         }
 
-        IEnumerator DataBaseReloadWithMM()
+        IEnumerator DataBaseReloadWithMM(bool dump=false)
         {
             print("Reload Step");
 
@@ -1251,6 +1251,9 @@ namespace ModuleManager
             Update();
 
             print("DB Reload OK with patchCount=" + patchCount + " errorCount=" + errorCount + " needsUnsatisfiedCount=" + needsUnsatisfiedCount);
+
+            if (dump)
+                OutputAllConfigs();
 
             PartLoader.Instance.StartLoad();
 
