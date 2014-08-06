@@ -18,6 +18,7 @@ namespace ModuleManager
         #region state
 
         private bool loaded = false;
+		private bool inRnDCenter = false;
 
         private int patchCount = 0;
         private int errorCount = 0;
@@ -36,6 +37,16 @@ namespace ModuleManager
         #region Top Level - Update
         private static bool loadedInScene = false;
 
+		internal void OnRnDCenterSpawn()
+		{
+			inRnDCenter = true;
+		}
+		
+		internal void OnRnDCenterDespawn()
+		{
+			inRnDCenter = false;
+		}
+
         internal void Awake()
         {
             // Ensure that only one copy of the service is run per scene change.
@@ -46,9 +57,21 @@ namespace ModuleManager
                 Destroy(gameObject);
                 return;
             }
+
+			// Subscrive to the RnD center spawn/despawn events
+			GameEvents.onGUIRnDComplexSpawn.Add(OnRnDCenterSpawn);
+			GameEvents.onGUIRnDComplexDespawn.Add(OnRnDCenterDespawn);
+
             Update();
             loadedInScene = true;
         }
+
+		// Unsubscribe from events when the behavior dies
+		internal void OnDestroy()
+		{
+			GameEvents.onGUIRnDComplexSpawn.Remove(OnRnDCenterSpawn);
+			GameEvents.onGUIRnDComplexDespawn.Remove(OnRnDCenterDespawn);
+		}
 
         public void Update()
         {
@@ -1213,7 +1236,7 @@ namespace ModuleManager
                 }
             }
 
-            if (HighLogic.LoadedScene == GameScenes.SPACECENTER)
+            if (HighLogic.LoadedScene == GameScenes.SPACECENTER && !inRnDCenter)
             {
                 windowPos = GUILayout.Window(GetType().FullName.GetHashCode(), windowPos, WindowGUI, "ModuleManager", GUILayout.Width(200), GUILayout.Height(20));
             }
