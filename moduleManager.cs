@@ -203,15 +203,21 @@ namespace ModuleManager
                 {
                     name = RemoveWS(name);
                     // check for FOR[] blocks that don't match loaded DLLs and add them to the pass list
-
-                    string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
-                    dependency = dependency.Substring(0, dependency.IndexOf(']'));
-                    if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper()))) == null)
-                    { // found one, now add it to the list.
-                        AssemblyName newMod = new AssemblyName(dependency);
-                        newMod.Name = dependency;
-                        mods.Add(newMod);
-                        modlist += "  " + dependency + "\n";
+                    try
+                    {
+                        string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
+                        dependency = dependency.Substring(0, dependency.IndexOf(']'));
+                        if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper()))) == null)
+                        { // found one, now add it to the list.
+                            AssemblyName newMod = new AssemblyName(dependency);
+                            newMod.Name = dependency;
+                            mods.Add(newMod);
+                            modlist += "  " + dependency + "\n";
+                        }
+                    }
+                    catch (ArgumentOutOfRangeException)
+                    {
+                        print("[ModuleManager] Skipping :FOR init for line " + name + ". The line most likely contain a space that should be removed");
                     }
                 }
             }
