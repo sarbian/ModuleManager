@@ -65,8 +65,12 @@ namespace ModuleManager
 
                 // So at this point we know we have won the election, and will be using the class versions as in this assembly.
 
-                // Disabled for now since .24 fix the module loading order.
-                // UpdateSaves();
+                UpdateSaves();
+
+                char ds = Path.DirectorySeparatorChar;
+
+                UpdateCraftDir(Path.Combine(KSPUtil.ApplicationRootPath, string.Format("Ships{0}VAB", ds)), KSPUtil.ApplicationRootPath);
+                UpdateCraftDir(Path.Combine(KSPUtil.ApplicationRootPath, string.Format("Ships{0}VAB", ds)), KSPUtil.ApplicationRootPath);
             }
             catch (Exception ex)
             {
@@ -145,7 +149,7 @@ namespace ModuleManager
             }
         }
 
-        private void UpdateCraftDir(string dir)
+        private void UpdateCraftDir(string dir, string rootDir)
         {
             string[] files;
             try
@@ -158,14 +162,19 @@ namespace ModuleManager
             }
             foreach (string vabCraft in files)
                 if (vabCraft.EndsWith(".craft"))
-                    UpdateCraft(vabCraft);
+                    UpdateCraft(vabCraft, rootDir);
         }
 
-        private void UpdateCraft(string vabCraft)
+        private void UpdateCraftDir(string dir)
+        {
+            UpdateCraftDir(dir, savesRoot);
+        }
+
+        private void UpdateCraft(string vabCraft, string rootDir)
         {
             try
             {
-                PushLogContext("Craft file: " + vabCraft.Substring(savesRoot.Length, vabCraft.Length-savesRoot.Length));
+                PushLogContext("Craft file: " + vabCraft.Substring(rootDir.Length, vabCraft.Length-rootDir.Length));
                 ConfigNode craft = ConfigNode.Load(vabCraft);
 
                 needsBackup = false; needsSave = false; partMissing = false;
@@ -180,7 +189,7 @@ namespace ModuleManager
                     WriteDebugMessage("Delete the craft to get rid of this message.");
                 }
 
-                BackupAndReplace(vabCraft, craft);
+                BackupAndReplace(vabCraft, rootDir, craft);
 
 
             }
@@ -188,6 +197,11 @@ namespace ModuleManager
             {
                 PopLogContext();
             }
+        }
+
+        private void UpdateCraft(string vabCraft)
+        {
+            UpdateCraft(vabCraft, savesRoot);
         }
 
         private void UpdateSFS(string sfsFile)
@@ -471,14 +485,14 @@ namespace ModuleManager
             }
         }
 
-        private void BackupAndReplace(string file, ConfigNode config)
+        private void BackupAndReplace(string file, string rootDir, ConfigNode config)
         {
 
             if (needsBackup)
             {
                 CreateBackupDir();
 
-                string relPath = file.Substring(savesRoot.Length, file.Length - savesRoot.Length);
+                string relPath = file.Substring(rootDir.Length, file.Length - rootDir.Length);
 
                 string backupTo = Path.Combine(backupDir, relPath);
                 // ReSharper disable once AssignNullToNotNullAttribute
@@ -491,6 +505,11 @@ namespace ModuleManager
 
             if(needsSave)
                 config.Save(file);
+        }
+
+        private void BackupAndReplace(string File, ConfigNode config)
+        {
+            BackupAndReplace(File, savesRoot, config);
         }
 
         #endregion
