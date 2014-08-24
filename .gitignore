@@ -111,3 +111,4 @@ ModuleManager.csproj
 ModuleManager.csproj.user
 
 ModuleManager.*.dll
+LocalProperties.props
