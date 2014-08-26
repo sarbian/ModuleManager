@@ -12,23 +12,12 @@ namespace ModuleManager
 {
     // Once MUST be true for the election process to work when 2+ dll of the same version are loaded
     // But I need it to be false for the reload database thingy
-    [KSPAddon(KSPAddon.Startup.EveryScene, false)]
+    [KSPAddon(KSPAddon.Startup.Instantly, false)]
     public class ConfigManager : MonoBehaviour
     {
         #region state
 
-        private bool loaded = false;
-        private bool inRnDCenter = false;
-
-        private int patchCount = 0;
-        private int errorCount = 0;
-        private int needsUnsatisfiedCount = 0;
-
-        private Dictionary<String, int> errorFiles;
-        private List<AssemblyName> mods;
-
-        private string status = "Processing Module Manager patch\nPlease Wait...";
-        private string errors = "";
+        //private bool inRnDCenter = false;
 
         public bool showUI = false;
         private Rect windowPos = new Rect(80f, 60f, 240f, 40f);
@@ -38,86 +27,212 @@ namespace ModuleManager
         #region Top Level - Update
         private static bool loadedInScene = false;
 
-        internal void OnRnDCenterSpawn()
+        //internal void OnRnDCenterSpawn()
+        //{
+        //    inRnDCenter = true;
+        //}
+
+        //internal void OnRnDCenterDespawn()
+        //{
+        //    inRnDCenter = false;
+        //}
+
+        public static void log(String s)
         {
-            inRnDCenter = true;
+            print("[ModuleManager] " + s);
         }
 
-        internal void OnRnDCenterDespawn()
+        internal void Update()
         {
-            inRnDCenter = false;
+            log("Update");
+        }
+
+        internal void Start()
+        {
+            log("Start");
         }
 
         internal void Awake()
         {
+            log("Awake");
             // Ensure that only one copy of the service is run per scene change.
             if (loadedInScene)
             {
                 Assembly currentAssembly = Assembly.GetExecutingAssembly();
-                log("[ModuleManager] Multiple copies of current version. Using the first copy. Version: " + currentAssembly.GetName().Version);
+                log("Multiple copies of current version. Using the first copy. Version: " + currentAssembly.GetName().Version);
                 Destroy(gameObject);
                 return;
             }
 
             // Subscrive to the RnD center spawn/despawn events
-            GameEvents.onGUIRnDComplexSpawn.Add(OnRnDCenterSpawn);
-            GameEvents.onGUIRnDComplexDespawn.Add(OnRnDCenterDespawn);
+            //GameEvents.onGUIRnDComplexSpawn.Add(OnRnDCenterSpawn);
+            //GameEvents.onGUIRnDComplexDespawn.Add(OnRnDCenterDespawn);
 
-            Update();
+
+            LoadingScreen screen = FindObjectOfType<LoadingScreen>();
+            if (screen == null)
+            {
+                log("Can't find LoadingScreen type. Abording ModuleManager execution");
+                return;
+            }
+            Type lsType = typeof(LoadingScreen);
+            List<LoadingSystem> list = (
+                from fld in lsType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+                where fld.FieldType == typeof(List<LoadingSystem>)
+                select (List<LoadingSystem>)fld.GetValue(screen)).FirstOrDefault();
+            if (list != null)
+            {
+                // So you can insert a LoadingSystem object in this list at any point.
+                // GameDatabase is first in the list, and PartLoader is second
+                // We could insert ModuleManager after GameDatabase to get it to run there
+                // and SaveGameFixer after PartLoader.
+
+                // It might actually be better to do an override of GameDatabase and run MM at the end
+                // That way whenever the database is reloaded then MM will automatically run
+                // I can do this but it would be a bit more hacky / complicated.
+
+                MMPatchLoader loader = screen.gameObject.AddComponent<MMPatchLoader>();
+                // it seem Awake is called to late to insert it before the Loading starts :(
+                log("Adding ModuleManager to the loading screen " + list.Count);
+                list.Insert(1, loader);
+            }
+            else
+            {
+                Debug.LogWarning("Can't find the LoadingSystem list. Abording ModuleManager execution");
+            }
+
+            //Update();
             loadedInScene = true;
         }
 
         // Unsubscribe from events when the behavior dies
         internal void OnDestroy()
         {
-            GameEvents.onGUIRnDComplexSpawn.Remove(OnRnDCenterSpawn);
-            GameEvents.onGUIRnDComplexDespawn.Remove(OnRnDCenterDespawn);
+            //GameEvents.onGUIRnDComplexSpawn.Remove(OnRnDCenterSpawn);
+            //GameEvents.onGUIRnDComplexDespawn.Remove(OnRnDCenterDespawn);
         }
 
-        public void Update()
+    }
+
+    public class MMPatchLoader : LoadingSystem
+    {
+        private static MMPatchLoader _instance;
+
+        //private bool loaded = false;
+
+        private int totalPatchCount = 0;
+        private int appliedPatchCount = 0;
+        private int errorCount = 0;
+        private int needsUnsatisfiedCount = 0;
+
+        private Dictionary<String, int> errorFiles;
+        private List<AssemblyName> mods;
+
+        private string status = "Processing Module Manager patch\nPlease Wait...";
+        private string errors = "";
+
+        public static MMPatchLoader Instance
         {
-            // Unset the loadedInScene flag. All the other copies will have this sorted out during Start, so safe to do here.
-            loadedInScene = false;
-
-
-            if (GameSettings.MODIFIER_KEY.GetKey() && Input.GetKeyDown(KeyCode.F11))
+            get
             {
-                showUI = !showUI;
+                return _instance;
             }
+        }
+
+        private void Awake()
+        {
+            if (_instance != null || !ElectionAndCheck())
+            {
+                DestroyImmediate(this);
+                log("DestroyImmediate");
+                return;
+            }
+            _instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+
+        private bool ready = false;
+
+        public override bool IsReady()
+        {
+            return ready;
+        }
+
+        public override float ProgressFraction()
+        {
+            log("ProgressFraction");
+            if (totalPatchCount > 0)
+                return (appliedPatchCount + errorCount + needsUnsatisfiedCount) / totalPatchCount;
+            else
+                return 0;
+        }
+
+        public override string ProgressTitle()
+        {
+            log("ProgressTitle");
+            return "Quacking System " + (ready ? "Ready" : "NotReady");
+        }
+
+
+        //public void OnGUI()
+        //{
+        //    Rect screenRect = new Rect(0, 365, 438, (Screen.height - 365));
+
+        //    GUILayout.Window(GetHashCode(), screenRect, GUIWindow, "Click me when ready");
+        //}
+
+        //private void GUIWindow(int id)
+        //{
+        //    GUILayout.BeginVertical();
+        //    {
+        //        GUILayout.BeginHorizontal();
+        //        if (GUILayout.Button("Click Me"))
+        //        {
+        //            ready = true;
+        //        };
+        //        GUILayout.EndHorizontal();
+        //    }
+        //    GUILayout.EndHorizontal();
+        //}
+
+        public override void StartLoad()
+        {
+            log("StartLoad");
+            // Unset the loadedInScene flag. All the other copies will have this sorted out during Start, so safe to do here.
+            //loadedInScene = false;
+
+            //if (GameSettings.MODIFIER_KEY.GetKey() && Input.GetKeyDown(KeyCode.F11))
+            //{
+            //    showUI = !showUI;
+            //}
 
             #region Initialization
-            /* 
-             * It should be a code to reload when the Reload Database debug button is used.
-             * But it seem to go balistic after the 2nd reload.
-             * 
-            if (PartLoader.Instance.Recompile == waitingReload)
-            {
-                waitingReload = !waitingReload;
-                print("[ModuleManager] waitingReload change " + waitingReload + " loaded " + loaded);
-                if (!waitingReload)
-                {
-                    loaded = false;
-                    print("[ModuleManager] loaded = false ");
-                }
-            }
-             */
 
-            if (!GameDatabase.Instance.IsReady() && ((HighLogic.LoadedScene == GameScenes.MAINMENU) || (HighLogic.LoadedScene == GameScenes.SPACECENTER)))
-            {
-                return;
-            }
+            //if (!GameDatabase.Instance.IsReady() && ((HighLogic.LoadedScene == GameScenes.MAINMENU) || (HighLogic.LoadedScene == GameScenes.SPACECENTER)))
+            //{
+            //    return;
+            //}
 
-            if (loaded || PartLoader.Instance.IsReady())
-                return;
+            //if (loaded || PartLoader.Instance.IsReady())
+            //    return;
 
-            patchCount = 0;
+            totalPatchCount = 0;
+            appliedPatchCount = 0;
             errorCount = 0;
             needsUnsatisfiedCount = 0;
             errorFiles = new Dictionary<string, int>();
             #endregion
 
+            List<String> excludePaths = PrePatchInit();
+            StartCoroutine(ProcessPatch(excludePaths));
+
+        }
+
+        public bool ElectionAndCheck()
+        {
             #region Type election
 
+            // TODO : Move the old version check in a process that call Update.
 
             // Check for old version and MMSarbianExt
             var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 5, 0)) == -1);
@@ -127,9 +242,9 @@ namespace ModuleManager
                 var badPaths = oldAssemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
                 status = "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray());
                 PopupDialog.SpawnPopupDialog("Old versions of Module Manager", status, "OK", false, HighLogic.Skin);
-                loaded = true;
+                //loaded = true;
                 print("[ModuleManager] Old version of Module Manager present. Stopping");
-                return;
+                return false;
             }
 
             Assembly currentAssembly = Assembly.GetExecutingAssembly();
@@ -144,10 +259,10 @@ namespace ModuleManager
             // If there is a same version but earlier in the list, don't do anything either.
             if (eligible.First().assembly != currentAssembly)
             {
-                loaded = true;
+                //loaded = true;
                 print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " lost the election");
                 Destroy(gameObject);
-                return;
+                return false;
             }
             else
             {
@@ -159,8 +274,12 @@ namespace ModuleManager
                     print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
             }
 
-            #endregion
+            #endregion            
+            return true;
+        }
 
+        private List<String> PrePatchInit()
+        {
             #region Excluding directories
             // Build a list of subdirectory that won't be processed
             List<String> excludePaths = new List<string>();
@@ -199,25 +318,29 @@ namespace ModuleManager
             foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
             {
                 string name;
-                if (ParseCommand(cfgmod.type, out name) != Command.Insert && name.Contains(":FOR["))
+                if (ParseCommand(cfgmod.type, out name) != Command.Insert)
                 {
-                    name = RemoveWS(name);
-                    // check for FOR[] blocks that don't match loaded DLLs and add them to the pass list
-                    try
+                    totalPatchCount++;
+                    if (name.Contains(":FOR["))
                     {
-                        string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
-                        dependency = dependency.Substring(0, dependency.IndexOf(']'));
-                        if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper()))) == null)
-                        { // found one, now add it to the list.
-                            AssemblyName newMod = new AssemblyName(dependency);
-                            newMod.Name = dependency;
-                            mods.Add(newMod);
-                            modlist += "  " + dependency + "\n";
+                        name = RemoveWS(name);
+                        // check for FOR[] blocks that don't match loaded DLLs and add them to the pass list
+                        try
+                        {
+                            string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
+                            dependency = dependency.Substring(0, dependency.IndexOf(']'));
+                            if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper()))) == null)
+                            { // found one, now add it to the list.
+                                AssemblyName newMod = new AssemblyName(dependency);
+                                newMod.Name = dependency;
+                                mods.Add(newMod);
+                                modlist += "  " + dependency + "\n";
+                            }
                         }
-                    }
-                    catch (ArgumentOutOfRangeException)
-                    {
-                        print("[ModuleManager] Skipping :FOR init for line " + name + ". The line most likely contain a space that should be removed");
+                        catch (ArgumentOutOfRangeException)
+                        {
+                            print("[ModuleManager] Skipping :FOR init for line " + name + ". The line most likely contain a space that should be removed");
+                        }
                     }
                 }
             }
@@ -236,8 +359,14 @@ namespace ModuleManager
                 }
             }
             log(modlist);
-            #endregion
 
+            return excludePaths;
+
+            #endregion
+        }
+
+        private IEnumerator ProcessPatch(List<String> excludePaths)
+        {
             #region Check Needs
             // Do filtering with NEEDS 
             print("[ModuleManager] Checking NEEDS.");
@@ -249,12 +378,17 @@ namespace ModuleManager
             // :First node (and any node without a :pass)
             ApplyPatch(excludePaths, ":FIRST");
 
+            yield return null;
+
             foreach (AssemblyName mod in mods)
             {
                 string upperModName = mod.Name.ToUpper();
                 ApplyPatch(excludePaths, ":BEFORE[" + upperModName + "]");
+                yield return null;
                 ApplyPatch(excludePaths, ":FOR[" + upperModName + "]");
+                yield return null;
                 ApplyPatch(excludePaths, ":AFTER[" + upperModName + "]");
+                yield return null;
             }
 
             // :Final node
@@ -270,7 +404,7 @@ namespace ModuleManager
 
 
             status = "ModuleManager: "
-                + patchCount + " patch" + (patchCount != 1 ? "es" : "") + " applied"
+                + appliedPatchCount + " patch" + (appliedPatchCount != 1 ? "es" : "") + " applied"
                 + ", "
                 + needsUnsatisfiedCount + " hidden item" + (needsUnsatisfiedCount != 1 ? "s" : "");
 
@@ -279,12 +413,18 @@ namespace ModuleManager
 
             print("[ModuleManager] " + status + "\n" + errors);
 
-            loaded = true;
+            //loaded = true;
             #endregion
 
 #if DEBUG
             RunTestCases();
 #endif
+
+            while(true)
+                yield return null;
+
+            ready = true;
+            yield return null;
         }
 
         #endregion
@@ -508,7 +648,7 @@ namespace ModuleManager
                                     {
                                         case Command.Edit:
                                             print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
-                                            patchCount++;
+                                            appliedPatchCount++;
                                             url.config = ModifyNode(url.config, mod.config);
                                             break;
                                         case Command.Copy:
@@ -1032,7 +1172,7 @@ namespace ModuleManager
                     case '!':
                         // @MODULE[ModuleAlternator] or !MODULE[ModuleAlternator]
                         bool not = (conds[0] == '!');
-                        ConfigNode subNode = ConfigManager.FindConfigNodeIn(node, type, name);
+                        ConfigNode subNode = MMPatchLoader.FindConfigNodeIn(node, type, name);
                         if (subNode != null)
                             return not ^ CheckCondition(subNode, remainCond);
                         return not ^ false;
@@ -1228,33 +1368,33 @@ namespace ModuleManager
 
         #region GUI stuff.
 
-        public void OnGUI()
-        {
-            if (HighLogic.LoadedScene == GameScenes.LOADING && loaded)
-            {
+        //public void OnGUI()
+        //{
+        //    if (HighLogic.LoadedScene == GameScenes.LOADING && loaded)
+        //    {
 
-                var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
-                centeredStyle.alignment = TextAnchor.UpperCenter;
-                centeredStyle.fontSize = 16;
-                Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(status));
-                GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height), sizeOfLabel.x, sizeOfLabel.y), status, centeredStyle);
+        //        var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
+        //        centeredStyle.alignment = TextAnchor.UpperCenter;
+        //        centeredStyle.fontSize = 16;
+        //        Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(status));
+        //        GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height), sizeOfLabel.x, sizeOfLabel.y), status, centeredStyle);
 
-                if (errorCount > 0)
-                {
-                    var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
-                    errorStyle.alignment = TextAnchor.UpperLeft;
-                    errorStyle.fontSize = 16;
-                    Vector2 sizeOfError = errorStyle.CalcSize(new GUIContent(errors));
-                    GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height) + sizeOfLabel.y, sizeOfError.x, sizeOfError.y), errors, errorStyle);
+        //        if (errorCount > 0)
+        //        {
+        //            var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
+        //            errorStyle.alignment = TextAnchor.UpperLeft;
+        //            errorStyle.fontSize = 16;
+        //            Vector2 sizeOfError = errorStyle.CalcSize(new GUIContent(errors));
+        //            GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height) + sizeOfLabel.y, sizeOfError.x, sizeOfError.y), errors, errorStyle);
 
-                }
-            }
+        //        }
+        //    }
 
-            if (showUI && HighLogic.LoadedScene == GameScenes.SPACECENTER && !inRnDCenter)
-            {
-                windowPos = GUILayout.Window(GetType().FullName.GetHashCode(), windowPos, WindowGUI, "ModuleManager", GUILayout.Width(200), GUILayout.Height(20));
-            }
-        }
+        //    //if (showUI && HighLogic.LoadedScene == GameScenes.SPACECENTER && !inRnDCenter)
+        //    //{
+        //    //    windowPos = GUILayout.Window(GetType().FullName.GetHashCode(), windowPos, WindowGUI, "ModuleManager", GUILayout.Width(200), GUILayout.Height(20));
+        //    //}
+        //}
 
         protected void WindowGUI(int windowID)
         {
@@ -1284,10 +1424,10 @@ namespace ModuleManager
             while (!GameDatabase.Instance.IsReady())
                 yield return null;
 
-            loaded = false;
-            Update();
+            while (!MMPatchLoader.Instance.IsReady())
+                yield return null;
 
-            print("DB Reload OK with patchCount=" + patchCount + " errorCount=" + errorCount + " needsUnsatisfiedCount=" + needsUnsatisfiedCount);
+            print("DB Reload OK with patchCount=" + appliedPatchCount + " errorCount=" + errorCount + " needsUnsatisfiedCount=" + needsUnsatisfiedCount);
 
             if (dump)
                 OutputAllConfigs();
@@ -1347,39 +1487,6 @@ namespace ModuleManager
             {
                 File.WriteAllText(path + d.url.Replace('/', '.') + ".cfg", d.config.ToString());
             }
-        }
-    }
-
-    /// <summary>
-    /// KSPAddon with equality checking using an additional type parameter. Fixes the issue where AddonLoader prevents multiple start-once addons with the same start scene.
-    /// </summary>
-    public class KSPAddonFixed : KSPAddon, IEquatable<KSPAddonFixed>
-    {
-        private readonly Type type;
-
-        public KSPAddonFixed(KSPAddon.Startup startup, bool once, Type type)
-            : base(startup, once)
-        {
-            this.type = type;
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (obj.GetType() != this.GetType()) { return false; }
-            return Equals((KSPAddonFixed)obj);
-        }
-
-        public bool Equals(KSPAddonFixed other)
-        {
-            if (this.once != other.once) { return false; }
-            if (this.startup != other.startup) { return false; }
-            if (this.type != other.type) { return false; }
-            return true;
-        }
-
-        public override int GetHashCode()
-        {
-            return this.startup.GetHashCode() ^ this.once.GetHashCode() ^ this.type.GetHashCode();
         }
     }
 }
