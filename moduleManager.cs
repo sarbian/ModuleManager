@@ -13,61 +13,60 @@ namespace ModuleManager
     // Once MUST be true for the election process to work when 2+ dll of the same version are loaded
     // But I need it to be false for the reload database thingy
     [KSPAddon(KSPAddon.Startup.Instantly, false)]
-    public class ConfigManager : MonoBehaviour
+    public class ModuleManager : MonoBehaviour
     {
         #region state
 
-        //private bool inRnDCenter = false;
+        private bool inRnDCenter = false;
+        private bool reloading = false;
 
         public bool showUI = false;
         private Rect windowPos = new Rect(80f, 60f, 240f, 40f);
+
+        private string version = "";
 
         #endregion
 
         #region Top Level - Update
         private static bool loadedInScene = false;
 
-        //internal void OnRnDCenterSpawn()
-        //{
-        //    inRnDCenter = true;
-        //}
+        internal void OnRnDCenterSpawn()
+        {
+            inRnDCenter = true;
+        }
 
-        //internal void OnRnDCenterDespawn()
-        //{
-        //    inRnDCenter = false;
-        //}
+        internal void OnRnDCenterDespawn()
+        {
+            inRnDCenter = false;
+        }
 
         public static void log(String s)
         {
             print("[ModuleManager] " + s);
         }
 
-        internal void Update()
-        {
-            log("Update");
-        }
-
-        internal void Start()
-        {
-            log("Start");
-        }
-
         internal void Awake()
         {
-            log("Awake");
             // Ensure that only one copy of the service is run per scene change.
-            if (loadedInScene)
+            if (loadedInScene || !ElectionAndCheck())
             {
                 Assembly currentAssembly = Assembly.GetExecutingAssembly();
                 log("Multiple copies of current version. Using the first copy. Version: " + currentAssembly.GetName().Version);
                 Destroy(gameObject);
                 return;
             }
+            DontDestroyOnLoad(gameObject);
+
+            System.Version v = Assembly.GetExecutingAssembly().GetName().Version;
+            version = v.Major.ToString() + "." + v.Minor.ToString() + "." + v.Build.ToString();
 
             // Subscrive to the RnD center spawn/despawn events
-            //GameEvents.onGUIRnDComplexSpawn.Add(OnRnDCenterSpawn);
-            //GameEvents.onGUIRnDComplexDespawn.Add(OnRnDCenterDespawn);
+            GameEvents.onGUIRnDComplexSpawn.Add(OnRnDCenterSpawn);
+            GameEvents.onGUIRnDComplexDespawn.Add(OnRnDCenterDespawn);
 
+            // This code is the one that should allow to plugin into the stock loading bar
+            // but it can't insert the LoadingSystembefore PartLoader ie too late
+            // So for now we keep using a blocking update
 
             LoadingScreen screen = FindObjectOfType<LoadingScreen>();
             if (screen == null)
@@ -80,6 +79,7 @@ namespace ModuleManager
                 from fld in lsType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
                 where fld.FieldType == typeof(List<LoadingSystem>)
                 select (List<LoadingSystem>)fld.GetValue(screen)).FirstOrDefault();
+
             if (list != null)
             {
                 // So you can insert a LoadingSystem object in this list at any point.
@@ -87,146 +87,168 @@ namespace ModuleManager
                 // We could insert ModuleManager after GameDatabase to get it to run there
                 // and SaveGameFixer after PartLoader.
 
-                // It might actually be better to do an override of GameDatabase and run MM at the end
-                // That way whenever the database is reloaded then MM will automatically run
-                // I can do this but it would be a bit more hacky / complicated.
+                GameObject aGameObject = new GameObject();
+                aGameObject.AddComponent<MMPatchLoader>();
 
-                MMPatchLoader loader = screen.gameObject.AddComponent<MMPatchLoader>();
-                // it seem Awake is called to late to insert it before the Loading starts :(
-                log("Adding ModuleManager to the loading screen " + list.Count);
-                list.Insert(1, loader);
+                // it seems Awake is called to late to insert it before the Loading starts :(
+                //log("Adding ModuleManager to the loading screen " + list.Count);
+                //list.Insert(1, loader);
             }
             else
             {
                 Debug.LogWarning("Can't find the LoadingSystem list. Abording ModuleManager execution");
             }
 
-            //Update();
+            // if we ever find a way to make the LoadingSystem stuff work we just 
+            // have to comment that line and uncomment the Insert a few line higher
+            // or whatever we need for the LoadingSystem to be inserted
+            StartCoroutine(InitialLoad());
+
             loadedInScene = true;
         }
 
         // Unsubscribe from events when the behavior dies
         internal void OnDestroy()
         {
-            //GameEvents.onGUIRnDComplexSpawn.Remove(OnRnDCenterSpawn);
-            //GameEvents.onGUIRnDComplexDespawn.Remove(OnRnDCenterDespawn);
+            GameEvents.onGUIRnDComplexSpawn.Remove(OnRnDCenterSpawn);
+            GameEvents.onGUIRnDComplexDespawn.Remove(OnRnDCenterDespawn);
         }
 
-    }
 
-    public class MMPatchLoader : LoadingSystem
-    {
-        private static MMPatchLoader _instance;
-
-        //private bool loaded = false;
-
-        private int totalPatchCount = 0;
-        private int appliedPatchCount = 0;
-        private int errorCount = 0;
-        private int needsUnsatisfiedCount = 0;
-
-        private Dictionary<String, int> errorFiles;
-        private List<AssemblyName> mods;
-
-        private string status = "Processing Module Manager patch\nPlease Wait...";
-        private string errors = "";
-
-        public static MMPatchLoader Instance
+        internal void Update()
         {
-            get
+            if (GameSettings.MODIFIER_KEY.GetKey() && Input.GetKeyDown(KeyCode.F11))
             {
-                return _instance;
+                showUI = !showUI;
+            }
+
+            if (reloading)
+            {
+                float perc = 0;
+                if (!GameDatabase.Instance.IsReady())
+                    perc = GameDatabase.Instance.ProgressFraction();
+                else if (!MMPatchLoader.Instance.IsReady())
+                    perc = 1f + MMPatchLoader.Instance.ProgressFraction();
+                else if (!PartLoader.Instance.IsReady())
+                    perc = 2f + PartLoader.Instance.ProgressFraction();
+
+                int intperc = Mathf.CeilToInt(perc * 100f / 3f);
+                ScreenMessages.PostScreenMessage("Database reloading " + intperc + "%", Time.deltaTime, ScreenMessageStyle.UPPER_CENTER);
             }
         }
 
-        private void Awake()
+        #region GUI stuff.
+
+        public void OnGUI()
         {
-            if (_instance != null || !ElectionAndCheck())
+            if (HighLogic.LoadedScene == GameScenes.LOADING && MMPatchLoader.Instance != null)
             {
-                DestroyImmediate(this);
-                log("DestroyImmediate");
-                return;
+                var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
+                centeredStyle.alignment = TextAnchor.UpperCenter;
+                centeredStyle.fontSize = 16;
+                Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(MMPatchLoader.Instance.status));
+                GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height), sizeOfLabel.x, sizeOfLabel.y), MMPatchLoader.Instance.status, centeredStyle);
+
+                if (MMPatchLoader.Instance.errorCount > 0)
+                {
+                    var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
+                    errorStyle.alignment = TextAnchor.UpperLeft;
+                    errorStyle.fontSize = 16;
+                    Vector2 sizeOfError = errorStyle.CalcSize(new GUIContent(MMPatchLoader.Instance.errors));
+                    GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height) + sizeOfLabel.y, sizeOfError.x, sizeOfError.y), MMPatchLoader.Instance.errors, errorStyle);
+                }
             }
-            _instance = this;
-            DontDestroyOnLoad(gameObject);
+
+            if (showUI && HighLogic.LoadedScene == GameScenes.SPACECENTER && !inRnDCenter)
+            {
+                windowPos = GUILayout.Window(GetType().FullName.GetHashCode(), windowPos, WindowGUI, "ModuleManager " + version, GUILayout.Width(200), GUILayout.Height(20));
+            }
         }
 
-        private bool ready = false;
-
-        public override bool IsReady()
+        protected void WindowGUI(int windowID)
         {
-            return ready;
+            GUILayout.BeginVertical();
+
+            if (GUILayout.Button("Reload Database"))
+            {
+                StartCoroutine(DataBaseReloadWithMM());
+            }
+            if (GUILayout.Button("Dump Database to File"))
+            {
+                StartCoroutine(DataBaseReloadWithMM(true));
+            }
+            GUILayout.EndVertical();
+            GUI.DragWindow();
         }
 
-        public override float ProgressFraction()
+        // A short coroutine to make sure we skip the first frame 
+        // and the "please wait" message is displayed
+        IEnumerator InitialLoad()
         {
-            log("ProgressFraction");
-            if (totalPatchCount > 0)
-                return (appliedPatchCount + errorCount + needsUnsatisfiedCount) / totalPatchCount;
-            else
-                return 0;
+            yield return null;
+            MMPatchLoader.Instance.StartLoad(true);
         }
 
-        public override string ProgressTitle()
+        IEnumerator DataBaseReloadWithMM(bool dump = false)
         {
-            log("ProgressTitle");
-            return "Quacking System " + (ready ? "Ready" : "NotReady");
-        }
+            reloading = true;
+
+            ScreenMessages.PostScreenMessage("Database reloading started", 1, ScreenMessageStyle.UPPER_CENTER);
+            yield return null;
+
+            GameDatabase.Instance.Recompile = true;
+            GameDatabase.Instance.StartLoad();
+
+            // wait for it to finish
+            while (!GameDatabase.Instance.IsReady())
+                yield return null;
+
+            MMPatchLoader.Instance.StartLoad();
+
+            while (!MMPatchLoader.Instance.IsReady())
+                yield return null;
+
+            log("DB Reload OK with patchCount=" + MMPatchLoader.Instance.patchedNodeCount + " errorCount=" + MMPatchLoader.Instance.errorCount + " needsUnsatisfiedCount=" + MMPatchLoader.Instance.needsUnsatisfiedCount);
+
+            if (dump)
+                OutputAllConfigs();
+
+            PartLoader.Instance.StartLoad();
+
+            while (!PartLoader.Instance.IsReady())
+                yield return null;
 
 
-        //public void OnGUI()
-        //{
-        //    Rect screenRect = new Rect(0, 365, 438, (Screen.height - 365));
+            // Needs more work.
+            //ConfigNode game = HighLogic.CurrentGame.config.GetNode("GAME");
 
-        //    GUILayout.Window(GetHashCode(), screenRect, GUIWindow, "Click me when ready");
-        //}
-
-        //private void GUIWindow(int id)
-        //{
-        //    GUILayout.BeginVertical();
-        //    {
-        //        GUILayout.BeginHorizontal();
-        //        if (GUILayout.Button("Click Me"))
-        //        {
-        //            ready = true;
-        //        };
-        //        GUILayout.EndHorizontal();
-        //    }
-        //    GUILayout.EndHorizontal();
-        //}
-
-        public override void StartLoad()
-        {
-            log("StartLoad");
-            // Unset the loadedInScene flag. All the other copies will have this sorted out during Start, so safe to do here.
-            //loadedInScene = false;
-
-            //if (GameSettings.MODIFIER_KEY.GetKey() && Input.GetKeyDown(KeyCode.F11))
+            //if (game != null && ResearchAndDevelopment.Instance != null)
             //{
-            //    showUI = !showUI;
+            //    ScreenMessages.PostScreenMessage("GAME found");
+            //    ConfigNode scenario = game.GetNodes("SCENARIO").FirstOrDefault((ConfigNode n) => n.name == "ResearchAndDevelopment");
+            //    if (scenario != null)
+            //    {
+            //        ScreenMessages.PostScreenMessage("SCENARIO found");
+            //        ResearchAndDevelopment.Instance.OnLoad(scenario);
+            //    }
             //}
 
-            #region Initialization
-
-            //if (!GameDatabase.Instance.IsReady() && ((HighLogic.LoadedScene == GameScenes.MAINMENU) || (HighLogic.LoadedScene == GameScenes.SPACECENTER)))
-            //{
-            //    return;
-            //}
-
-            //if (loaded || PartLoader.Instance.IsReady())
-            //    return;
-
-            totalPatchCount = 0;
-            appliedPatchCount = 0;
-            errorCount = 0;
-            needsUnsatisfiedCount = 0;
-            errorFiles = new Dictionary<string, int>();
-            #endregion
-
-            List<String> excludePaths = PrePatchInit();
-            StartCoroutine(ProcessPatch(excludePaths));
-
+            reloading = false;
+            ScreenMessages.PostScreenMessage("Database reloading finished", 1, ScreenMessageStyle.UPPER_CENTER);
         }
+
+        private static void OutputAllConfigs()
+        {
+            string path = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "_MMCfgOutput" + Path.DirectorySeparatorChar;
+            Directory.CreateDirectory(path);
+
+            foreach (var d in GameDatabase.Instance.root.AllConfigs)
+            {
+                File.WriteAllText(path + d.url.Replace('/', '.') + ".cfg", d.config.ToString());
+            }
+        }
+
+        #endregion
 
         public bool ElectionAndCheck()
         {
@@ -240,7 +262,7 @@ namespace ModuleManager
             if (oldAssemblies.Any())
             {
                 var badPaths = oldAssemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
-                status = "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray());
+                string status = "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray());
                 PopupDialog.SpawnPopupDialog("Old versions of Module Manager", status, "OK", false, HighLogic.Skin);
                 //loaded = true;
                 print("[ModuleManager] Old version of Module Manager present. Stopping");
@@ -274,8 +296,104 @@ namespace ModuleManager
                     print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
             }
 
-            #endregion            
+            #endregion
             return true;
+        }
+    }
+
+    public class MMPatchLoader : LoadingSystem
+    {
+        private static MMPatchLoader _instance;
+
+        //private bool loaded = false;
+
+        public int totalPatchCount = 0;
+        public int appliedPatchCount = 0;
+        public int patchedNodeCount = 0;
+        public int errorCount = 0;
+        public int needsUnsatisfiedCount = 0;
+
+        private Dictionary<String, int> errorFiles;
+        private List<AssemblyName> mods;
+
+        public string status = "Processing Module Manager patch\nPlease Wait...";
+        public string errors = "";
+
+        public static MMPatchLoader Instance
+        {
+            get
+            {
+                return _instance;
+            }
+        }
+
+        private void Awake()
+        {
+            if (_instance != null)
+            {
+                DestroyImmediate(this);
+                return;
+            }
+            _instance = this;
+            DontDestroyOnLoad(gameObject);
+        }
+
+        private bool ready = false;
+
+        public override bool IsReady()
+        {
+            return ready;
+        }
+
+        public override float ProgressFraction()
+        {
+            if (totalPatchCount > 0)
+                return (float)(appliedPatchCount + needsUnsatisfiedCount) / (float)totalPatchCount;
+            else
+                return 0;
+        }
+
+        public override string ProgressTitle()
+        {
+            return "Quacking System " + (ready ? "Ready" : "NotReady");
+        }
+
+        public override void StartLoad()
+        {
+            StartLoad(false);
+        }
+
+        public void StartLoad(bool blocking)
+        {
+
+            //if (!GameDatabase.Instance.IsReady() && ((HighLogic.LoadedScene == GameScenes.MAINMENU) || (HighLogic.LoadedScene == GameScenes.SPACECENTER)))
+            //{
+            //    return;
+            //}
+
+            //if (loaded || PartLoader.Instance.IsReady())
+            //    return;
+
+            totalPatchCount = 0;
+            appliedPatchCount = 0;
+            patchedNodeCount = 0;
+            errorCount = 0;
+            needsUnsatisfiedCount = 0;
+            errorFiles = new Dictionary<string, int>();
+            #endregion
+
+            ready = false;
+
+            List<String> excludePaths = PrePatchInit();
+
+            if (blocking)
+            {
+                IEnumerator fib = ProcessPatch(excludePaths);
+                while (fib.MoveNext());
+            }
+            else
+                StartCoroutine(ProcessPatch(excludePaths));
+
         }
 
         private List<String> PrePatchInit()
@@ -374,6 +492,8 @@ namespace ModuleManager
             CheckNeeds(excludePaths);
             #endregion
 
+            yield return null;
+
             #region Applying patches
             // :First node (and any node without a :pass)
             ApplyPatch(excludePaths, ":FIRST");
@@ -394,6 +514,8 @@ namespace ModuleManager
             // :Final node
             ApplyPatch(excludePaths, ":FINAL");
 
+            yield return null;
+
             PurgeUnused(excludePaths);
             #endregion
 
@@ -404,7 +526,7 @@ namespace ModuleManager
 
 
             status = "ModuleManager: "
-                + appliedPatchCount + " patch" + (appliedPatchCount != 1 ? "es" : "") + " applied"
+                + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") + " applied"
                 + ", "
                 + needsUnsatisfiedCount + " hidden item" + (needsUnsatisfiedCount != 1 ? "s" : "");
 
@@ -420,14 +542,9 @@ namespace ModuleManager
             RunTestCases();
 #endif
 
-            while(true)
-                yield return null;
-
             ready = true;
             yield return null;
         }
-
-        #endregion
 
         #region Needs checking
         private void CheckNeeds(List<String> excludePaths)
@@ -648,7 +765,7 @@ namespace ModuleManager
                                     {
                                         case Command.Edit:
                                             print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
-                                            appliedPatchCount++;
+                                            patchedNodeCount++;
                                             url.config = ModifyNode(url.config, mod.config);
                                             break;
                                         case Command.Copy:
@@ -678,6 +795,7 @@ namespace ModuleManager
                         finally
                         {
                             // The patch was either run or has failed, in any case let's remove it from the database
+                            appliedPatchCount++;
                             mod.parent.configs.Remove(mod);
                         }
                     }
@@ -1366,80 +1484,6 @@ namespace ModuleManager
         }
         #endregion
 
-        #region GUI stuff.
-
-        //public void OnGUI()
-        //{
-        //    if (HighLogic.LoadedScene == GameScenes.LOADING && loaded)
-        //    {
-
-        //        var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
-        //        centeredStyle.alignment = TextAnchor.UpperCenter;
-        //        centeredStyle.fontSize = 16;
-        //        Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(status));
-        //        GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height), sizeOfLabel.x, sizeOfLabel.y), status, centeredStyle);
-
-        //        if (errorCount > 0)
-        //        {
-        //            var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
-        //            errorStyle.alignment = TextAnchor.UpperLeft;
-        //            errorStyle.fontSize = 16;
-        //            Vector2 sizeOfError = errorStyle.CalcSize(new GUIContent(errors));
-        //            GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height) + sizeOfLabel.y, sizeOfError.x, sizeOfError.y), errors, errorStyle);
-
-        //        }
-        //    }
-
-        //    //if (showUI && HighLogic.LoadedScene == GameScenes.SPACECENTER && !inRnDCenter)
-        //    //{
-        //    //    windowPos = GUILayout.Window(GetType().FullName.GetHashCode(), windowPos, WindowGUI, "ModuleManager", GUILayout.Width(200), GUILayout.Height(20));
-        //    //}
-        //}
-
-        protected void WindowGUI(int windowID)
-        {
-            GUILayout.BeginVertical();
-
-            if (GUILayout.Button("Reload Database"))
-            {
-                print("Starting Reload");
-                StartCoroutine(DataBaseReloadWithMM());
-            }
-            if (GUILayout.Button("Dump Database to File"))
-            {
-                StartCoroutine(DataBaseReloadWithMM(true));
-            }
-            GUILayout.EndVertical();
-            GUI.DragWindow();
-        }
-
-        IEnumerator DataBaseReloadWithMM(bool dump = false)
-        {
-            print("Reload Step");
-
-            GameDatabase.Instance.Recompile = true;
-            GameDatabase.Instance.StartLoad();
-
-            // wait for it to finish
-            while (!GameDatabase.Instance.IsReady())
-                yield return null;
-
-            while (!MMPatchLoader.Instance.IsReady())
-                yield return null;
-
-            print("DB Reload OK with patchCount=" + appliedPatchCount + " errorCount=" + errorCount + " needsUnsatisfiedCount=" + needsUnsatisfiedCount);
-
-            if (dump)
-                OutputAllConfigs();
-
-            PartLoader.Instance.StartLoad();
-
-            while (!PartLoader.Instance.IsReady())
-                yield return null;
-        }
-
-
-        #endregion
 
         #region Tests
 
@@ -1477,16 +1521,5 @@ namespace ModuleManager
         }
 
         #endregion
-
-        private static void OutputAllConfigs()
-        {
-            string path = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "_MMCfgOutput" + Path.DirectorySeparatorChar;
-            Directory.CreateDirectory(path);
-
-            foreach (var d in GameDatabase.Instance.root.AllConfigs)
-            {
-                File.WriteAllText(path + d.url.Replace('/', '.') + ".cfg", d.config.ToString());
-            }
-        }
     }
 }
