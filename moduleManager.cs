@@ -88,11 +88,11 @@ namespace ModuleManager
                 // and SaveGameFixer after PartLoader.
 
                 GameObject aGameObject = new GameObject();
-                aGameObject.AddComponent<MMPatchLoader>();
+                MMPatchLoader loader = aGameObject.AddComponent<MMPatchLoader>();
 
                 // it seems Awake is called to late to insert it before the Loading starts :(
                 //log("Adding ModuleManager to the loading screen " + list.Count);
-                //list.Insert(1, loader);
+                list.Insert(1, loader);
             }
             else
             {
@@ -102,7 +102,7 @@ namespace ModuleManager
             // if we ever find a way to make the LoadingSystem stuff work we just 
             // have to comment that line and uncomment the Insert a few line higher
             // or whatever we need for the LoadingSystem to be inserted
-            StartCoroutine(InitialLoad());
+            //StartCoroutine(InitialLoad());
 
             loadedInScene = true;
         }
@@ -179,14 +179,6 @@ namespace ModuleManager
             }
             GUILayout.EndVertical();
             GUI.DragWindow();
-        }
-
-        // A short coroutine to make sure we skip the first frame 
-        // and the "please wait" message is displayed
-        IEnumerator InitialLoad()
-        {
-            yield return null;
-            MMPatchLoader.Instance.StartLoad(true);
         }
 
         IEnumerator DataBaseReloadWithMM(bool dump = false)
@@ -313,11 +305,14 @@ namespace ModuleManager
         public int errorCount = 0;
         public int needsUnsatisfiedCount = 0;
 
+        private const int yieldRate = 100;
+
         private Dictionary<String, int> errorFiles;
         private List<AssemblyName> mods;
 
-        public string status = "Processing Module Manager patch\nPlease Wait...";
+        public string status = "";
         public string errors = "";
+        public string activity = "Module Manager";
 
         public static MMPatchLoader Instance
         {
@@ -355,7 +350,7 @@ namespace ModuleManager
 
         public override string ProgressTitle()
         {
-            return "Quacking System " + (ready ? "Ready" : "NotReady");
+            return activity;
         }
 
         public override void StartLoad()
@@ -363,17 +358,14 @@ namespace ModuleManager
             StartLoad(false);
         }
 
+        public void Update()
+        {
+            if (appliedPatchCount>0)
+                StatusUpdate();
+        }
+
         public void StartLoad(bool blocking)
         {
-
-            //if (!GameDatabase.Instance.IsReady() && ((HighLogic.LoadedScene == GameScenes.MAINMENU) || (HighLogic.LoadedScene == GameScenes.SPACECENTER)))
-            //{
-            //    return;
-            //}
-
-            //if (loaded || PartLoader.Instance.IsReady())
-            //    return;
-
             totalPatchCount = 0;
             appliedPatchCount = 0;
             patchedNodeCount = 0;
@@ -496,25 +488,18 @@ namespace ModuleManager
 
             #region Applying patches
             // :First node (and any node without a :pass)
-            ApplyPatch(excludePaths, ":FIRST");
-
-            yield return null;
+            yield return StartCoroutine(ApplyPatch(excludePaths, ":FIRST"));
 
             foreach (AssemblyName mod in mods)
             {
                 string upperModName = mod.Name.ToUpper();
-                ApplyPatch(excludePaths, ":BEFORE[" + upperModName + "]");
-                yield return null;
-                ApplyPatch(excludePaths, ":FOR[" + upperModName + "]");
-                yield return null;
-                ApplyPatch(excludePaths, ":AFTER[" + upperModName + "]");
-                yield return null;
+                yield return StartCoroutine(ApplyPatch(excludePaths, ":BEFORE[" + upperModName + "]"));
+                yield return StartCoroutine(ApplyPatch(excludePaths, ":FOR[" + upperModName + "]"));
+                yield return StartCoroutine(ApplyPatch(excludePaths, ":AFTER[" + upperModName + "]"));
             }
 
             // :Final node
-            ApplyPatch(excludePaths, ":FINAL");
-
-            yield return null;
+            yield return StartCoroutine(ApplyPatch(excludePaths, ":FINAL"));
 
             PurgeUnused(excludePaths);
             #endregion
@@ -524,14 +509,7 @@ namespace ModuleManager
                 foreach (String file in errorFiles.Keys)
                     errors += errorFiles[file] + " error" + (errorFiles[file] > 1 ? "s" : "") + " in GameData/" + file + "\n";
 
-
-            status = "ModuleManager: "
-                + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") + " applied"
-                + ", "
-                + needsUnsatisfiedCount + " hidden item" + (needsUnsatisfiedCount != 1 ? "s" : "");
-
-            if (errorCount > 0)
-                status += ", found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
+            StatusUpdate();
 
             print("[ModuleManager] " + status + "\n" + errors);
 
@@ -544,6 +522,17 @@ namespace ModuleManager
 
             ready = true;
             yield return null;
+        }
+
+        private void StatusUpdate()
+        {
+            status = "ModuleManager: "
+                + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") + " applied"
+                + ", "
+                + needsUnsatisfiedCount + " hidden item" + (needsUnsatisfiedCount != 1 ? "s" : "");
+
+            if (errorCount > 0)
+                status += ", found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
         }
 
         #region Needs checking
@@ -692,15 +681,17 @@ namespace ModuleManager
         #endregion
 
         #region Applying Patches
+
         // Apply patch to all relevent nodes
-        public void ApplyPatch(List<String> excludePaths, string Stage)
+        public IEnumerator ApplyPatch(List<String> excludePaths, string Stage)
         {
             print("[ModuleManager] " + Stage + (Stage == ":FIRST" ? " (default) pass" : " pass"));
+
+            activity = "ModuleManager " + Stage;
 
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
             {
                 int lastErrorCount = errorCount;
-
                 try
                 {
                     string name = RemoveWS(mod.type);
@@ -810,6 +801,8 @@ namespace ModuleManager
                     if (lastErrorCount < errorCount)
                         addErrorFiles(mod.parent, errorCount - lastErrorCount);
                 }
+                if (appliedPatchCount % yieldRate == yieldRate-1)
+                    yield return null;
             }
         }
 
