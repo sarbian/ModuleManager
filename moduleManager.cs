@@ -1124,16 +1124,16 @@ namespace ModuleManager
                     switch (op)
                     {
                         case '*':
-                            value = (s * os).ToString();
+                            value = (os * s).ToString();
                             break;
                         case '/':
-                            value = (s / os).ToString();
+                            value = (os / s).ToString();
                             break;
                         case '+':
-                            value = (s + os).ToString();
+                            value = (os + s).ToString();
                             break;
                         case '-':
-                            value = (s - os).ToString();
+                            value = (os - s).ToString();
                             break;
                     }
                 }
