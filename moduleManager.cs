@@ -1289,7 +1289,7 @@ namespace ModuleManager
                         return not ^ false;
                     case '#':
                         // #module[Winglet]
-                        if (node.HasValue(type) && node.GetValue(type).Equals(name))
+                        if (node.HasValue(type) && WildcardMatchValues(node,type,name))
                             return CheckCondition(node, remainCond);
                         return false;
                     case '~':
@@ -1297,7 +1297,7 @@ namespace ModuleManager
                         // or: ~breakingForce[100]  will be true if it's present but not 100, too.
                         if (!(node.HasValue(type)))
                             return CheckCondition(node, remainCond);
-                        if (name != null && node.GetValue(type).Equals(name))
+                        if (name != null && !WildcardMatchValues(node, type, name))
                             return CheckCondition(node, remainCond);
 
                         return false;
@@ -1306,6 +1306,17 @@ namespace ModuleManager
                 }
             }
             return condsList.TrueForAll(c => CheckCondition(node, c));
+        }
+
+        public static bool WildcardMatchValues(ConfigNode node, string type, string value)
+        {
+            string[] values = node.GetValues(type);
+            for (int i=0; i<values.Length; i++)
+            {
+                if (WildcardMatch(values[i], value))
+                    return true;
+            }
+            return false;
         }
 
         public static bool WildcardMatch(String s, String wildcard)
