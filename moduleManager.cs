@@ -90,19 +90,13 @@ namespace ModuleManager
                 GameObject aGameObject = new GameObject();
                 MMPatchLoader loader = aGameObject.AddComponent<MMPatchLoader>();
 
-                // it seems Awake is called to late to insert it before the Loading starts :(
-                //log("Adding ModuleManager to the loading screen " + list.Count);
+                log("Adding ModuleManager to the loading screen " + list.Count);
                 list.Insert(1, loader);
             }
             else
             {
                 Debug.LogWarning("Can't find the LoadingSystem list. Abording ModuleManager execution");
             }
-
-            // if we ever find a way to make the LoadingSystem stuff work we just 
-            // have to comment that line and uncomment the Insert a few line higher
-            // or whatever we need for the LoadingSystem to be inserted
-            //StartCoroutine(InitialLoad());
 
             loadedInScene = true;
         }
@@ -256,7 +250,6 @@ namespace ModuleManager
                 var badPaths = oldAssemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
                 string status = "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray());
                 PopupDialog.SpawnPopupDialog("Old versions of Module Manager", status, "OK", false, HighLogic.Skin);
-                //loaded = true;
                 print("[ModuleManager] Old version of Module Manager present. Stopping");
                 return false;
             }
@@ -513,7 +506,6 @@ namespace ModuleManager
 
             print("[ModuleManager] " + status + "\n" + errors);
 
-            //loaded = true;
             #endregion
 
 #if DEBUG
@@ -1289,7 +1281,7 @@ namespace ModuleManager
                         return not ^ false;
                     case '#':
                         // #module[Winglet]
-                        if (node.HasValue(type) && WildcardMatchValues(node,type,name))
+                        if (node.HasValue(type) && WildcardMatchValues(node, type, name))
                             return CheckCondition(node, remainCond);
                         return false;
                     case '~':
