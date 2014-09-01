@@ -480,8 +480,11 @@ namespace ModuleManager
             yield return null;
 
             #region Applying patches
-            // :First node (and any node without a :pass)
+            // :First node 
             yield return StartCoroutine(ApplyPatch(excludePaths, ":FIRST"));
+
+            // any node without a :pass
+            yield return StartCoroutine(ApplyPatch(excludePaths, ":LEGACY"));
 
             foreach (AssemblyName mod in mods)
             {
@@ -682,7 +685,7 @@ namespace ModuleManager
         // Apply patch to all relevent nodes
         public IEnumerator ApplyPatch(List<String> excludePaths, string Stage)
         {
-            print("[ModuleManager] " + Stage + (Stage == ":FIRST" ? " (default) pass" : " pass"));
+            print("[ModuleManager] " + Stage + (Stage == ":LEGACY" ? " (default) pass" : " pass"));
 
             activity = "ModuleManager " + Stage;            
 
@@ -719,7 +722,7 @@ namespace ModuleManager
                         {
                             name = name.Substring(0, stageIdx) + name.Substring(stageIdx + Stage.Length);
                         }
-                        else if (!(Stage == ":FIRST"
+                        else if (!((upperName.Contains(":FIRST") || Stage == ":LEGACY")
                                     && !upperName.Contains(":BEFORE[")
                                     && !upperName.Contains(":FOR[")
                                     && !upperName.Contains(":AFTER[")
