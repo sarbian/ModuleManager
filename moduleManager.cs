@@ -300,8 +300,6 @@ namespace ModuleManager
         public int errorCount = 0;
         public int needsUnsatisfiedCount = 0;
 
-        private const int yieldRate = 100;
-
         private Dictionary<String, int> errorFiles;
         private List<AssemblyName> mods;
 
@@ -534,8 +532,11 @@ namespace ModuleManager
         #region Needs checking
         private void CheckNeeds(List<String> excludePaths)
         {
+
+            UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
+
             // Check the NEEDS parts first.
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
+            foreach (UrlDir.UrlConfig mod in allConfigs)
             {
                 try
                 {
@@ -683,10 +684,15 @@ namespace ModuleManager
         {
             print("[ModuleManager] " + Stage + (Stage == ":FIRST" ? " (default) pass" : " pass"));
 
-            activity = "ModuleManager " + Stage;
+            activity = "ModuleManager " + Stage;            
 
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
+            UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
+
+            int yieldRate = Math.Max(allConfigs.Length / 4, 10);
+
+            for (int modsIndex = 0; modsIndex < allConfigs.Length; modsIndex++)
             {
+                UrlDir.UrlConfig mod = allConfigs[modsIndex];
                 int lastErrorCount = errorCount;
                 try
                 {
@@ -797,7 +803,7 @@ namespace ModuleManager
                     if (lastErrorCount < errorCount)
                         addErrorFiles(mod.parent, errorCount - lastErrorCount);
                 }
-                if (appliedPatchCount % yieldRate == yieldRate-1)
+                if (modsIndex % yieldRate == yieldRate - 1)
                     yield return null;
             }
         }
