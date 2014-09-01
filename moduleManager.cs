@@ -196,6 +196,8 @@ namespace ModuleManager
 
             log("DB Reload OK with patchCount=" + MMPatchLoader.Instance.patchedNodeCount + " errorCount=" + MMPatchLoader.Instance.errorCount + " needsUnsatisfiedCount=" + MMPatchLoader.Instance.needsUnsatisfiedCount);
 
+            PartResourceLibrary.Instance.LoadDefinitions();
+
             if (dump)
                 OutputAllConfigs();
 
@@ -511,6 +513,8 @@ namespace ModuleManager
 #if DEBUG
             RunTestCases();
 #endif
+            // TODO : Remove if we ever get a way to load sooner
+            PartResourceLibrary.Instance.LoadDefinitions();
 
             ready = true;
             yield return null;
