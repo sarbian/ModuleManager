@@ -1291,12 +1291,11 @@ namespace ModuleManager
                     case '~':
                         // ~breakingForce[]  breakingForce is not present
                         // or: ~breakingForce[100]  will be true if it's present but not 100, too.
-                        if (!(node.HasValue(type)))
-                            return CheckCondition(node, remainCond);
-                        if (name != null && !WildcardMatchValues(node, type, name))
-                            return CheckCondition(node, remainCond);
-
-                        return false;
+                        if (name == "" && node.HasValue(type))
+                            return false;
+                        if (name != "" && WildcardMatchValues(node, type, name))
+                            return false;
+                        return CheckCondition(node, remainCond);
                     default:
                         return false;
                 }
