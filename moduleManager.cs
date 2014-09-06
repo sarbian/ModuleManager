@@ -307,6 +307,8 @@ namespace ModuleManager
         public string errors = "";
         public string activity = "Module Manager";
 
+        private static Dictionary<string, Regex> regexCache = new Dictionary<string, Regex>();
+
         public static MMPatchLoader Instance
         {
             get
@@ -1116,7 +1118,19 @@ namespace ModuleManager
                     try
                     {
                         string[] split = value.Split(value[0]);
-                        value = Regex.Replace(ovalue, split[1], split[2]);
+
+                        Regex replace;
+                        if (regexCache.ContainsKey(split[1]))
+                        {
+                            replace = regexCache[split[1]];
+                        }
+                        else
+                        {
+                            replace = new Regex(split[1], RegexOptions.None);
+                            regexCache.Add(split[1], replace);
+                        }
+
+                        value = replace.Replace(ovalue, split[2]);
                     }
                     catch (Exception ex)
                     {
@@ -1327,9 +1341,17 @@ namespace ModuleManager
         {
             if (wildcard == null) return true;
             String pattern = "^" + Regex.Escape(wildcard).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
-            Regex regex;
-            regex = new Regex(pattern);
 
+            Regex regex;
+            if (regexCache.ContainsKey(pattern))
+            {
+                regex = regexCache[pattern];
+            }
+            else
+            {
+                regex = new Regex(pattern);
+                regexCache.Add(pattern, regex);
+            }            
             return (regex.IsMatch(s));
         }
         #endregion
