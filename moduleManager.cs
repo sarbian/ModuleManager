@@ -814,7 +814,7 @@ namespace ModuleManager
         }
 
         // Name is group 1, index is group 2, operator is group 3
-        private static Regex parseValue = new Regex(@"([\w\?\*]*)(?:,(-?[0-9]+))?(?:\s([+\-*/^]))?");
+        private static Regex parseValue = new Regex(@"([\w\?\*]*)(?:,(-?[0-9]+))?(?:\s([+\-*/^!]))?");
 
         // ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original, then returns the patched ConfigNode.
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
@@ -1145,14 +1145,21 @@ namespace ModuleManager
                         case '*':
                             value = (os * s).ToString();
                             break;
+
                         case '/':
                             value = (os / s).ToString();
                             break;
+
                         case '+':
                             value = (os + s).ToString();
                             break;
+
                         case '-':
                             value = (os - s).ToString();
+                            break;
+
+                        case '!':
+                            value = Math.Pow(os, s).ToString();
                             break;
                     }
                 }
