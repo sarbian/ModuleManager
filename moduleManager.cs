@@ -309,6 +309,9 @@ namespace ModuleManager
 
         private static Dictionary<string, Regex> regexCache = new Dictionary<string, Regex>();
 
+        private static Stack<ConfigNode> nodeStack = new Stack<ConfigNode>();
+        private static ConfigNode topNode;
+
         public static MMPatchLoader Instance
         {
             get
@@ -759,6 +762,8 @@ namespace ModuleManager
                                     && !IsPathInList(mod.url, excludePaths)
                                     )
                                 {
+                                    nodeStack.Clear();
+                                    topNode = url.config;
                                     switch (cmd)
                                     {
                                         case Command.Edit:
@@ -822,6 +827,7 @@ namespace ModuleManager
         {
             ConfigNode newNode = DeepCopy(original);
 
+            nodeStack.Push(newNode);
             #region Values
             string vals = "[ModuleManager] modding values";
             foreach (ConfigNode.Value modVal in mod.values)
@@ -860,6 +866,7 @@ namespace ModuleManager
                     op = match.Groups[3].Value[0];
                 }
 
+                string varValue;
                 switch (cmd)
                 {
                     case Command.Insert:
@@ -870,9 +877,11 @@ namespace ModuleManager
                         else
                         {
                             // Insert at the end by default
-                            InsertValue(newNode, match.Groups[2].Success ? index : int.MaxValue, valName, modVal.value);
+                            varValue = ProcessVariableSearch(modVal.value, newNode);
+                            InsertValue(newNode, match.Groups[2].Success ? index : int.MaxValue, valName, varValue);
                         }
                         break;
+
                     case Command.Replace:
                         if (match.Groups[2].Success || match.Groups[3].Success || valName.Contains('*') || valName.Contains('?'))
                         {
@@ -886,16 +895,19 @@ namespace ModuleManager
                         else
                         {
                             newNode.RemoveValues(valName);
-                            newNode.AddValue(valName, modVal.value);
+                            varValue = ProcessVariableSearch(modVal.value, newNode);
+                            newNode.AddValue(valName, varValue);
                         }
                         break;
+
                     case Command.Edit:
                     case Command.Copy:
-                        // Format is @key = value or @key *= value or @key += value or @key -= value 
-                        // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value 
+                        // Format is @key = value or @key *= value or @key += value or @key -= value
+                        // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value
 
                         ConfigNode.Value origVal;
-                        string value = FindAndReplaceValue(mod, ref valName, modVal.value, newNode, op, index, out origVal);
+                        varValue = ProcessVariableSearch(modVal.value, newNode);
+                        string value = FindAndReplaceValue(mod, ref valName, varValue, newNode, op, index, out origVal);
 
                         if (value != null)
                         {
@@ -961,17 +973,18 @@ namespace ModuleManager
 
                 if (command == Command.Insert)
                 {
+                    ConfigNode newSubMod = new ConfigNode(subMod.name);
+                    newSubMod = ModifyNode(newSubMod, subMod);
                     int index = int.MaxValue;
                     if (subName.Contains(",") && int.TryParse(subName.Split(',')[1], out index))
                     {
                         // In this case insert the value at position index (with the same node names)
                         subMod.name = subName = subName.Split(',')[0];
-
-                        InsertNode(newNode, subMod, index);
+                        InsertNode(newNode, newSubMod, index);
                     }
                     else
                     {
-                        newNode.AddNode(subMod);
+                        newNode.AddNode(newSubMod);
                     }
                 }
                 else
@@ -1099,8 +1112,174 @@ namespace ModuleManager
                 }
             }
             #endregion
+            nodeStack.Pop();
 
             return newNode;
+        }
+
+        // KeyName is group 1, index is group 2, value indexis  group 3, value separator is group 4
+        private static Regex parseVarKey = new Regex(@"(\w+)(?:,((?:[0-9]+)+))?(?:\[((?:[0-9]+)+)(?:,(.))?\])?");
+
+        // Search for a value by a path alike string
+        private static string RecurseVariableSearch(string path, ConfigNode currentNode)
+        {
+            print("[ModuleManager] path:" + path);
+            if (path[0] == '/')
+                return RecurseVariableSearch(path.Substring(1), topNode);
+            if (path[0] == '@')
+            {
+                ConfigNode target = GameDatabase.Instance.GetConfigNode(""); // TODO : To finish. search by node name. it's TYPE[name]
+                return RecurseVariableSearch(path.Substring(1), target);
+            }
+            if (path.StartsWith("../"))
+            {
+                if (nodeStack.Count == 1)
+                {
+                    print("[ModuleManager] path: nodeStack.Count == 1");
+                    return null;
+                }
+                string result = null;
+                ConfigNode top = nodeStack.Pop();
+                try
+                {
+                    result = RecurseVariableSearch(path.Substring(3), nodeStack.Peek());
+                }
+                finally
+                {
+                    nodeStack.Push(top);
+                }
+                return result;
+            }
+            int nextSep = path.IndexOf('/');
+            // make sure we don't stop on a ",/" which would be a value separtor
+            // it's a hack that should be replaced with a proper regex for the whole node search
+            while (nextSep > 0 && path[nextSep - 1] == ',')
+                nextSep = path.IndexOf('/', nextSep + 1);
+            // Node search
+            if (nextSep > 0 && path[nextSep - 1] != ',')
+            {
+                // Big case of code duplication here ...
+                // TODO : replace with a regex
+
+                string subName = path.Substring(0, nextSep);
+                string cond = "";
+                string nodeType, nodeName;
+                string tag = "";
+                int index = 0;
+                print("[ModuleManager] subname:" + subName);
+                if (subName.Contains(":HAS["))
+                {
+                    int start = subName.IndexOf(":HAS[");
+                    cond = subName.Substring(start + 5, subName.LastIndexOf(']') - start - 5);
+                    subName = subName.Substring(0, start);
+                }
+                else if (subName.Contains(","))
+                {
+                    tag = subName.Split(',')[1];
+                    subName = subName.Split(',')[0];
+                    int.TryParse(tag, out index);
+                }
+
+                if (subName.Contains("["))
+                {
+                    // format NODETYPE[Name] {...}
+                    // or NODETYPE[Name, index] {...}
+                    nodeType = subName.Split('[')[0];
+                    nodeName = subName.Split('[')[1].Replace("]", "");
+                }
+                else
+                {
+                    // format NODETYPE {...}
+                    nodeType = subName;
+                    nodeName = null;
+                }
+
+                print("[ModuleManager] nodeType:" + nodeType + " nodeName:" + nodeName);
+
+                if (cond.Length > 0)
+                { // get the first one matching
+                    ConfigNode n, last = null;
+                    while (true)
+                    {
+                        n = FindConfigNodeIn(currentNode, nodeType, nodeName, index++);
+                        if (n == last || n == null)
+                            break;
+                        if (CheckCondition(n, cond))
+                            return RecurseVariableSearch(path.Substring(nextSep + 1), n);
+                        last = n;
+                    }
+                    return null;
+                }
+                else
+                { // just get one node
+                    ConfigNode n = FindConfigNodeIn(currentNode, nodeType, nodeName, index);
+                    if (n != null)
+                        return RecurseVariableSearch(path.Substring(nextSep + 1), n);
+                    return null;
+                }
+            }
+            // Value search
+
+            Match match = parseVarKey.Match(path);
+            if (!match.Success)
+            {
+                print("[ModuleManager] Cannot parse variable search command: " + path);
+                return null;
+            }
+
+            string valName = match.Groups[1].Value;
+
+            int idx = 0;
+            if (match.Groups[2].Success)
+            {
+                int.TryParse(match.Groups[2].Value, out idx);
+            }
+
+            string value = FindValueIn(currentNode, valName, idx).value;
+
+            int splitIdx = 0;
+            if (match.Groups[3].Success)
+            {
+                int.TryParse(match.Groups[3].Value, out splitIdx);
+
+                char sep = ',';
+                if (match.Groups[4].Success)
+                {
+                    sep = match.Groups[4].Value[0];
+                }
+                string[] split = value.Split(sep);
+                if (splitIdx < split.Length)
+                    value = split[splitIdx];
+            }
+            return value;
+        }
+
+        private static string ProcessVariableSearch(string value, ConfigNode node)
+        {
+            // value = #xxxx$yyyyy$zzzzz$aaaa$bbbb
+            // There is 2 or more '$'
+            if (value[0] == '#' && value.IndexOf('$') != value.LastIndexOf('$'))
+            {
+                print("[ModuleManager] variable search input : =\"" + value + "\"");
+                string[] split = value.Split('$');
+
+                if (split.Length % 2 != 1)
+                {
+                    return null;
+                }
+
+                StringBuilder builder = new StringBuilder();
+                builder.Append(split[0].Substring(1));
+
+                for (int i = 1; i < split.Length - 1; i = i + 2)
+                {
+                    builder.Append(RecurseVariableSearch(split[i], node));
+                    builder.Append(split[i + 1]);
+                }
+                value = builder.ToString();
+                print("[ModuleManager] variable search output : =\"" + value + "\"");
+            }
+            return value;
         }
 
         private static string FindAndReplaceValue(ConfigNode mod, ref string valName, string value, ConfigNode newNode, char op, int index, out ConfigNode.Value origVal)
