@@ -313,10 +313,10 @@ namespace ModuleManager
         }
     }
 
+    public delegate void ModuleManagerPostPatchCallback();
+
     public class MMPatchLoader : LoadingSystem
     {
-        private static MMPatchLoader _instance;
-
         public int totalPatchCount = 0;
 
         public int appliedPatchCount = 0;
@@ -343,19 +343,18 @@ namespace ModuleManager
 
         private static ConfigNode topNode;
 
-        public static MMPatchLoader Instance
-        {
-            get { return _instance; }
-        }
+        private static List<ModuleManagerPostPatchCallback> postPatchCallbacks = new List<ModuleManagerPostPatchCallback>();
+
+        public static MMPatchLoader Instance { get; private set; }
 
         private void Awake()
         {
-            if (_instance != null)
+            if (Instance != null)
             {
                 DestroyImmediate(this);
                 return;
             }
-            _instance = this;
+            Instance = this;
             DontDestroyOnLoad(gameObject);
         }
 
@@ -413,6 +412,17 @@ namespace ModuleManager
             }
             else
                 StartCoroutine(ProcessPatch(excludePaths));
+
+            foreach (var callback in postPatchCallbacks)
+            {
+                callback();
+            }
+        }
+
+        public static void addPostPatchCallback(ModuleManagerPostPatchCallback callback)
+        {
+            if (!postPatchCallbacks.Contains(callback))
+                postPatchCallbacks.Add(callback);
         }
 
         private List<String> PrePatchInit()
@@ -569,6 +579,12 @@ namespace ModuleManager
             PartResourceLibrary.Instance.LoadDefinitions();
 
             ready = true;
+
+            foreach (var callback in postPatchCallbacks)
+            {
+                callback();
+                yield return null;
+            }
             yield return null;
         }
 
