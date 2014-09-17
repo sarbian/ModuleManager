@@ -155,7 +155,9 @@ namespace ModuleManager
                 }
             }
 
-            if (showUI && HighLogic.LoadedScene == GameScenes.SPACECENTER && !inRnDCenter)
+            if (showUI &&
+                (HighLogic.LoadedScene == GameScenes.SPACECENTER || HighLogic.LoadedScene == GameScenes.MAINMENU) &&
+                !inRnDCenter)
             {
                 windowPos = GUILayout.Window(
                     GetType().FullName.GetHashCode(),
