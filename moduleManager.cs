@@ -134,9 +134,11 @@ namespace ModuleManager
         {
             if (HighLogic.LoadedScene == GameScenes.LOADING && MMPatchLoader.Instance != null)
             {
-                var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
-                centeredStyle.alignment = TextAnchor.UpperCenter;
-                centeredStyle.fontSize = 16;
+                var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
+                {
+                    alignment = TextAnchor.UpperCenter,
+                    fontSize = 16
+                };
                 Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(MMPatchLoader.Instance.status));
                 GUI.Label(
                     new Rect(Screen.width/2 - (sizeOfLabel.x/2), Mathf.FloorToInt(0.8f*Screen.height), sizeOfLabel.x,
@@ -893,7 +895,6 @@ namespace ModuleManager
                 }
 
                 // Get the bits and pieces from the regexp
-
                 valName = match.Groups[1].Value;
 
                 // In this case insert the value at position index (with the same node names)
@@ -1282,9 +1283,7 @@ namespace ModuleManager
             if (path.StartsWith("../"))
             {
                 if (nodeStack.Count == 1)
-                {
                     return null;
-                }
                 string result;
                 ConfigNode top = nodeStack.Pop();
                 try
@@ -1308,7 +1307,6 @@ namespace ModuleManager
                 string constraint = "";
                 string nodeType, nodeName;
                 int index = 0;
-                if (subName.Contains(":HAS["))
                 if (subName.Contains(":HAS["))
                 {
                     int start = subName.IndexOf(":HAS[");
