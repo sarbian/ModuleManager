@@ -1028,6 +1028,16 @@ namespace ModuleManager
                             newNode.RemoveValues(valName);
                         }
                         break;
+
+                    case Command.Rename:
+                        if ( nodeStack.Count == 1)
+                        {
+                            log("Renaming nodes does not work on top nodes");
+                            errorCount++;
+                            break;
+                        }
+                        newNode.name = modVal.value;
+                        break;
                 }
             }
             //log(vals);
@@ -1152,7 +1162,7 @@ namespace ModuleManager
                                     // Edit in place
                                     newSubNode = ModifyNode(subNode, subMod);
                                     subNode.ClearData();
-                                    newSubNode.CopyTo(subNode);
+                                    newSubNode.CopyTo(subNode, newSubNode.name);
                                     break;
 
                                 case Command.Delete:
@@ -1178,7 +1188,7 @@ namespace ModuleManager
                             msg += "  Applying subnode " + subMod.name + "\n";
                             ConfigNode newSubNode = ModifyNode(subNodes[0], subMod);
                             subNodes[0].ClearData();
-                            newSubNode.CopyTo(subNodes[0]);
+                            newSubNode.CopyTo(subNodes[0], newSubNode.name);
                         }
                         else
                         {
@@ -1502,7 +1512,9 @@ namespace ModuleManager
 
             Replace,
 
-            Copy
+            Copy,
+
+            Rename
         }
 
         private static Command ParseCommand(string name, out string valueName)
@@ -1531,6 +1543,10 @@ namespace ModuleManager
                 case '+':
                 case '$':
                     ret = Command.Copy;
+                    break;
+
+                case '|':
+                    ret = Command.Rename;
                     break;
 
                 default:
