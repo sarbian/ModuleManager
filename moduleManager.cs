@@ -6,37 +6,37 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using KSP;
 using UnityEngine;
 
 namespace ModuleManager
 {
-    // Once MUST be true for the election process to work when 2+ dll of the same version are loaded
-    // But I need it to be false for the reload database thingy
     [KSPAddon(KSPAddon.Startup.Instantly, false)]
     public class ModuleManager : MonoBehaviour
     {
         #region state
 
-        private bool inRnDCenter = false;
-        private bool reloading = false;
+        private bool inRnDCenter;
+
+        private bool reloading;
 
         public bool showUI = false;
+
         private Rect windowPos = new Rect(80f, 60f, 240f, 40f);
 
         private string version = "";
 
-        #endregion
+        #endregion state
 
         #region Top Level - Update
-        private static bool loadedInScene = false;
+
+        private static bool loadedInScene;
 
         internal void OnRnDCenterSpawn()
         {
             inRnDCenter = true;
         }
 
-        internal void OnRnDCenterDespawn()
+        internal void OnRnDCenterDeSpawn()
         {
             inRnDCenter = false;
         }
@@ -52,18 +52,19 @@ namespace ModuleManager
             if (loadedInScene || !ElectionAndCheck())
             {
                 Assembly currentAssembly = Assembly.GetExecutingAssembly();
-                log("Multiple copies of current version. Using the first copy. Version: " + currentAssembly.GetName().Version);
+                log("Multiple copies of current version. Using the first copy. Version: " +
+                    currentAssembly.GetName().Version);
                 Destroy(gameObject);
                 return;
             }
             DontDestroyOnLoad(gameObject);
 
             System.Version v = Assembly.GetExecutingAssembly().GetName().Version;
-            version = v.Major.ToString() + "." + v.Minor.ToString() + "." + v.Build.ToString();
+            version = v.Major + "." + v.Minor + "." + v.Build;
 
-            // Subscrive to the RnD center spawn/despawn events
+            // Subscribe to the RnD center spawn/deSpawn events
             GameEvents.onGUIRnDComplexSpawn.Add(OnRnDCenterSpawn);
-            GameEvents.onGUIRnDComplexDespawn.Add(OnRnDCenterDespawn);
+            GameEvents.onGUIRnDComplexDespawn.Add(this.OnRnDCenterDeSpawn);
 
             // This code is the one that should allow to plugin into the stock loading bar
             // but it can't insert the LoadingSystembefore PartLoader ie too late
@@ -72,14 +73,13 @@ namespace ModuleManager
             LoadingScreen screen = FindObjectOfType<LoadingScreen>();
             if (screen == null)
             {
-                log("Can't find LoadingScreen type. Abording ModuleManager execution");
+                log("Can't find LoadingScreen type. Aborting ModuleManager execution");
                 return;
             }
-            Type lsType = typeof(LoadingScreen);
-            List<LoadingSystem> list = (
-                from fld in lsType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-                where fld.FieldType == typeof(List<LoadingSystem>)
-                select (List<LoadingSystem>)fld.GetValue(screen)).FirstOrDefault();
+            Type lsType = typeof (LoadingScreen);
+            List<LoadingSystem> list = (from fld in lsType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
+                where fld.FieldType == typeof (List<LoadingSystem>)
+                select (List<LoadingSystem>) fld.GetValue(screen)).FirstOrDefault();
 
             if (list != null)
             {
@@ -95,9 +95,7 @@ namespace ModuleManager
                 list.Insert(1, loader);
             }
             else
-            {
-                Debug.LogWarning("Can't find the LoadingSystem list. Abording ModuleManager execution");
-            }
+                Debug.LogWarning("Can't find the LoadingSystem list. Aborting ModuleManager execution");
 
             loadedInScene = true;
         }
@@ -106,29 +104,27 @@ namespace ModuleManager
         internal void OnDestroy()
         {
             GameEvents.onGUIRnDComplexSpawn.Remove(OnRnDCenterSpawn);
-            GameEvents.onGUIRnDComplexDespawn.Remove(OnRnDCenterDespawn);
+            GameEvents.onGUIRnDComplexDespawn.Remove(this.OnRnDCenterDeSpawn);
         }
-
 
         internal void Update()
         {
             if (GameSettings.MODIFIER_KEY.GetKey() && Input.GetKeyDown(KeyCode.F11))
-            {
                 showUI = !showUI;
-            }
 
             if (reloading)
             {
-                float perc = 0;
+                float percent = 0;
                 if (!GameDatabase.Instance.IsReady())
-                    perc = GameDatabase.Instance.ProgressFraction();
+                    percent = GameDatabase.Instance.ProgressFraction();
                 else if (!MMPatchLoader.Instance.IsReady())
-                    perc = 1f + MMPatchLoader.Instance.ProgressFraction();
+                    percent = 1f + MMPatchLoader.Instance.ProgressFraction();
                 else if (!PartLoader.Instance.IsReady())
-                    perc = 2f + PartLoader.Instance.ProgressFraction();
+                    percent = 2f + PartLoader.Instance.ProgressFraction();
 
-                int intperc = Mathf.CeilToInt(perc * 100f / 3f);
-                ScreenMessages.PostScreenMessage("Database reloading " + intperc + "%", Time.deltaTime, ScreenMessageStyle.UPPER_CENTER);
+                int intPercent = Mathf.CeilToInt(percent*100f/3f);
+                ScreenMessages.PostScreenMessage("Database reloading " + intPercent + "%", Time.deltaTime,
+                    ScreenMessageStyle.UPPER_CENTER);
             }
         }
 
@@ -142,7 +138,9 @@ namespace ModuleManager
                 centeredStyle.alignment = TextAnchor.UpperCenter;
                 centeredStyle.fontSize = 16;
                 Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(MMPatchLoader.Instance.status));
-                GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height), sizeOfLabel.x, sizeOfLabel.y), MMPatchLoader.Instance.status, centeredStyle);
+                GUI.Label(
+                    new Rect(Screen.width/2 - (sizeOfLabel.x/2), Mathf.FloorToInt(0.8f*Screen.height), sizeOfLabel.x,
+                        sizeOfLabel.y), MMPatchLoader.Instance.status, centeredStyle);
 
                 if (MMPatchLoader.Instance.errorCount > 0)
                 {
@@ -150,13 +148,22 @@ namespace ModuleManager
                     errorStyle.alignment = TextAnchor.UpperLeft;
                     errorStyle.fontSize = 16;
                     Vector2 sizeOfError = errorStyle.CalcSize(new GUIContent(MMPatchLoader.Instance.errors));
-                    GUI.Label(new Rect(Screen.width / 2 - (sizeOfLabel.x / 2), Mathf.FloorToInt(0.8f * Screen.height) + sizeOfLabel.y, sizeOfError.x, sizeOfError.y), MMPatchLoader.Instance.errors, errorStyle);
+                    GUI.Label(
+                        new Rect(Screen.width/2 - (sizeOfLabel.x/2),
+                            Mathf.FloorToInt(0.8f*Screen.height) + sizeOfLabel.y, sizeOfError.x, sizeOfError.y),
+                        MMPatchLoader.Instance.errors, errorStyle);
                 }
             }
 
             if (showUI && HighLogic.LoadedScene == GameScenes.SPACECENTER && !inRnDCenter)
             {
-                windowPos = GUILayout.Window(GetType().FullName.GetHashCode(), windowPos, WindowGUI, "ModuleManager " + version, GUILayout.Width(200), GUILayout.Height(20));
+                windowPos = GUILayout.Window(
+                    GetType().FullName.GetHashCode(),
+                    windowPos,
+                    WindowGUI,
+                    "ModuleManager " + version,
+                    GUILayout.Width(200),
+                    GUILayout.Height(20));
             }
         }
 
@@ -165,18 +172,14 @@ namespace ModuleManager
             GUILayout.BeginVertical();
 
             if (GUILayout.Button("Reload Database"))
-            {
                 StartCoroutine(DataBaseReloadWithMM());
-            }
             if (GUILayout.Button("Dump Database to File"))
-            {
                 StartCoroutine(DataBaseReloadWithMM(true));
-            }
             GUILayout.EndVertical();
             GUI.DragWindow();
         }
 
-        IEnumerator DataBaseReloadWithMM(bool dump = false)
+        private IEnumerator DataBaseReloadWithMM(bool dump = false)
         {
             reloading = true;
 
@@ -195,7 +198,9 @@ namespace ModuleManager
             while (!MMPatchLoader.Instance.IsReady())
                 yield return null;
 
-            log("DB Reload OK with patchCount=" + MMPatchLoader.Instance.patchedNodeCount + " errorCount=" + MMPatchLoader.Instance.errorCount + " needsUnsatisfiedCount=" + MMPatchLoader.Instance.needsUnsatisfiedCount);
+            log("DB Reload OK with patchCount=" + MMPatchLoader.Instance.patchedNodeCount + " errorCount=" +
+                MMPatchLoader.Instance.errorCount + " needsUnsatisfiedCount=" +
+                MMPatchLoader.Instance.needsUnsatisfiedCount);
 
             PartResourceLibrary.Instance.LoadDefinitions();
 
@@ -206,7 +211,6 @@ namespace ModuleManager
 
             while (!PartLoader.Instance.IsReady())
                 yield return null;
-
 
             // Needs more work.
             //ConfigNode game = HighLogic.CurrentGame.config.GetNode("GAME");
@@ -228,16 +232,15 @@ namespace ModuleManager
 
         private static void OutputAllConfigs()
         {
-            string path = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "_MMCfgOutput" + Path.DirectorySeparatorChar;
+            string path = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "_MMCfgOutput"
+                          + Path.DirectorySeparatorChar;
             Directory.CreateDirectory(path);
 
             foreach (var d in GameDatabase.Instance.root.AllConfigs)
-            {
                 File.WriteAllText(path + d.url.Replace('/', '.') + ".cfg", d.config.ToString());
-            }
         }
 
-        #endregion
+        #endregion GUI stuff.
 
         public bool ElectionAndCheck()
         {
@@ -246,23 +249,36 @@ namespace ModuleManager
             // TODO : Move the old version check in a process that call Update.
 
             // Check for old version and MMSarbianExt
-            var oldMM = AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name).Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 5, 0)) == -1);
-            var oldAssemblies = oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
+            var oldMM =
+                AssemblyLoader.loadedAssemblies.Where(
+                    a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name)
+                    .Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 5, 0)) == -1);
+            var oldAssemblies =
+                oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
             if (oldAssemblies.Any())
             {
-                var badPaths = oldAssemblies.Select(a => a.path).Select(p => Uri.UnescapeDataString(new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p)).ToString().Replace('/', Path.DirectorySeparatorChar)));
-                string status = "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" + String.Join("\n", badPaths.ToArray());
+                var badPaths =
+                    oldAssemblies.Select(a => a.path)
+                        .Select(
+                            p =>
+                                Uri.UnescapeDataString(
+                                    new Uri(Path.GetFullPath(KSPUtil.ApplicationRootPath)).MakeRelativeUri(new Uri(p))
+                                        .ToString()
+                                        .Replace('/', Path.DirectorySeparatorChar)));
+                string status =
+                    "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" +
+                    String.Join("\n", badPaths.ToArray());
                 PopupDialog.SpawnPopupDialog("Old versions of Module Manager", status, "OK", false, HighLogic.Skin);
-                print("[ModuleManager] Old version of Module Manager present. Stopping");
+                log("Old version of Module Manager present. Stopping");
                 return false;
             }
 
             Assembly currentAssembly = Assembly.GetExecutingAssembly();
             var eligible = from a in AssemblyLoader.loadedAssemblies
-                           let ass = a.assembly
-                           where ass.GetName().Name == currentAssembly.GetName().Name
-                           orderby ass.GetName().Version descending, a.path ascending
-                           select a;
+                let ass = a.assembly
+                where ass.GetName().Name == currentAssembly.GetName().Name
+                orderby ass.GetName().Version descending, a.path ascending
+                select a;
 
             // Elect the newest loaded version of MM to process all patch files.
             // If there is a newer version loaded then don't do anything
@@ -270,21 +286,25 @@ namespace ModuleManager
             if (eligible.First().assembly != currentAssembly)
             {
                 //loaded = true;
-                print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " lost the election");
+                log("version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location +
+                    " lost the election");
                 Destroy(gameObject);
                 return false;
             }
-            else
+            string candidates = "";
+            foreach (AssemblyLoader.LoadedAssembly a in eligible)
             {
-                string candidates = "";
-                foreach (AssemblyLoader.LoadedAssembly a in eligible)
-                    if (currentAssembly.Location != a.path)
-                        candidates += "Version " + a.assembly.GetName().Version + " " + a.path + " " + "\n";
-                if (candidates.Length > 0)
-                    print("[ModuleManager] version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location + " won the election against\n" + candidates);
+                if (currentAssembly.Location != a.path)
+                    candidates += "Version " + a.assembly.GetName().Version + " " + a.path + " " + "\n";
+            }
+            if (candidates.Length > 0)
+            {
+                log("version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location +
+                    " won the election against\n" + candidates);
             }
 
-            #endregion
+            #endregion Type election
+
             return true;
         }
     }
@@ -293,32 +313,35 @@ namespace ModuleManager
     {
         private static MMPatchLoader _instance;
 
-        //private bool loaded = false;
-
         public int totalPatchCount = 0;
+
         public int appliedPatchCount = 0;
+
         public int patchedNodeCount = 0;
+
         public int errorCount = 0;
+
         public int needsUnsatisfiedCount = 0;
 
         private Dictionary<String, int> errorFiles;
+
         private List<AssemblyName> mods;
 
         public string status = "";
+
         public string errors = "";
+
         public string activity = "Module Manager";
 
         private static Dictionary<string, Regex> regexCache = new Dictionary<string, Regex>();
 
         private static Stack<ConfigNode> nodeStack = new Stack<ConfigNode>();
+
         private static ConfigNode topNode;
 
         public static MMPatchLoader Instance
         {
-            get
-            {
-                return _instance;
-            }
+            get { return _instance; }
         }
 
         private void Awake()
@@ -332,7 +355,7 @@ namespace ModuleManager
             DontDestroyOnLoad(gameObject);
         }
 
-        private bool ready = false;
+        private bool ready;
 
         public override bool IsReady()
         {
@@ -342,9 +365,8 @@ namespace ModuleManager
         public override float ProgressFraction()
         {
             if (totalPatchCount > 0)
-                return (float)(appliedPatchCount + needsUnsatisfiedCount) / (float)totalPatchCount;
-            else
-                return 0;
+                return (appliedPatchCount + needsUnsatisfiedCount)/(float) totalPatchCount;
+            return 0;
         }
 
         public override string ProgressTitle()
@@ -359,7 +381,7 @@ namespace ModuleManager
 
         public void Update()
         {
-            if (appliedPatchCount>0)
+            if (appliedPatchCount > 0)
                 StatusUpdate();
         }
 
@@ -371,7 +393,8 @@ namespace ModuleManager
             errorCount = 0;
             needsUnsatisfiedCount = 0;
             errorFiles = new Dictionary<string, int>();
-            #endregion
+
+            #endregion Top Level - Update
 
             ready = false;
 
@@ -380,16 +403,18 @@ namespace ModuleManager
             if (blocking)
             {
                 IEnumerator fib = ProcessPatch(excludePaths);
-                while (fib.MoveNext());
+                while (fib.MoveNext())
+                {
+                }
             }
             else
                 StartCoroutine(ProcessPatch(excludePaths));
-
         }
 
         private List<String> PrePatchInit()
         {
             #region Excluding directories
+
             // Build a list of subdirectory that won't be processed
             List<String> excludePaths = new List<string>();
 
@@ -400,15 +425,18 @@ namespace ModuleManager
                     string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
                     string excludepath = fullpath.Substring(0, fullpath.LastIndexOf('/'));
                     excludePaths.Add(excludepath);
-                    print("excludepath: " + excludepath);
+                    log("excludepath: " + excludepath);
                 }
             }
             if (excludePaths.Any())
-                print("[ModuleManager] will not procces patch in these subdirectories:\n" + String.Join("\n", excludePaths.ToArray()));
-            #endregion
+                log("will not process patch in these subdirectories:\n" + String.Join("\n", excludePaths.ToArray()));
+
+            #endregion Excluding directories
 
             #region List of mods
-            List<AssemblyName> modsWithDup = AssemblyLoader.loadedAssemblies.Select(a => (a.assembly.GetName())).ToList();
+
+            List<AssemblyName> modsWithDup =
+                AssemblyLoader.loadedAssemblies.Select(a => (a.assembly.GetName())).ToList();
 
             mods = new List<AssemblyName>();
 
@@ -420,9 +448,7 @@ namespace ModuleManager
 
             string modlist = "compiling list of loaded mods...\nMod DLLs found:\n";
             foreach (AssemblyName mod in mods)
-            {
-                modlist += "  " + mod.Name + " v" + mod.Version.ToString() + "\n";
-            }
+                modlist += "  " + mod.Name + " v" + mod.Version + "\n";
             modlist += "Non-DLL mods added:\n";
             foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
             {
@@ -433,13 +459,16 @@ namespace ModuleManager
                     if (name.Contains(":FOR["))
                     {
                         name = RemoveWS(name);
+
                         // check for FOR[] blocks that don't match loaded DLLs and add them to the pass list
                         try
                         {
                             string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
                             dependency = dependency.Substring(0, dependency.IndexOf(']'));
-                            if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper()))) == null)
-                            { // found one, now add it to the list.
+                            if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper())))
+                                == null)
+                            {
+                                // found one, now add it to the list.
                                 AssemblyName newMod = new AssemblyName(dependency);
                                 newMod.Name = dependency;
                                 mods.Add(newMod);
@@ -448,12 +477,13 @@ namespace ModuleManager
                         }
                         catch (ArgumentOutOfRangeException)
                         {
-                            print("[ModuleManager] Skipping :FOR init for line " + name + ". The line most likely contain a space that should be removed");
+                            log("Skipping :FOR init for line " + name +
+                                ". The line most likely contain a space that should be removed");
                         }
                     }
                 }
             }
-            modlist += "Mods by directory (subdirs of GameData):\n";
+            modlist += "Mods by directory (sub directories of GameData):\n";
             string gameData = Path.Combine(Path.GetFullPath(KSPUtil.ApplicationRootPath), "GameData");
             foreach (string subdir in Directory.GetDirectories(gameData))
             {
@@ -471,22 +501,25 @@ namespace ModuleManager
 
             return excludePaths;
 
-            #endregion
+            #endregion List of mods
         }
 
         private IEnumerator ProcessPatch(List<String> excludePaths)
         {
             #region Check Needs
-            // Do filtering with NEEDS 
-            print("[ModuleManager] Checking NEEDS.");
+
+            // Do filtering with NEEDS
+            log("Checking NEEDS.");
 
             CheckNeeds(excludePaths);
-            #endregion
+
+            #endregion Check Needs
 
             yield return null;
 
             #region Applying patches
-            // :First node 
+
+            // :First node
             yield return StartCoroutine(ApplyPatch(excludePaths, ":FIRST"));
 
             // any node without a :pass
@@ -504,22 +537,30 @@ namespace ModuleManager
             yield return StartCoroutine(ApplyPatch(excludePaths, ":FINAL"));
 
             PurgeUnused(excludePaths);
-            #endregion
+
+            #endregion Applying patches
 
             #region Logging
+
             if (errorCount > 0)
+            {
                 foreach (String file in errorFiles.Keys)
-                    errors += errorFiles[file] + " error" + (errorFiles[file] > 1 ? "s" : "") + " in GameData/" + file + "\n";
+                {
+                    errors += errorFiles[file] + " error" + (errorFiles[file] > 1 ? "s" : "") + " in GameData/" + file
+                              + "\n";
+                }
+            }
 
             StatusUpdate();
 
-            print("[ModuleManager] " + status + "\n" + errors);
+            log(status + "\n" + errors);
 
-            #endregion
+            #endregion Logging
 
 #if DEBUG
             RunTestCases();
 #endif
+
             // TODO : Remove if we ever get a way to load sooner
             PartResourceLibrary.Instance.LoadDefinitions();
 
@@ -529,19 +570,17 @@ namespace ModuleManager
 
         private void StatusUpdate()
         {
-            status = "ModuleManager: "
-                + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") + " applied"
-                + ", "
-                + needsUnsatisfiedCount + " hidden item" + (needsUnsatisfiedCount != 1 ? "s" : "");
+            status = "ModuleManager: " + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") + " applied" +
+                     ", " + needsUnsatisfiedCount + " hidden item" + (needsUnsatisfiedCount != 1 ? "s" : "");
 
             if (errorCount > 0)
                 status += ", found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
         }
 
         #region Needs checking
+
         private void CheckNeeds(List<String> excludePaths)
         {
-
             UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
 
             // Check the NEEDS parts first.
@@ -559,7 +598,8 @@ namespace ModuleManager
 
                         if (!CheckNeeds(ref type))
                         {
-                            print("[ModuleManager] Deleting Node in file " + mod.parent.url + " subnode: " + mod.type + " as it can't satisfy its NEEDS");
+                            log("Deleting Node in file " + mod.parent.url + " subnode: " + mod.type +
+                                " as it can't satisfy its NEEDS");
                             needsUnsatisfiedCount++;
                             continue;
                         }
@@ -569,12 +609,12 @@ namespace ModuleManager
                         mod.parent.configs.Add(new UrlDir.UrlConfig(mod.parent, copy));
                     }
 
-                    // Recursivly check the contents
-                    CheckNeeds(mod.config, mod.parent.url, new List<string>() { mod.type });
+                    // Recursively check the contents
+                    CheckNeeds(mod.config, mod.parent.url, new List<string> {mod.type});
                 }
                 catch (Exception ex)
                 {
-                    print("[ModuleManager] Exception while checking needs : " + mod.url + "\n" + ex.ToString());
+                    log("Exception while checking needs : " + mod.url + "\n" + ex);
                 }
             }
         }
@@ -596,7 +636,8 @@ namespace ModuleManager
                     else
                     {
                         needsCopy = true;
-                        print("[ModuleManager] Deleting value in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + " value: " + val.name + " = " + val.value + " as it can't satisfy its NEEDS");
+                        log("Deleting value in file: " + url + " subnode: " + string.Join("/", path.ToArray()) +
+                            " value: " + val.name + " = " + val.value + " as it can't satisfy its NEEDS");
                         needsUnsatisfiedCount++;
                     }
                 }
@@ -614,7 +655,8 @@ namespace ModuleManager
                     else
                     {
                         needsCopy = true;
-                        print("[ModuleManager] Deleting node in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + "/" + node.name + " as it can't satisfy its NEEDS");
+                        log("Deleting node in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + "/" +
+                            node.name + " as it can't satisfy its NEEDS");
                         needsUnsatisfiedCount++;
                     }
                 }
@@ -684,20 +726,20 @@ namespace ModuleManager
             }
         }
 
-        #endregion
+        #endregion Needs checking
 
         #region Applying Patches
 
         // Apply patch to all relevent nodes
         public IEnumerator ApplyPatch(List<String> excludePaths, string Stage)
         {
-            print("[ModuleManager] " + Stage + (Stage == ":LEGACY" ? " (default) pass" : " pass"));
+            log(Stage + (Stage == ":LEGACY" ? " (default) pass" : " pass"));
 
-            activity = "ModuleManager " + Stage;            
+            activity = "ModuleManager " + Stage;
 
             UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
 
-            int yieldRate = Math.Max(allConfigs.Length / 4, 10);
+            int yieldRate = Math.Max(allConfigs.Length/4, 10);
 
             for (int modsIndex = 0; modsIndex < allConfigs.Length; modsIndex++)
             {
@@ -711,10 +753,13 @@ namespace ModuleManager
 
                     if (cmd != Command.Insert)
                     {
-                        if (!IsBraquetBalanced(mod.type))
+                        if (!IsBracketBalanced(mod.type))
                         {
-                            print("[ModuleManager] Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" + mod.name + "\n");
+                            log(
+                                "Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" +
+                                mod.name + "\n");
                             errorCount++;
+
                             // And remove it so it's not tried anymore
                             mod.parent.configs.Remove(mod);
                             continue;
@@ -725,29 +770,24 @@ namespace ModuleManager
 
                         int stageIdx = upperName.IndexOf(Stage);
                         if (stageIdx >= 0)
-                        {
                             name = name.Substring(0, stageIdx) + name.Substring(stageIdx + Stage.Length);
-                        }
-                        else if (!((upperName.Contains(":FIRST") || Stage == ":LEGACY")
-                                    && !upperName.Contains(":BEFORE[")
-                                    && !upperName.Contains(":FOR[")
-                                    && !upperName.Contains(":AFTER[")
-                                    && !upperName.Contains(":FINAL")))
-                        {
+                        else if (
+                            !((upperName.Contains(":FIRST") || Stage == ":LEGACY")
+                              && !upperName.Contains(":BEFORE[") && !upperName.Contains(":FOR[")
+                              && !upperName.Contains(":AFTER[") && !upperName.Contains(":FINAL")))
                             continue;
-                        }
 
                         // TODO: do we want to ensure there's only one phase specifier?
 
                         try
                         {
-                            char[] sep = new char[] { '[', ']' };
-                            string cond = "";
+                            char[] sep = {'[', ']'};
+                            string condition = "";
 
                             if (upperName.Contains(":HAS["))
                             {
                                 int start = upperName.IndexOf(":HAS[");
-                                cond = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
+                                condition = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
                                 name = name.Substring(0, start);
                             }
 
@@ -757,39 +797,41 @@ namespace ModuleManager
 
                             foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
                             {
-                                if (url.type == type
-                                    && WildcardMatch(url.name, pattern)
-                                    && CheckCondition(url.config, cond)
-                                    && !IsPathInList(mod.url, excludePaths)
-                                    )
+                                if (url.type == type && WildcardMatch(url.name, pattern)
+                                    && CheckConstraints(url.config, condition) && !IsPathInList(mod.url, excludePaths))
                                 {
                                     nodeStack.Clear();
                                     topNode = url.config;
                                     switch (cmd)
                                     {
                                         case Command.Edit:
-                                            print("[ModuleManager] Applying node " + mod.url + " to " + url.url);
+                                            log("Applying node " + mod.url + " to " + url.url);
                                             patchedNodeCount++;
                                             url.config = ModifyNode(url.config, mod.config);
                                             break;
+
                                         case Command.Copy:
                                             ConfigNode clone = ModifyNode(url.config, mod.config);
                                             if (url.config.name != mod.name)
                                             {
-                                                print("[ModuleManager] Copying Node " + url.config.name + " into " + clone.name);
+                                                log("Copying Node " + url.config.name + " into " + clone.name);
                                                 url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
                                             }
                                             else
                                             {
                                                 errorCount++;
-                                                print("[ModuleManager] Error while processing " + mod.config.name + " the copy needs to have a different name than the parent (use @name = xxx)");
+                                                log("Error while processing " + mod.config.name +
+                                                    " the copy needs to have a different name than the parent (use @name = xxx)");
                                             }
                                             break;
+
                                         case Command.Delete:
-                                            print("[ModuleManager] Deleting Node " + url.config.name);
+                                            log("Deleting Node " + url.config.name);
                                             url.parent.configs.Remove(url);
                                             break;
+
                                         case Command.Replace:
+
                                             // TODO: do something sensible here.
                                             break;
                                     }
@@ -806,7 +848,7 @@ namespace ModuleManager
                 }
                 catch (Exception e)
                 {
-                    print("[ModuleManager] Exception while processing node : " + mod.url + "\n" + e.ToString());
+                    log("Exception while processing node : " + mod.url + "\n" + e);
                     mod.parent.configs.Remove(mod);
                 }
                 finally
@@ -814,7 +856,7 @@ namespace ModuleManager
                     if (lastErrorCount < errorCount)
                         addErrorFiles(mod.parent, errorCount - lastErrorCount);
                 }
-                if (modsIndex % yieldRate == yieldRate - 1)
+                if (modsIndex%yieldRate == yieldRate - 1)
                     yield return null;
             }
         }
@@ -829,7 +871,9 @@ namespace ModuleManager
             ConfigNode newNode = DeepCopy(original);
 
             nodeStack.Push(newNode);
+
             #region Values
+
             string vals = "[ModuleManager] modding values";
             foreach (ConfigNode.Value modVal in mod.values)
             {
@@ -841,7 +885,8 @@ namespace ModuleManager
                 Match match = parseValue.Match(valName);
                 if (!match.Success)
                 {
-                    print("[ModuleManager] Cannot parse value modifying command: " + valName);
+                    log("Cannot parse value modifying command: " + valName);
+                    errorCount++;
                     continue;
                 }
 
@@ -857,15 +902,14 @@ namespace ModuleManager
                     if (!int.TryParse(match.Groups[2].Value, out index))
                     {
                         Debug.LogError("Unable to parse number as number. Very odd.");
+                        errorCount++;
                         continue;
                     }
                 }
 
                 char op = ' ';
                 if (match.Groups[3].Success)
-                {
                     op = match.Groups[3].Value[0];
-                }
 
                 string varValue;
                 switch (cmd)
@@ -873,58 +917,91 @@ namespace ModuleManager
                     case Command.Insert:
                         if (match.Groups[3].Success)
                         {
-                            print("[ModuleManager] Cannot use operators with insert value: " + mod.name);
+                            log("Cannot use operators with insert value: " + mod.name);
+                            errorCount++;
                         }
                         else
                         {
                             // Insert at the end by default
                             varValue = ProcessVariableSearch(modVal.value, newNode);
-                            InsertValue(newNode, match.Groups[2].Success ? index : int.MaxValue, valName, varValue);
+                            if (varValue != null)
+                                InsertValue(newNode, match.Groups[2].Success ? index : int.MaxValue, valName, varValue);
+                            else
+                            {
+                                log("Cannot parse variable search when inserting new key " + valName + " = " +
+                                    modVal.value);
+                                errorCount++;
+                            }
                         }
                         break;
 
                     case Command.Replace:
-                        if (match.Groups[2].Success || match.Groups[3].Success || valName.Contains('*') || valName.Contains('?'))
+                        if (match.Groups[2].Success || match.Groups[3].Success || valName.Contains('*')
+                            || valName.Contains('?'))
                         {
                             if (match.Groups[2].Success)
-                                print("[ModuleManager] Cannot use index with replace (%) value: " + mod.name);
+                                log("Cannot use index with replace (%) value: " + mod.name);
                             if (match.Groups[3].Success)
-                                print("[ModuleManager] Cannot use operators with replace (%) value: " + mod.name);
+                                log("Cannot use operators with replace (%) value: " + mod.name);
                             if (valName.Contains('*') || valName.Contains('?'))
-                                print("[ModuleManager] Cannot use wildcards (* or ?) with replace (%) value: " + mod.name);
+                                log("Cannot use wildcards (* or ?) with replace (%) value: " + mod.name);
+                            errorCount++;
                         }
                         else
                         {
-                            newNode.RemoveValues(valName);
                             varValue = ProcessVariableSearch(modVal.value, newNode);
-                            newNode.AddValue(valName, varValue);
+                            if (varValue != null)
+                            {
+                                newNode.RemoveValues(valName);
+                                newNode.AddValue(valName, varValue);
+                            }
+                            else
+                            {
+                                log("Cannot parse variable search when replacing (%) key " + valName + " = " +
+                                    modVal.value);
+                                errorCount++;
+                            }
                         }
                         break;
 
                     case Command.Edit:
                     case Command.Copy:
+
                         // Format is @key = value or @key *= value or @key += value or @key -= value
                         // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value
 
-                        ConfigNode.Value origVal;
                         varValue = ProcessVariableSearch(modVal.value, newNode);
-                        string value = FindAndReplaceValue(mod, ref valName, varValue, newNode, op, index, out origVal);
 
-                        if (value != null)
+                        if (varValue != null)
                         {
-                            if (origVal.value != value)
-                                vals += ": " + origVal.value + " -> " + value;
+                            ConfigNode.Value origVal;
+                            string value = FindAndReplaceValue(mod, ref valName, varValue, newNode, op, index,
+                                out origVal);
 
-                            if (cmd != Command.Copy)
-                                origVal.value = value;
-                            else
-                                newNode.AddValue(valName, value);
+                            if (value != null)
+                            {
+                                if (origVal.value != value)
+                                    vals += ": " + origVal.value + " -> " + value;
+
+                                if (cmd != Command.Copy)
+                                    origVal.value = value;
+                                else
+                                    newNode.AddValue(valName, value);
+                            }
                         }
-
+                        else
+                        {
+                            log("Cannot parse variable search when editing key " + valName + " = " + modVal.value);
+                            errorCount++;
+                        }
                         break;
+
                     case Command.Delete:
                         if (match.Groups[3].Success)
-                            print("[ModuleManager] Cannot use operators with delete (- or !) value: " + mod.name);
+                        {
+                            log("Cannot use operators with delete (- or !) value: " + mod.name);
+                            errorCount++;
+                        }
                         else if (match.Groups[2].Success)
                         {
                             // If there is an index, use it.
@@ -953,17 +1030,21 @@ namespace ModuleManager
                         break;
                 }
             }
-            //print(vals);
-            #endregion
+            //log(vals);
+
+            #endregion Values
 
             #region Nodes
+
             foreach (ConfigNode subMod in mod.nodes)
             {
                 subMod.name = RemoveWS(subMod.name);
 
-                if (!IsBraquetBalanced(subMod.name))
+                if (!IsBracketBalanced(subMod.name))
                 {
-                    print("[ModuleManager] Skipping a patch subnode with unbalanced square brackets or a space (replace them with a '?') in " + mod.name + " : \n" + subMod.name + "\n");
+                    log(
+                        "Skipping a patch subnode with unbalanced square brackets or a space (replace them with a '?') in "
+                        + mod.name + " : \n" + subMod.name + "\n");
                     errorCount++;
                     continue;
                 }
@@ -976,27 +1057,26 @@ namespace ModuleManager
                 {
                     ConfigNode newSubMod = new ConfigNode(subMod.name);
                     newSubMod = ModifyNode(newSubMod, subMod);
-                    int index = int.MaxValue;
+                    int index;
                     if (subName.Contains(",") && int.TryParse(subName.Split(',')[1], out index))
                     {
                         // In this case insert the value at position index (with the same node names)
-                        subMod.name = subName = subName.Split(',')[0];
+                        subMod.name = subName.Split(',')[0];
                         InsertNode(newNode, newSubMod, index);
                     }
                     else
-                    {
                         newNode.AddNode(newSubMod);
-                    }
                 }
                 else
                 {
-                    string cond = "";
+                    string constraints = "";
                     string tag = "";
                     string nodeType, nodeName;
                     int index = 0;
                     string msg = "";
 
                     List<ConfigNode> subNodes = new List<ConfigNode>();
+
                     // three ways to specify:
                     // NODE,n will match the nth node (NODE is the same as NODE,0)
                     // NODE,* will match ALL nodes
@@ -1004,7 +1084,7 @@ namespace ModuleManager
                     if (subName.Contains(":HAS["))
                     {
                         int start = subName.IndexOf(":HAS[");
-                        cond = subName.Substring(start + 5, subName.LastIndexOf(']') - start - 5);
+                        constraints = subName.Substring(start + 5, subName.LastIndexOf(']') - start - 5);
                         subName = subName.Substring(0, start);
                     }
                     else if (subName.Contains(","))
@@ -1016,8 +1096,8 @@ namespace ModuleManager
 
                     if (subName.Contains("["))
                     {
-                        // format @NODETYPE[Name] {...} 
-                        // or @NODETYPE[Name, index] {...} 
+                        // format @NODETYPE[Name] {...}
+                        // or @NODETYPE[Name, index] {...}
                         nodeType = subName.Substring(1).Split('[')[0];
                         nodeName = subName.Split('[')[1].Replace("]", "");
                     }
@@ -1028,13 +1108,11 @@ namespace ModuleManager
                         nodeName = null;
                     }
 
-
-                    if (tag == "*" || cond.Length > 0)
-                    { // get ALL nodes
+                    if (tag == "*" || constraints.Length > 0)
+                    {
+                        // get ALL nodes
                         if (command == Command.Replace)
-                        {
                             msg += "  cannot wildcard a % node: " + subMod.name + "\n";
-                        }
                         else
                         {
                             ConfigNode n, last = null;
@@ -1043,23 +1121,24 @@ namespace ModuleManager
                                 n = FindConfigNodeIn(newNode, nodeType, nodeName, index++);
                                 if (n == last || n == null)
                                     break;
-                                if (CheckCondition(n, cond))
+                                if (CheckConstraints(n, constraints))
                                     subNodes.Add(n);
                                 last = n;
                             }
                         }
                     }
                     else
-                    { // just get one node
+                    {
+                        // just get one node
                         ConfigNode n = FindConfigNodeIn(newNode, nodeType, nodeName, index);
                         if (n != null)
                             subNodes.Add(n);
                     }
 
                     if (command != Command.Replace)
-                    { // find each original subnode to modify, modify it and add the modified.
-
-                        if (subNodes.Count == 0)   // no nodes to modify!
+                    {
+                        // find each original subnode to modify, modify it and add the modified.
+                        if (subNodes.Count == 0) // no nodes to modify!
                             msg += "  Could not find node(s) to modify: " + subMod.name + "\n";
 
                         foreach (ConfigNode subNode in subNodes)
@@ -1069,16 +1148,21 @@ namespace ModuleManager
                             switch (command)
                             {
                                 case Command.Edit:
+
                                     // Edit in place
                                     newSubNode = ModifyNode(subNode, subMod);
                                     subNode.ClearData();
                                     newSubNode.CopyTo(subNode);
                                     break;
+
                                 case Command.Delete:
+
                                     // Delete the node
                                     newNode.nodes.Remove(subNode);
                                     break;
+
                                 case Command.Copy:
+
                                     // Copy the node
                                     newSubNode = ModifyNode(subNode, subMod);
                                     newNode.nodes.Add(newSubNode);
@@ -1097,7 +1181,8 @@ namespace ModuleManager
                             newSubNode.CopyTo(subNodes[0]);
                         }
                         else
-                        { // if not add the mod node without the % in its name                            
+                        {
+                            // if not add the mod node without the % in its name
                             msg += "  Adding subnode " + subMod.name + "\n";
 
                             ConfigNode copy = new ConfigNode(nodeType);
@@ -1109,37 +1194,86 @@ namespace ModuleManager
                             newNode.nodes.Add(newSubNode);
                         }
                     }
+
                     //print(msg);
                 }
             }
-            #endregion
+
+            #endregion Nodes
+
             nodeStack.Pop();
 
             return newNode;
         }
 
         // KeyName is group 1, index is group 2, value indexis  group 3, value separator is group 4
-        private static Regex parseVarKey = new Regex(@"(\w+)(?:,((?:[0-9]+)+))?(?:\[((?:[0-9]+)+)(?:,(.))?\])?");
+        private static readonly Regex parseVarKey = new Regex(@"(\w+)(?:,((?:[0-9]+)+))?(?:\[((?:[0-9]+)+)(?:,(.))?\])?");
 
         // Search for a value by a path alike string
         private static string RecurseVariableSearch(string path, ConfigNode currentNode)
         {
-            print("[ModuleManager] path:" + path);
+            //log("path:" + path);
             if (path[0] == '/')
                 return RecurseVariableSearch(path.Substring(1), topNode);
+
+            int nextSep = path.IndexOf('/');
+
+            // make sure we don't stop on a ",/" which would be a value separator
+            // it's a hack that should be replaced with a proper regex for the whole node search
+            while (nextSep > 0 && path[nextSep - 1] == ',')
+                nextSep = path.IndexOf('/', nextSep + 1);
+
             if (path[0] == '@')
             {
-                ConfigNode target = GameDatabase.Instance.GetConfigNode(""); // TODO : To finish. search by node name. it's TYPE[name]
-                return RecurseVariableSearch(path.Substring(1), target);
+                if (nextSep < 2)
+                    return null;
+
+                string subName = path.Substring(1, nextSep - 1);
+                string nodeType, nodeName;
+                ConfigNode target = null;
+
+                if (subName.Contains("["))
+                {
+                    // @NODETYPE[Name]/
+                    nodeType = subName.Split('[')[0];
+                    nodeName = subName.Split('[')[1].Replace("]", "");
+                }
+                else
+                {
+                    // @NODETYPE/
+                    nodeType = subName;
+                    nodeName = string.Empty;
+                }
+
+                ConfigNode[] list = GameDatabase.Instance.GetConfigNodes(nodeType);
+                if (list.Length == 0)
+                {
+                    log("Can't find nodeType:" + nodeType);
+                    return null;
+                }
+
+                if (nodeName == string.Empty)
+                    target = list[0];
+                else
+                {
+                    for (int i = 0; i < list.Length; i++)
+                    {
+                        if (list[i].name == nodeName)
+                        {
+                            target = list[i];
+                            break;
+                        }
+                    }
+                }
+                return target != null ? RecurseVariableSearch(path.Substring(nextSep + 1), target) : null;
             }
             if (path.StartsWith("../"))
             {
                 if (nodeStack.Count == 1)
                 {
-                    print("[ModuleManager] path: nodeStack.Count == 1");
                     return null;
                 }
-                string result = null;
+                string result;
                 ConfigNode top = nodeStack.Pop();
                 try
                 {
@@ -1151,11 +1285,7 @@ namespace ModuleManager
                 }
                 return result;
             }
-            int nextSep = path.IndexOf('/');
-            // make sure we don't stop on a ",/" which would be a value separtor
-            // it's a hack that should be replaced with a proper regex for the whole node search
-            while (nextSep > 0 && path[nextSep - 1] == ',')
-                nextSep = path.IndexOf('/', nextSep + 1);
+
             // Node search
             if (nextSep > 0 && path[nextSep - 1] != ',')
             {
@@ -1163,20 +1293,19 @@ namespace ModuleManager
                 // TODO : replace with a regex
 
                 string subName = path.Substring(0, nextSep);
-                string cond = "";
+                string constraint = "";
                 string nodeType, nodeName;
-                string tag = "";
                 int index = 0;
-                print("[ModuleManager] subname:" + subName);
+                if (subName.Contains(":HAS["))
                 if (subName.Contains(":HAS["))
                 {
                     int start = subName.IndexOf(":HAS[");
-                    cond = subName.Substring(start + 5, subName.LastIndexOf(']') - start - 5);
+                    constraint = subName.Substring(start + 5, subName.LastIndexOf(']') - start - 5);
                     subName = subName.Substring(0, start);
                 }
                 else if (subName.Contains(","))
                 {
-                    tag = subName.Split(',')[1];
+                    string tag = subName.Split(',')[1];
                     subName = subName.Split(',')[0];
                     int.TryParse(tag, out index);
                 }
@@ -1195,36 +1324,37 @@ namespace ModuleManager
                     nodeName = null;
                 }
 
-                print("[ModuleManager] nodeType:" + nodeType + " nodeName:" + nodeName);
-
-                if (cond.Length > 0)
-                { // get the first one matching
+                if (constraint.Length > 0)
+                {
+                    // get the first one matching
                     ConfigNode n, last = null;
                     while (true)
                     {
                         n = FindConfigNodeIn(currentNode, nodeType, nodeName, index++);
                         if (n == last || n == null)
                             break;
-                        if (CheckCondition(n, cond))
+                        if (CheckConstraints(n, constraint))
                             return RecurseVariableSearch(path.Substring(nextSep + 1), n);
                         last = n;
                     }
                     return null;
                 }
                 else
-                { // just get one node
+                {
+                    // just get one node
                     ConfigNode n = FindConfigNodeIn(currentNode, nodeType, nodeName, index);
                     if (n != null)
                         return RecurseVariableSearch(path.Substring(nextSep + 1), n);
                     return null;
                 }
             }
+
             // Value search
 
             Match match = parseVarKey.Match(path);
             if (!match.Success)
             {
-                print("[ModuleManager] Cannot parse variable search command: " + path);
+                log("Cannot parse variable search command: " + path);
                 return null;
             }
 
@@ -1232,22 +1362,18 @@ namespace ModuleManager
 
             int idx = 0;
             if (match.Groups[2].Success)
-            {
                 int.TryParse(match.Groups[2].Value, out idx);
-            }
 
             string value = FindValueIn(currentNode, valName, idx).value;
 
-            int splitIdx = 0;
             if (match.Groups[3].Success)
             {
+                int splitIdx = 0;
                 int.TryParse(match.Groups[3].Value, out splitIdx);
 
                 char sep = ',';
                 if (match.Groups[4].Success)
-                {
                     sep = match.Groups[4].Value[0];
-                }
                 string[] split = value.Split(sep);
                 if (splitIdx < split.Length)
                     value = split[splitIdx];
@@ -1261,34 +1387,42 @@ namespace ModuleManager
             // There is 2 or more '$'
             if (value[0] == '#' && value.IndexOf('$') != value.LastIndexOf('$'))
             {
-                print("[ModuleManager] variable search input : =\"" + value + "\"");
+                //log("variable search input : =\"" + value + "\"");
                 string[] split = value.Split('$');
 
-                if (split.Length % 2 != 1)
-                {
+                if (split.Length%2 != 1)
                     return null;
-                }
 
                 StringBuilder builder = new StringBuilder();
                 builder.Append(split[0].Substring(1));
 
                 for (int i = 1; i < split.Length - 1; i = i + 2)
                 {
-                    builder.Append(RecurseVariableSearch(split[i], node));
+                    string result = RecurseVariableSearch(split[i], node);
+                    if (result == null)
+                        return null;
+                    builder.Append(result);
                     builder.Append(split[i + 1]);
                 }
                 value = builder.ToString();
-                print("[ModuleManager] variable search output : =\"" + value + "\"");
+                //log("variable search output : =\"" + value + "\"");
             }
             return value;
         }
 
-        private static string FindAndReplaceValue(ConfigNode mod, ref string valName, string value, ConfigNode newNode, char op, int index, out ConfigNode.Value origVal)
+        private static string FindAndReplaceValue(
+            ConfigNode mod,
+            ref string valName,
+            string value,
+            ConfigNode newNode,
+            char op,
+            int index,
+            out ConfigNode.Value origVal)
         {
             origVal = FindValueIn(newNode, valName, index);
             if (origVal == null)
                 return null;
-            string ovalue = origVal.value;
+            string oValue = origVal.value;
 
             if (op != ' ')
             {
@@ -1301,33 +1435,34 @@ namespace ModuleManager
 
                         Regex replace;
                         if (regexCache.ContainsKey(split[1]))
-                        {
                             replace = regexCache[split[1]];
-                        }
                         else
                         {
                             replace = new Regex(split[1], RegexOptions.None);
                             regexCache.Add(split[1], replace);
                         }
 
-                        value = replace.Replace(ovalue, split[2]);
+                        value = replace.Replace(oValue, split[2]);
                     }
                     catch (Exception ex)
                     {
-                        print("[ModuleManager] Failed to do a regexp replacement: " + mod.name + " : original value=\"" + ovalue + "\" regexp=\"" + value + "\" \nNote - to use regexp, the first char is used to subdivide the string (much like sed)\n" + ex.ToString());
+                        log("Failed to do a regexp replacement: " + mod.name + " : original value=\"" + oValue +
+                            "\" regexp=\"" + value +
+                            "\" \nNote - to use regexp, the first char is used to subdivide the string (much like sed)\n" +
+                            ex);
                         return null;
                     }
                 }
-                else if (double.TryParse(value, out s) && double.TryParse(ovalue, out os))
+                else if (double.TryParse(value, out s) && double.TryParse(oValue, out os))
                 {
                     switch (op)
                     {
                         case '*':
-                            value = (os * s).ToString();
+                            value = (os*s).ToString();
                             break;
 
                         case '/':
-                            value = (os / s).ToString();
+                            value = (os/s).ToString();
                             break;
 
                         case '+':
@@ -1345,23 +1480,28 @@ namespace ModuleManager
                 }
                 else
                 {
-                    print("[ModuleManager] Failed to do a maths replacement: " + mod.name + " : original value=\"" + ovalue + "\" operator=" + op + " mod value=\"" + value + "\"");
+                    log("Failed to do a maths replacement: " + mod.name + " : original value=\"" + oValue +
+                        "\" operator=" + op + " mod value=\"" + value + "\"");
                     return null;
                 }
             }
             return value;
         }
 
-        #endregion
+        #endregion Applying Patches
 
         #region Command Parsing
 
         private enum Command
         {
             Insert,
+
             Delete,
+
             Edit,
+
             Replace,
+
             Copy
         }
 
@@ -1378,17 +1518,21 @@ namespace ModuleManager
                 case '@':
                     ret = Command.Edit;
                     break;
+
                 case '%':
                     ret = Command.Replace;
                     break;
+
                 case '-':
                 case '!':
                     ret = Command.Delete;
                     break;
+
                 case '+':
                 case '$':
                     ret = Command.Copy;
                     break;
+
                 default:
                     valueName = name;
                     return Command.Insert;
@@ -1397,11 +1541,11 @@ namespace ModuleManager
             return ret;
         }
 
-        #endregion
+        #endregion Command Parsing
 
         #region Sanity checking & Utility functions
 
-        public static bool IsBraquetBalanced(String str)
+        public static bool IsBracketBalanced(String str)
         {
             Stack<char> stack = new Stack<char>();
 
@@ -1412,18 +1556,21 @@ namespace ModuleManager
                 if (c == '[')
                     stack.Push(c);
                 else if (c == ']')
+                {
                     if (stack.Count == 0)
                         return false;
-                    else if (stack.Peek() == '[')
+                    if (stack.Peek() == '[')
                         stack.Pop();
                     else
                         return false;
+                }
             }
             return stack.Count == 0;
         }
 
         public static string RemoveWS(string withWhite)
-        {   // Removes ALL whitespace of a string.
+        {
+            // Removes ALL whitespace of a string.
             return new string(withWhite.ToCharArray().Where(c => !Char.IsWhiteSpace(c)).ToArray());
         }
 
@@ -1431,92 +1578,98 @@ namespace ModuleManager
         {
             return pathList.Any(modPath.StartsWith);
         }
-        #endregion
+
+        #endregion Sanity checking & Utility functions
 
         #region Condition checking
+
         // Split condiction while not getting lost in embeded brackets
-        public static List<string> SplitCondition(string cond)
+        public static List<string> SplitConstraints(string condition)
         {
-            cond = RemoveWS(cond) + ",";
-            List<string> conds = new List<string>();
+            condition = RemoveWS(condition) + ",";
+            List<string> conditions = new List<string>();
             int start = 0;
             int level = 0;
-            for (int end = 0; end < cond.Length; end++)
+            for (int end = 0; end < condition.Length; end++)
             {
-                if (cond[end] == ',' && level == 0)
+                if (condition[end] == ',' && level == 0)
                 {
-                    conds.Add(cond.Substring(start, end - start));
+                    conditions.Add(condition.Substring(start, end - start));
                     start = end + 1;
                 }
-                else if (cond[end] == '[')
+                else if (condition[end] == '[')
                     level++;
-                else if (cond[end] == ']')
+                else if (condition[end] == ']')
                     level--;
             }
-            return conds;
+            return conditions;
         }
 
-        public static bool CheckCondition(ConfigNode node, string conds)
+        public static bool CheckConstraints(ConfigNode node, string constraints)
         {
-            conds = RemoveWS(conds);
-            if (conds.Length == 0)
+            constraints = RemoveWS(constraints);
+            if (constraints.Length == 0)
                 return true;
 
-            List<string> condsList = SplitCondition(conds);
+            List<string> constraintList = SplitConstraints(constraints);
 
-            if (condsList.Count == 1)
+            if (constraintList.Count == 1)
             {
-                conds = condsList[0];
+                constraints = constraintList[0];
 
-
-
-                string remainCond = "";
-                if (conds.Contains("HAS["))
+                string remainingConstraints = "";
+                if (constraints.Contains("HAS["))
                 {
-                    int start = conds.IndexOf("HAS[") + 4;
-                    remainCond = conds.Substring(start, condsList[0].LastIndexOf(']') - start);
-                    conds = conds.Substring(0, start - 5);
+                    int start = constraints.IndexOf("HAS[") + 4;
+                    remainingConstraints = constraints.Substring(start, constraintList[0].LastIndexOf(']') - start);
+                    constraints = constraints.Substring(0, start - 5);
                 }
 
-                char[] sep = new char[] { '[', ']' };
-                string[] splits = conds.Split(sep, 3);
+                char[] sep = {'[', ']'};
+                string[] splits = constraints.Split(sep, 3);
                 string type = splits[0].Substring(1);
                 string name = splits.Length > 1 ? splits[1] : null;
 
-                switch (conds[0])
+                switch (constraints[0])
                 {
                     case '@':
                     case '!':
+
                         // @MODULE[ModuleAlternator] or !MODULE[ModuleAlternator]
-                        bool not = (conds[0] == '!');
+                        bool not = (constraints[0] == '!');
                         ConfigNode subNode = MMPatchLoader.FindConfigNodeIn(node, type, name);
                         if (subNode != null)
-                            return not ^ CheckCondition(subNode, remainCond);
+                            return not ^ CheckConstraints(subNode, remainingConstraints);
                         return not ^ false;
+
                     case '#':
+
                         // #module[Winglet]
                         if (node.HasValue(type) && WildcardMatchValues(node, type, name))
-                            return CheckCondition(node, remainCond);
+                            return CheckConstraints(node, remainingConstraints);
                         return false;
+
                     case '~':
+
                         // ~breakingForce[]  breakingForce is not present
                         // or: ~breakingForce[100]  will be true if it's present but not 100, too.
                         if (name == "" && node.HasValue(type))
                             return false;
                         if (name != "" && WildcardMatchValues(node, type, name))
                             return false;
-                        return CheckCondition(node, remainCond);
+                        return CheckConstraints(node, remainingConstraints);
+
                     default:
                         return false;
                 }
             }
-            return condsList.TrueForAll(c => CheckCondition(node, c));
+            return constraintList.TrueForAll(c => CheckConstraints(node, c));
         }
 
         public static bool WildcardMatchValues(ConfigNode node, string type, string value)
         {
             string[] values = node.GetValues(type);
-            for (int i=0; i<values.Length; i++)
+            for (int i = 0; i < values.Length; i++)
             {
                 if (WildcardMatch(values[i], value))
                     return true;
@@ -1526,24 +1679,23 @@ namespace ModuleManager
 
         public static bool WildcardMatch(String s, String wildcard)
         {
-            if (wildcard == null) return true;
+            if (wildcard == null)
+                return true;
             String pattern = "^" + Regex.Escape(wildcard).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
 
             Regex regex;
-            if (regexCache.ContainsKey(pattern))
-            {
-                regex = regexCache[pattern];
-            }
-            else
+            if (!regexCache.TryGetValue(pattern, out regex))
             {
                 regex = new Regex(pattern);
                 regexCache.Add(pattern, regex);
-            }            
-            return (regex.IsMatch(s));
+            }
+            return regex.IsMatch(s);
         }
-        #endregion
+
+        #endregion Condition checking
 
         #region Config Node Utilities
+
         private static void InsertNode(ConfigNode newNode, ConfigNode subMod, int index)
         {
             string modName = subMod.name;
@@ -1560,9 +1712,7 @@ namespace ModuleManager
                     newNode.AddNode(oldValues[i]);
             }
             else
-            {
                 newNode.AddNode(subMod);
-            }
         }
 
         private static void InsertValue(ConfigNode newNode, int index, string name, string value)
@@ -1607,17 +1757,20 @@ namespace ModuleManager
         //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType.
         //If nodeName is not null, it will only find a node of type nodeType with the value name=nodeName.
         //If nodeTag is not null, it will only find a node of type nodeType with the value name=nodeName and tag=nodeTag.
-        public static ConfigNode FindConfigNodeIn(ConfigNode src, string nodeType,
-                                                   string nodeName = null, int index = 0)
+        public static ConfigNode FindConfigNodeIn(
+            ConfigNode src,
+            string nodeType,
+            string nodeName = null,
+            int index = 0)
         {
             ConfigNode[] nodes = src.GetNodes(nodeType);
-            if (nodes.Length == 0) return null;
+            if (nodes.Length == 0)
+                return null;
             if (nodeName == null)
             {
                 if (index >= 0)
                     return nodes[Math.Min(index, nodes.Length - 1)];
-                else
-                    return nodes[Math.Max(0, nodes.Length + index)];
+                return nodes[Math.Max(0, nodes.Length + index)];
             }
             ConfigNode last = null;
             if (index >= 0)
@@ -1649,12 +1802,14 @@ namespace ModuleManager
         {
             ConfigNode.Value v = null;
             for (int i = 0; i < newNode.values.Count; ++i)
+            {
                 if (WildcardMatch(newNode.values[i].name, valName))
                 {
                     v = newNode.values[i];
                     if (--index < 0)
                         return v;
                 }
+            }
             return v;
         }
 
@@ -1679,7 +1834,7 @@ namespace ModuleManager
             return true;
         }
 
-        #endregion
+        #endregion Config Node Utilities
 
         #region logging
 
@@ -1692,21 +1847,20 @@ namespace ModuleManager
                 errorFiles.Add(key, n);
             else
                 errorFiles[key] = errorFiles[key] + n;
-
         }
 
         public static void log(String s)
         {
             print("[ModuleManager] " + s);
         }
-        #endregion
 
+        #endregion logging
 
         #region Tests
 
         private void RunTestCases()
         {
-            print("[ModuleManager] Running tests...");
+            log("Running tests...");
 
             // Do MM testcases
             foreach (UrlDir.UrlConfig expect in GameDatabase.Instance.GetConfigs("MMTEST_EXPECT"))
@@ -1715,11 +1869,10 @@ namespace ModuleManager
                 UrlDir.UrlFile parent = expect.parent;
                 if (parent.configs.Count != expect.config.CountNodes + 1)
                 {
-                    print("[ModuleManager] Test " + parent.name + " failed as expecte number of nodes differs expected:" + expect.config.CountNodes + " found: " + parent.configs.Count);
+                    log("Test " + parent.name + " failed as expected number of nodes differs expected:" +
+                        expect.config.CountNodes + " found: " + parent.configs.Count);
                     for (int i = 0; i < parent.configs.Count; ++i)
-                    {
-                        print(parent.configs[i].config);
-                    }
+                        log(parent.configs[i].config.ToString());
                     continue;
                 }
                 for (int i = 0; i < expect.config.CountNodes; ++i)
@@ -1728,15 +1881,18 @@ namespace ModuleManager
                     ConfigNode expectNode = expect.config.nodes[i];
                     if (!CompareRecursive(expectNode, gotNode))
                     {
-                        print("[ModuleManager] Test " + parent.name + "[" + i + "] failed as expected output and actual output differ.\nexpected:\n" + expectNode + "\nActually got:\n" + gotNode);
+                        log("Test " + parent.name + "[" + i +
+                            "] failed as expected output and actual output differ.\nexpected:\n" + expectNode +
+                            "\nActually got:\n" + gotNode);
                     }
                 }
+
                 // Purge the tests
                 parent.configs.Clear();
             }
-            print("[ModuleManager] tests complete.");
+            log("tests complete.");
         }
 
-        #endregion
+        #endregion Tests
     }
 }
