@@ -578,14 +578,22 @@ namespace ModuleManager
             // TODO : Remove if we ever get a way to load sooner
             PartResourceLibrary.Instance.LoadDefinitions();
 
-            ready = true;
-
             foreach (var callback in postPatchCallbacks)
             {
-                callback();
+                try
+                {
+                    callback();
+                }
+                catch (Exception e)
+                {
+                    log("Exception while running a post patch callback\n" + e);
+                }
                 yield return null;
             }
             yield return null;
+
+            ready = true;
+
         }
 
         private void StatusUpdate()
