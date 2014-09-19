@@ -415,7 +415,14 @@ namespace ModuleManager
 
             foreach (var callback in postPatchCallbacks)
             {
-                callback();
+                try
+                {
+                    callback();
+                }
+                catch (Exception e)
+                {
+                    log("Exception while running a post patch callback\n" + e);
+                }
             }
         }
 
@@ -829,7 +836,6 @@ namespace ModuleManager
                                     && CheckConstraints(url.config, condition) && !IsPathInList(mod.url, excludePaths))
                                 {
                                     nodeStack.Clear();
-                                    topNode = url.config;
                                     switch (cmd)
                                     {
                                         case Command.Edit:
@@ -897,6 +903,9 @@ namespace ModuleManager
         public ConfigNode ModifyNode(ConfigNode original, ConfigNode mod)
         {
             ConfigNode newNode = DeepCopy(original);
+
+            if (nodeStack.Count == 0)
+                topNode = newNode;
 
             nodeStack.Push(newNode);
 
@@ -1398,7 +1407,13 @@ namespace ModuleManager
             if (match.Groups[2].Success)
                 int.TryParse(match.Groups[2].Value, out idx);
 
-            string value = FindValueIn(currentNode, valName, idx).value;
+            ConfigNode.Value cVal = FindValueIn(currentNode, valName, idx);
+            if (cVal == null)
+            {
+                log("Cannot find key " + valName + " in " + currentNode.name);
+                return null;
+            }
+            string value = cVal.value;
 
             if (match.Groups[3].Success)
             {
