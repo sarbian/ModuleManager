@@ -1647,7 +1647,7 @@ namespace ModuleManager
             int level = 0;
             for (int end = 0; end < condition.Length; end++)
             {
-                if (condition[end] == ',' && level == 0)
+                if ((condition[end] == ',' || condition[end] == '&') && level == 0)
                 {
                     conditions.Add(condition.Substring(start, end - start));
                     start = end + 1;
