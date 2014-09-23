@@ -827,47 +827,50 @@ namespace ModuleManager
                             }
 
                             string[] splits = name.Split(sep, 3);
-                            string pattern = splits.Length > 1 ? splits[1] : null;
+                            string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] {null};
                             string type = splits[0].Substring(1);
 
                             foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
                             {
-                                if (url.type == type && WildcardMatch(url.name, pattern)
-                                    && CheckConstraints(url.config, condition) && !IsPathInList(mod.url, excludePaths))
+                                foreach (string pattern in patterns)
                                 {
-                                    nodeStack.Clear();
-                                    switch (cmd)
+                                    if (url.type == type && WildcardMatch(url.name, pattern)
+                                        && CheckConstraints(url.config, condition) && !IsPathInList(mod.url, excludePaths))
                                     {
-                                        case Command.Edit:
-                                            log("Applying node " + mod.url + " to " + url.url);
-                                            patchedNodeCount++;
-                                            url.config = ModifyNode(url.config, mod.config);
-                                            break;
+                                        nodeStack.Clear();
+                                        switch (cmd)
+                                        {
+                                            case Command.Edit:
+                                                log("Applying node " + mod.url + " to " + url.url);
+                                                patchedNodeCount++;
+                                                url.config = ModifyNode(url.config, mod.config);
+                                                break;
 
-                                        case Command.Copy:
-                                            ConfigNode clone = ModifyNode(url.config, mod.config);
-                                            if (url.config.name != mod.name)
-                                            {
-                                                log("Copying Node " + url.config.name + " into " + clone.name);
-                                                url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                            }
-                                            else
-                                            {
-                                                errorCount++;
-                                                log("Error while processing " + mod.config.name +
-                                                    " the copy needs to have a different name than the parent (use @name = xxx)");
-                                            }
-                                            break;
+                                            case Command.Copy:
+                                                ConfigNode clone = ModifyNode(url.config, mod.config);
+                                                if (url.config.name != mod.name)
+                                                {
+                                                    log("Copying Node " + url.config.name + " into " + clone.name);
+                                                    url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
+                                                }
+                                                else
+                                                {
+                                                    errorCount++;
+                                                    log("Error while processing " + mod.config.name +
+                                                        " the copy needs to have a different name than the parent (use @name = xxx)");
+                                                }
+                                                break;
 
-                                        case Command.Delete:
-                                            log("Deleting Node " + url.config.name);
-                                            url.parent.configs.Remove(url);
-                                            break;
+                                            case Command.Delete:
+                                                log("Deleting Node " + url.config.name);
+                                                url.parent.configs.Remove(url);
+                                                break;
 
-                                        case Command.Replace:
+                                            case Command.Replace:
 
-                                            // TODO: do something sensible here.
-                                            break;
+                                                // TODO: do something sensible here.
+                                                break;
+                                        }
                                     }
                                 }
                             }
