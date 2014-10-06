@@ -25,6 +25,10 @@ namespace ModuleManager
 
         private string version = "";
 
+        private Texture2D tex;
+        private Texture2D tex2;
+        private int activePos = 0;
+
         #endregion state
 
         #region Top Level - Update
@@ -76,10 +80,7 @@ namespace ModuleManager
                 log("Can't find LoadingScreen type. Aborting ModuleManager execution");
                 return;
             }
-            Type lsType = typeof (LoadingScreen);
-            List<LoadingSystem> list = (from fld in lsType.GetFields(BindingFlags.Instance | BindingFlags.NonPublic)
-                where fld.FieldType == typeof (List<LoadingSystem>)
-                select (List<LoadingSystem>) fld.GetValue(screen)).FirstOrDefault();
+            List<LoadingSystem> list = LoadingScreen.Instance.loaders;
 
             if (list != null)
             {
@@ -96,6 +97,13 @@ namespace ModuleManager
             }
             else
                 Debug.LogWarning("Can't find the LoadingSystem list. Aborting ModuleManager execution");
+
+            tex = new Texture2D(33, 20, TextureFormat.ARGB32, false);
+            tex.LoadImage(Properties.Resources.cat);
+            Color[] pix = tex.GetPixels(0, 0, 1, tex.height);
+            tex2 = new Texture2D(1, 20, TextureFormat.ARGB32, false);
+            tex2.SetPixels(pix);
+            tex2.Apply();
 
             loadedInScene = true;
         }
@@ -134,28 +142,80 @@ namespace ModuleManager
         {
             if (HighLogic.LoadedScene == GameScenes.LOADING && MMPatchLoader.Instance != null)
             {
+                float offsetY = Mathf.FloorToInt(0.8f * Screen.height);
+
+                if (IsWin64())
+                {
+                    var centeredWarningStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
+                    {
+                        alignment = TextAnchor.UpperCenter,
+                        fontSize = 16,
+                        normal = { textColor = Color.yellow }
+                    };
+                    const string warning = "You are using 64-bit KSP on Windows. This version of KSP is known to cause crashes unrelated to mods.";
+                    Vector2 sizeOfWarningLabel = centeredWarningStyle.CalcSize(new GUIContent(warning));
+
+                    GUI.Label(new Rect(Screen.width / 2f - (sizeOfWarningLabel.x / 2f), offsetY, sizeOfWarningLabel.x, sizeOfWarningLabel.y), warning, centeredWarningStyle);
+                    offsetY += sizeOfWarningLabel.y;
+                }
+
                 var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
                 {
                     alignment = TextAnchor.UpperCenter,
                     fontSize = 16
                 };
                 Vector2 sizeOfLabel = centeredStyle.CalcSize(new GUIContent(MMPatchLoader.Instance.status));
-                GUI.Label(
-                    new Rect(Screen.width/2 - (sizeOfLabel.x/2), Mathf.FloorToInt(0.8f*Screen.height), sizeOfLabel.x,
-                        sizeOfLabel.y), MMPatchLoader.Instance.status, centeredStyle);
+                GUI.Label(new Rect(Screen.width / 2f - (sizeOfLabel.x / 2f), offsetY, sizeOfLabel.x, sizeOfLabel.y), MMPatchLoader.Instance.status, centeredStyle);
+                offsetY += sizeOfLabel.y;
 
                 if (MMPatchLoader.Instance.errorCount > 0)
                 {
-                    var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"));
-                    errorStyle.alignment = TextAnchor.UpperLeft;
-                    errorStyle.fontSize = 16;
+                    var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
+                    {
+                        alignment = TextAnchor.UpperLeft,
+                        fontSize = 16
+                    };
                     Vector2 sizeOfError = errorStyle.CalcSize(new GUIContent(MMPatchLoader.Instance.errors));
-                    GUI.Label(
-                        new Rect(Screen.width/2 - (sizeOfLabel.x/2),
-                            Mathf.FloorToInt(0.8f*Screen.height) + sizeOfLabel.y, sizeOfError.x, sizeOfError.y),
-                        MMPatchLoader.Instance.errors, errorStyle);
+                    GUI.Label(new Rect(Screen.width / 2f - (sizeOfLabel.x / 2), offsetY, sizeOfError.x, sizeOfError.y), MMPatchLoader.Instance.errors, errorStyle);
+                    offsetY += sizeOfError.y;
                 }
+
+
+                if (IsWin64())
+                {
+                    GUI.color = Color.white;
+                    int scale = 1;
+                    if (Screen.height >= 1080)
+                        scale = 2;
+                    if (Screen.height > 1440)
+                        scale = 3;
+
+                    int trailLength = 8 *  tex.width * scale;
+                    int totalLenth = trailLength + tex.width * scale;
+                    int startPos = activePos - totalLenth;
+
+                    Color guiColor = Color.white;
+                    int currentOffset = 0;
+                    int heightOffset = 0;
+                    while (currentOffset <= trailLength)
+                    {
+                        guiColor.a = (float)currentOffset / (float)trailLength;
+                        GUI.color = guiColor;
+
+                        heightOffset = Mathf.RoundToInt(1f + Mathf.Sin(2f * Mathf.PI * (startPos + currentOffset) / (Screen.width / 6f)) * (tex.height * scale / 6f));
+
+                        GUI.DrawTexture(new Rect(startPos + currentOffset, heightOffset + offsetY, tex2.width, tex2.height * scale), tex2);
+                        currentOffset++;
+                    }
+                    GUI.DrawTexture(new Rect(startPos + currentOffset, heightOffset + offsetY, tex.width * scale, tex.height * scale), tex);
+
+                    activePos = (activePos + 3) % (Screen.width + totalLenth);
+                    GUI.color = Color.white;
+                }
+                
+
             }
+
 
             if (showUI &&
                 (HighLogic.LoadedScene == GameScenes.SPACECENTER || HighLogic.LoadedScene == GameScenes.MAINMENU) &&
@@ -169,6 +229,11 @@ namespace ModuleManager
                     GUILayout.Width(200),
                     GUILayout.Height(20));
             }
+        }
+
+        public static bool IsWin64()
+        {
+            return (IntPtr.Size == 8) && (Environment.OSVersion.Platform == PlatformID.Win32NT);
         }
 
         protected void WindowGUI(int windowID)
@@ -343,7 +408,8 @@ namespace ModuleManager
 
         private static ConfigNode topNode;
 
-        private static List<ModuleManagerPostPatchCallback> postPatchCallbacks = new List<ModuleManagerPostPatchCallback>();
+        private static List<ModuleManagerPostPatchCallback> postPatchCallbacks =
+            new List<ModuleManagerPostPatchCallback>();
 
         public static MMPatchLoader Instance { get; private set; }
 
@@ -600,13 +666,11 @@ namespace ModuleManager
             yield return null;
 
             ready = true;
-
         }
 
         private void StatusUpdate()
         {
-            status = "ModuleManager: " + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") + " applied" +
-                     ", " + needsUnsatisfiedCount + " hidden item" + (needsUnsatisfiedCount != 1 ? "s" : "");
+            status = "ModuleManager: " + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") + " applied";
 
             if (errorCount > 0)
                 status += ", found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
@@ -1069,7 +1133,7 @@ namespace ModuleManager
                         break;
 
                     case Command.Rename:
-                        if ( nodeStack.Count == 1)
+                        if (nodeStack.Count == 1)
                         {
                             log("Renaming nodes does not work on top nodes");
                             errorCount++;
@@ -1264,7 +1328,6 @@ namespace ModuleManager
             //log("path:" + path);
             if (path[0] == '/')
                 return RecurseVariableSearch(path.Substring(1), topNode);
-
             int nextSep = path.IndexOf('/');
 
             // make sure we don't stop on a ",/" which would be a value separator
