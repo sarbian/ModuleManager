@@ -32,7 +32,6 @@
   <ItemGroup>
     <Compile Include="moduleManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SaveGameFixer.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
