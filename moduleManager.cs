@@ -1,12 +1,14 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace ModuleManager
 {
@@ -92,7 +94,7 @@ namespace ModuleManager
                 GameObject aGameObject = new GameObject();
                 MMPatchLoader loader = aGameObject.AddComponent<MMPatchLoader>();
 
-                log("Adding ModuleManager to the loading screen " + list.Count);
+                log(string.Format("Adding ModuleManager to the loading screen {0}", list.Count));
                 list.Insert(1, loader);
             }
             else
@@ -130,7 +132,7 @@ namespace ModuleManager
                 else if (!PartLoader.Instance.IsReady())
                     percent = 2f + PartLoader.Instance.ProgressFraction();
 
-                int intPercent = Mathf.CeilToInt(percent*100f/3f);
+                int intPercent = Mathf.CeilToInt(percent * 100f / 3f);
                 ScreenMessages.PostScreenMessage("Database reloading " + intPercent + "%", Time.deltaTime,
                     ScreenMessageStyle.UPPER_CENTER);
             }
@@ -190,16 +192,16 @@ namespace ModuleManager
                     if (Screen.height > 1440)
                         scale = 3;
 
-                    int trailLength = 8 *  tex.width * scale;
+                    int trailLength = 8 * tex.width * scale;
                     int totalLenth = trailLength + tex.width * scale;
                     int startPos = activePos - totalLenth;
 
                     Color guiColor = Color.white;
                     int currentOffset = 0;
                     int heightOffset = 0;
-                    while (currentOffset <= trailLength)
+                    while (currentOffset < trailLength)
                     {
-                        guiColor.a = (float)currentOffset / (float)trailLength;
+                        guiColor.a = (float)currentOffset / trailLength;
                         GUI.color = guiColor;
 
                         heightOffset = Mathf.RoundToInt(1f + Mathf.Sin(2f * Mathf.PI * (startPos + currentOffset) / (Screen.width / 6f)) * (tex.height * scale / 6f));
@@ -212,8 +214,6 @@ namespace ModuleManager
                     activePos = (activePos + 3) % (Screen.width + totalLenth);
                     GUI.color = Color.white;
                 }
-                
-
             }
 
 
@@ -344,10 +344,10 @@ namespace ModuleManager
 
             Assembly currentAssembly = Assembly.GetExecutingAssembly();
             var eligible = from a in AssemblyLoader.loadedAssemblies
-                let ass = a.assembly
-                where ass.GetName().Name == currentAssembly.GetName().Name
-                orderby ass.GetName().Version descending, a.path ascending
-                select a;
+                           let ass = a.assembly
+                           where ass.GetName().Name == currentAssembly.GetName().Name
+                           orderby ass.GetName().Version descending, a.path ascending
+                           select a;
 
             // Elect the newest loaded version of MM to process all patch files.
             // If there is a newer version loaded then don't do anything
@@ -408,6 +408,18 @@ namespace ModuleManager
 
         private static ConfigNode topNode;
 
+        private static string cachePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData"
+                          + Path.DirectorySeparatorChar + "ModuleManager.ConfigCache";
+
+        private static string shaPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData"
+                          + Path.DirectorySeparatorChar + "ModuleManager.ConfigSHA";
+
+        private static string configSha;
+
+        private static bool useCache = false;
+
+        private static Stopwatch patchSw = new Stopwatch();
+
         private static List<ModuleManagerPostPatchCallback> postPatchCallbacks =
             new List<ModuleManagerPostPatchCallback>();
 
@@ -428,13 +440,19 @@ namespace ModuleManager
 
         public override bool IsReady()
         {
+            if (ready)
+            {
+                patchSw.Stop();
+                log("Ran in " + ((float)patchSw.ElapsedMilliseconds / 1000).ToString("F3") + "s");
+
+            }
             return ready;
         }
 
         public override float ProgressFraction()
         {
             if (totalPatchCount > 0)
-                return (appliedPatchCount + needsUnsatisfiedCount)/(float) totalPatchCount;
+                return (appliedPatchCount + needsUnsatisfiedCount) / (float)totalPatchCount;
             return 0;
         }
 
@@ -456,6 +474,9 @@ namespace ModuleManager
 
         public void StartLoad(bool blocking)
         {
+            patchSw.Reset();
+            patchSw.Start();
+
             totalPatchCount = 0;
             appliedPatchCount = 0;
             patchedNodeCount = 0;
@@ -463,33 +484,19 @@ namespace ModuleManager
             needsUnsatisfiedCount = 0;
             errorFiles = new Dictionary<string, int>();
 
-            #endregion Top Level - Update
+        #endregion Top Level - Update
 
             ready = false;
 
-            List<String> excludePaths = PrePatchInit();
-
             if (blocking)
             {
-                IEnumerator fib = ProcessPatch(excludePaths);
+                IEnumerator fib = ProcessPatch();
                 while (fib.MoveNext())
                 {
                 }
             }
             else
-                StartCoroutine(ProcessPatch(excludePaths));
-
-            foreach (var callback in postPatchCallbacks)
-            {
-                try
-                {
-                    callback();
-                }
-                catch (Exception e)
-                {
-                    log("Exception while running a post patch callback\n" + e);
-                }
-            }
+                StartCoroutine(ProcessPatch());
         }
 
         public static void addPostPatchCallback(ModuleManagerPostPatchCallback callback)
@@ -497,7 +504,6 @@ namespace ModuleManager
             if (!postPatchCallbacks.Contains(callback))
                 postPatchCallbacks.Add(callback);
         }
-
         private List<String> PrePatchInit()
         {
             #region Excluding directories
@@ -591,64 +597,85 @@ namespace ModuleManager
             #endregion List of mods
         }
 
-        private IEnumerator ProcessPatch(List<String> excludePaths)
+        private IEnumerator ProcessPatch()
         {
-            #region Check Needs
-
-            // Do filtering with NEEDS
-            log("Checking NEEDS.");
-
-            CheckNeeds(excludePaths);
-
-            #endregion Check Needs
-
+            IsCacheUpToDate();
             yield return null;
 
-            #region Applying patches
 
-            // :First node
-            yield return StartCoroutine(ApplyPatch(excludePaths, ":FIRST"));
-
-            // any node without a :pass
-            yield return StartCoroutine(ApplyPatch(excludePaths, ":LEGACY"));
-
-            foreach (AssemblyName mod in mods)
+            if (!useCache)
             {
-                string upperModName = mod.Name.ToUpper();
-                yield return StartCoroutine(ApplyPatch(excludePaths, ":BEFORE[" + upperModName + "]"));
-                yield return StartCoroutine(ApplyPatch(excludePaths, ":FOR[" + upperModName + "]"));
-                yield return StartCoroutine(ApplyPatch(excludePaths, ":AFTER[" + upperModName + "]"));
-            }
+                #region Check Needs
 
-            // :Final node
-            yield return StartCoroutine(ApplyPatch(excludePaths, ":FINAL"));
+                List<String> excludePaths = PrePatchInit();
 
-            PurgeUnused(excludePaths);
+                yield return null;
 
-            #endregion Applying patches
+                // Do filtering with NEEDS
+                log("Checking NEEDS.");
 
-            #region Logging
+                CheckNeeds(excludePaths);
 
-            if (errorCount > 0)
-            {
-                foreach (String file in errorFiles.Keys)
+                #endregion Check Needs
+
+                yield return null;
+
+                #region Applying patches
+
+                log("Applying patches");
+
+                // :First node
+                yield return StartCoroutine(ApplyPatch(excludePaths, ":FIRST"));
+
+                // any node without a :pass
+                yield return StartCoroutine(ApplyPatch(excludePaths, ":LEGACY"));
+
+                foreach (AssemblyName mod in mods)
                 {
-                    errors += errorFiles[file] + " error" + (errorFiles[file] > 1 ? "s" : "") + " in GameData/" + file
-                              + "\n";
+                    string upperModName = mod.Name.ToUpper();
+                    yield return StartCoroutine(ApplyPatch(excludePaths, ":BEFORE[" + upperModName + "]"));
+                    yield return StartCoroutine(ApplyPatch(excludePaths, ":FOR[" + upperModName + "]"));
+                    yield return StartCoroutine(ApplyPatch(excludePaths, ":AFTER[" + upperModName + "]"));
                 }
+
+                // :Final node
+                yield return StartCoroutine(ApplyPatch(excludePaths, ":FINAL"));
+
+                PurgeUnused(excludePaths);
+
+                #endregion Applying patches
+
+                #region Logging
+
+                if (errorCount > 0)
+                {
+                    foreach (String file in errorFiles.Keys)
+                    {
+                        errors += errorFiles[file] + " error" + (errorFiles[file] > 1 ? "s" : "") + " in GameData/" + file
+                                  + "\n";
+                    }
+                }
+
+                CreateCache();
+            }
+            else
+            {
+                log("Loading from Cache");
+                LoadCache();
             }
 
             StatusUpdate();
 
             log(status + "\n" + errors);
 
-            #endregion Logging
+                #endregion Logging
 
 #if DEBUG
             RunTestCases();
 #endif
 
             // TODO : Remove if we ever get a way to load sooner
+            log("Reloading ressources definitions");
             PartResourceLibrary.Instance.LoadDefinitions();
 
             foreach (var callback in postPatchCallbacks)
@@ -668,9 +695,112 @@ namespace ModuleManager
             ready = true;
         }
 
+        private void IsCacheUpToDate()
+        {
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
+
+            System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
+            UrlDir.UrlFile[] files = GameDatabase.Instance.root.AllConfigFiles.ToArray();
+            for (int i = 0; i < files.Length; i++)
+            {
+                // Hash the file path so the checksum change if files are moved
+                byte[] pathBytes = Encoding.UTF8.GetBytes(files[i].url);
+                sha.TransformBlock(pathBytes, 0, pathBytes.Length, pathBytes, 0);
+
+                // hash the file content
+                byte[] contentBytes = File.ReadAllBytes(files[i].fullPath);
+                if (i == files.Length - 1)
+                    sha.TransformFinalBlock(contentBytes, 0, contentBytes.Length);
+                else
+                    sha.TransformBlock(contentBytes, 0, contentBytes.Length, contentBytes, 0);
+            }
+
+            configSha = BitConverter.ToString(sha.Hash);
+
+            sw.Stop();
+
+            log("SHA generated in " + ((float)sw.ElapsedMilliseconds / 1000).ToString("F3") + "s");
+            log("      SHA = " + configSha);
+
+            useCache = false;
+            if (File.Exists(shaPath))
+            {
+                ConfigNode shaConfigNode = ConfigNode.Load(shaPath);
+                if (shaConfigNode != null && shaConfigNode.HasValue("SHA") && shaConfigNode.HasValue("version"))
+                {
+                    string storedSHA = shaConfigNode.GetValue("SHA");
+                    string version = shaConfigNode.GetValue("version");
+                    useCache = storedSHA.Equals(configSha);
+                    useCache = useCache && version.Equals(Assembly.GetExecutingAssembly().GetName().Version.ToString());
+                    useCache = useCache && File.Exists(cachePath);
+                    log("Cache SHA = " + storedSHA);
+                    log("useCache = " + useCache);
+                }
+            }
+        }
+
+        private void CreateCache()
+        {
+            ConfigNode shaConfigNode = new ConfigNode();
+            shaConfigNode.AddValue("SHA", configSha);
+            shaConfigNode.AddValue("version", Assembly.GetExecutingAssembly().GetName().Version.ToString());
+            shaConfigNode.Save(shaPath);
+
+            ConfigNode cache = new ConfigNode();
+
+            cache.AddValue("patchedNodeCount", patchedNodeCount.ToString());
+
+            foreach (UrlDir.UrlConfig config in GameDatabase.Instance.root.AllConfigs)
+            {
+                ConfigNode node = cache.AddNode("UrlConfig");
+                node.AddValue("name", config.name);
+                node.AddValue("type", config.type);
+                node.AddValue("parentUrl", config.parent.url);
+                node.AddValue("url", config.url);
+                node.AddNode(config.config);
+            }
+
+            cache.Save(cachePath);
+        }
+
+        private void LoadCache()
+        {
+            // Clear the config DB
+            foreach (var files in GameDatabase.Instance.root.AllConfigFiles)
+            {
+                files.configs.Clear();
+            }
+
+            // And then load all the cached configs
+            ConfigNode cache = ConfigNode.Load(cachePath);
+
+            if (cache.HasValue("patchedNodeCount"))
+                int.TryParse(cache.GetValue("patchedNodeCount"), out patchedNodeCount);
+
+            foreach (ConfigNode node in cache.nodes)
+            {
+                string name = node.GetValue("name");
+                string type = node.GetValue("type");
+                string parentUrl = node.GetValue("parentUrl");
+                string url = node.GetValue("url");
+
+                UrlDir.UrlFile parent = GameDatabase.Instance.root.AllConfigFiles.FirstOrDefault(f => f.url == parentUrl);
+                if (parent != null)
+                {
+                    parent.AddConfig(node.nodes[0]);
+                }
+                else
+                {
+                    log("Parent null for " + parentUrl);
+                }
+            }
+            log("Cache Loaded");
+        }
+
         private void StatusUpdate()
         {
-            status = "ModuleManager: " + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") + " applied";
+            status = "ModuleManager: " + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") + (useCache ? " loaded from cache" : " applied");
 
             if (errorCount > 0)
                 status += ", found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
@@ -709,7 +839,7 @@ namespace ModuleManager
                     }
 
                     // Recursively check the contents
-                    CheckNeeds(mod.config, mod.parent.url, new List<string> {mod.type});
+                    CheckNeeds(mod.config, mod.parent.url, new List<string> { mod.type });
                 }
                 catch (Exception ex)
                 {
@@ -838,7 +968,7 @@ namespace ModuleManager
 
             UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
 
-            int yieldRate = Math.Max(allConfigs.Length/4, 10);
+            int yieldRate = Math.Max(allConfigs.Length / 4, 10);
 
             for (int modsIndex = 0; modsIndex < allConfigs.Length; modsIndex++)
             {
@@ -880,7 +1010,7 @@ namespace ModuleManager
 
                         try
                         {
-                            char[] sep = {'[', ']'};
+                            char[] sep = { '[', ']' };
                             string condition = "";
 
                             if (upperName.Contains(":HAS["))
@@ -891,7 +1021,7 @@ namespace ModuleManager
                             }
 
                             string[] splits = name.Split(sep, 3);
-                            string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] {null};
+                            string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] { null };
                             string type = splits[0].Substring(1);
 
                             foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
@@ -957,7 +1087,7 @@ namespace ModuleManager
                     if (lastErrorCount < errorCount)
                         addErrorFiles(mod.parent, errorCount - lastErrorCount);
                 }
-                if (modsIndex%yieldRate == yieldRate - 1)
+                if (modsIndex % yieldRate == yieldRate - 1)
                     yield return null;
             }
         }
@@ -1505,7 +1635,7 @@ namespace ModuleManager
                 //log("variable search input : =\"" + value + "\"");
                 string[] split = value.Split('$');
 
-                if (split.Length%2 != 1)
+                if (split.Length % 2 != 1)
                     return null;
 
                 StringBuilder builder = new StringBuilder();
@@ -1573,11 +1703,11 @@ namespace ModuleManager
                     switch (op)
                     {
                         case '*':
-                            value = (os*s).ToString();
+                            value = (os * s).ToString();
                             break;
 
                         case '/':
-                            value = (os/s).ToString();
+                            value = (os / s).ToString();
                             break;
 
                         case '+':
@@ -1746,7 +1876,7 @@ namespace ModuleManager
                     constraints = constraints.Substring(0, start - 5);
                 }
 
-                char[] sep = {'[', ']'};
+                char[] sep = { '[', ']' };
                 string[] splits = constraints.Split(sep, 3);
                 string type = splits[0].Substring(1);
                 string name = splits.Length > 1 ? splits[1] : null;
