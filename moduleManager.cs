@@ -1495,12 +1495,14 @@ namespace ModuleManager
                 }
 
                 if (nodeName == string.Empty)
+                {
                     target = list[0];
+                }
                 else
                 {
                     for (int i = 0; i < list.Length; i++)
                     {
-                        if (list[i].name == nodeName)
+                        if (list[i].HasValue("name") && WildcardMatch(list[i].GetValue("name"), nodeName))
                         {
                             target = list[i];
                             break;
