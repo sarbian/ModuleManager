@@ -1450,7 +1450,7 @@ namespace ModuleManager
         }
 
         // KeyName is group 1, index is group 2, value indexis  group 3, value separator is group 4
-        private static readonly Regex parseVarKey = new Regex(@"(\w\-\.+)(?:,((?:[0-9]+)+))?(?:\[((?:[0-9]+)+)(?:,(.))?\])?");
+        private static readonly Regex parseVarKey = new Regex(@"([\w\-\.]+)(?:,((?:[0-9]+)+))?(?:\[((?:[0-9]+)+)(?:,(.))?\])?");
 
         // Search for a value by a path alike string
         private static string RecurseVariableSearch(string path, ConfigNode currentNode)
@@ -1751,7 +1751,9 @@ namespace ModuleManager
 
             Copy,
 
-            Rename
+            Rename,
+
+            Paste
         }
 
         private static Command ParseCommand(string name, out string valueName)
@@ -1784,6 +1786,10 @@ namespace ModuleManager
 
                 case '|':
                     ret = Command.Rename;
+                    break;
+
+                case '#':
+                    ret = Command.Paste;
                     break;
 
                 default:
