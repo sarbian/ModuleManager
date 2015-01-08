@@ -392,6 +392,8 @@ namespace ModuleManager
 
         public int needsUnsatisfiedCount = 0;
 
+        public int catEatenCount = 0;
+
         private Dictionary<String, int> errorFiles;
 
         private List<AssemblyName> mods;
@@ -511,18 +513,21 @@ namespace ModuleManager
             // Build a list of subdirectory that won't be processed
             List<String> excludePaths = new List<string>();
 
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
+            if (ModuleManager.IsWin64())
             {
-                if (mod.name == "MODULEMANAGER[LOCAL]")
+                foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
                 {
-                    string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
-                    string excludepath = fullpath.Substring(0, fullpath.LastIndexOf('/'));
-                    excludePaths.Add(excludepath);
-                    log("excludepath: " + excludepath);
+                    if (mod.name == "MODULEMANAGER[NOWIN64]")
+                    {
+                        string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
+                        string excludepath = fullpath.Substring(0, fullpath.LastIndexOf('/'));
+                        excludePaths.Add(excludepath);
+                        log("excludepath: " + excludepath);
+                    }
                 }
+                if (excludePaths.Any())
+                    log("will not process patch in these subdirectories since they were disbaled on KSP Win64:\n" + String.Join("\n", excludePaths.ToArray()));
             }
-            if (excludePaths.Any())
-                log("will not process patch in these subdirectories:\n" + String.Join("\n", excludePaths.ToArray()));
 
             #endregion Excluding directories
 
@@ -751,6 +756,8 @@ namespace ModuleManager
 
             cache.AddValue("patchedNodeCount", patchedNodeCount.ToString());
 
+            cache.AddValue("catEatenCount", catEatenCount.ToString());
+
             foreach (UrlDir.UrlConfig config in GameDatabase.Instance.root.AllConfigs)
             {
                 ConfigNode node = cache.AddNode("UrlConfig");
@@ -778,6 +785,9 @@ namespace ModuleManager
             if (cache.HasValue("patchedNodeCount"))
                 int.TryParse(cache.GetValue("patchedNodeCount"), out patchedNodeCount);
 
+            if (cache.HasValue("catEatenCount"))
+                int.TryParse(cache.GetValue("catEatenCount"), out catEatenCount);
+
             foreach (ConfigNode node in cache.nodes)
             {
                 string name = node.GetValue("name");
@@ -804,6 +814,8 @@ namespace ModuleManager
 
             if (errorCount > 0)
                 status += ", found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
+            if (catEatenCount > 0)
+                status += ", " + catEatenCount + " patch" + (patchedNodeCount != 1 ? "es were" : " was") + " eaten by the Win64 cat";
         }
 
         #region Needs checking
@@ -817,8 +829,15 @@ namespace ModuleManager
             {
                 try
                 {
-                    if (IsPathInList(mod.url, excludePaths))
+                    string name;
+                    if (IsPathInList(mod.url, excludePaths) && (ParseCommand(mod.type, out name) != Command.Insert))
+                    {
+                        mod.parent.configs.Remove(mod);
+                        catEatenCount++;
+                        log("Deleting Node in file " + mod.parent.url + " subnode: " + mod.type +
+                                " as it is set to be disabled on KSP Win64");
                         continue;
+                    }
 
                     if (mod.type.Contains(":NEEDS["))
                     {
@@ -945,9 +964,6 @@ namespace ModuleManager
         {
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
             {
-                if (IsPathInList(mod.url, excludePaths))
-                    continue;
-
                 string name = RemoveWS(mod.type);
 
                 if (ParseCommand(name, out name) != Command.Insert)
