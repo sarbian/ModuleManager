@@ -526,7 +526,7 @@ namespace ModuleManager
                     }
                 }
                 if (excludePaths.Any())
-                    log("will not process patch in these subdirectories since they were disbaled on KSP Win64:\n" + String.Join("\n", excludePaths.ToArray()));
+                    log("will not process patches in these subdirectories since they were disbaled on KSP Win64:\n" + String.Join("\n", excludePaths.ToArray()));
             }
 
             #endregion Excluding directories
