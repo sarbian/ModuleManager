@@ -52,8 +52,17 @@ namespace ModuleManager
             print("[ModuleManager] " + s);
         }
 
+        private Stopwatch totalTime = new Stopwatch();
+
         internal void Awake()
         {
+            totalTime.Start();
+            // Since the game loads asset in coroutines it only loads 1 per frame
+            // Disabling Vsync while loading make sure you are not restricted to 
+            // 60 assets / seconds or whatever the display framerate is.
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = -1;
+
             // Ensure that only one copy of the service is run per scene change.
             if (loadedInScene || !ElectionAndCheck())
             {
@@ -65,12 +74,12 @@ namespace ModuleManager
             }
             DontDestroyOnLoad(gameObject);
 
-            System.Version v = Assembly.GetExecutingAssembly().GetName().Version;
+            Version v = Assembly.GetExecutingAssembly().GetName().Version;
             version = v.Major + "." + v.Minor + "." + v.Build;
 
             // Subscribe to the RnD center spawn/deSpawn events
             GameEvents.onGUIRnDComplexSpawn.Add(OnRnDCenterSpawn);
-            GameEvents.onGUIRnDComplexDespawn.Add(this.OnRnDCenterDeSpawn);
+            GameEvents.onGUIRnDComplexDespawn.Add(OnRnDCenterDeSpawn);
 
             // This code is the one that should allow to plugin into the stock loading bar
             // but it can't insert the LoadingSystembefore PartLoader ie too late
@@ -114,13 +123,22 @@ namespace ModuleManager
         internal void OnDestroy()
         {
             GameEvents.onGUIRnDComplexSpawn.Remove(OnRnDCenterSpawn);
-            GameEvents.onGUIRnDComplexDespawn.Remove(this.OnRnDCenterDeSpawn);
+            GameEvents.onGUIRnDComplexDespawn.Remove(OnRnDCenterDeSpawn);
         }
 
         internal void Update()
         {
             if (GameSettings.MODIFIER_KEY.GetKey() && Input.GetKeyDown(KeyCode.F11))
                 showUI = !showUI;
+
+            if (totalTime.IsRunning && HighLogic.LoadedScene == GameScenes.MAINMENU)
+            {
+                totalTime.Stop();
+                log("Total loading Time = " + ((float)totalTime.ElapsedMilliseconds / 1000).ToString("F3") + "s");
+                QualitySettings.vSyncCount = GameSettings.SYNC_VBL;
+                Application.targetFrameRate = GameSettings.FRAMERATE_LIMIT;
+            }
+
 
             if (reloading)
             {
@@ -815,7 +833,7 @@ namespace ModuleManager
             if (errorCount > 0)
                 status += ", found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
             if (catEatenCount > 0)
-                status += ", " + catEatenCount + " patch" + (patchedNodeCount != 1 ? "es were" : " was") + " eaten by the Win64 cat";
+                status += ", " + catEatenCount + " patch" + (catEatenCount != 1 ? "es were" : " was") + " eaten by the Win64 cat";
         }
 
         #region Needs checking
