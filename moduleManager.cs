@@ -270,6 +270,9 @@ namespace ModuleManager
         {
             reloading = true;
 
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = -1;
+
             ScreenMessages.PostScreenMessage("Database reloading started", 1, ScreenMessageStyle.UPPER_CENTER);
             yield return null;
 
@@ -313,6 +316,8 @@ namespace ModuleManager
             //    }
             //}
 
+            QualitySettings.vSyncCount = GameSettings.SYNC_VBL;
+            Application.targetFrameRate = GameSettings.FRAMERATE_LIMIT;
             reloading = false;
             ScreenMessages.PostScreenMessage("Database reloading finished", 1, ScreenMessageStyle.UPPER_CENTER);
         }
