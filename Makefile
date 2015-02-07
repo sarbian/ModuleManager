@@ -6,6 +6,7 @@ MANAGED := KSP_Data/Managed/
 INCLUDEFILES := $(wildcard *.cs) \
 	$(wildcard Properties/*.cs)
 
+RESGEN2 := resgen2
 GMCS    := /usr/bin/gmcs
 GIT     := /usr/bin/git
 TAR     := /usr/bin/tar
@@ -24,9 +25,11 @@ info:
 
 build: info
 	mkdir -p build
+	${RESGEN2} -usesourcepath Properties/Resources.resx build/Resources.resources
 	${GMCS} -t:library -lib:${KSPDIR}/${MANAGED} \
 		-r:Assembly-CSharp,Assembly-CSharp-firstpass,UnityEngine \
 		-out:build/ModuleManager.dll \
+		-resource:build/Resources.resources,ModuleManager.Properties.Resources.resources \
 		${INCLUDEFILES}
 
 tar.gz: build
