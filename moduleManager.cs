@@ -885,7 +885,7 @@ namespace ModuleManager
                 }
                 catch (Exception ex)
                 {
-                    log("Exception while checking needs : " + mod.url + "\n" + ex);
+                    log("Exception while checking needs : " + mod.url + " with a type of " + mod.type + "\n" + ex);
                 }
             }
         }
@@ -902,14 +902,25 @@ namespace ModuleManager
                 {
                     ConfigNode.Value val = subMod.values[i];
                     string name = val.name;
-                    if (CheckNeeds(ref name))
-                        copy.AddValue(name, val.value);
-                    else
+                    try
                     {
-                        needsCopy = true;
-                        log("Deleting value in file: " + url + " subnode: " + string.Join("/", path.ToArray()) +
-                            " value: " + val.name + " = " + val.value + " as it can't satisfy its NEEDS");
-                        needsUnsatisfiedCount++;
+                        if (CheckNeeds(ref name))
+                        {
+                            copy.AddValue(name, val.value);
+                        }
+                        else
+                        {
+                            needsCopy = true;
+                            log(
+                                "Deleting value in file: " + url + " subnode: " + string.Join("/", path.ToArray()) +
+                                " value: " + val.name + " = " + val.value + " as it can't satisfy its NEEDS");
+                            needsUnsatisfiedCount++;
+                        }
+                    }
+                    catch (ArgumentOutOfRangeException e)
+                    {
+                        log("ArgumentOutOfRangeException in CheckNeeds for value \"" + val.name + "\"\n" + e);
+                        throw e;
                     }
                 }
 
@@ -917,18 +928,27 @@ namespace ModuleManager
                 {
                     ConfigNode node = subMod.nodes[i];
                     string name = node.name;
-                    if (CheckNeeds(ref name))
+                    try
                     {
-                        node.name = name;
-                        CheckNeeds(node, url, path);
-                        copy.AddNode(node);
+                        if (CheckNeeds(ref name))
+                        {
+                            node.name = name;
+                            CheckNeeds(node, url, path);
+                            copy.AddNode(node);
+                        }
+                        else
+                        {
+                            needsCopy = true;
+                            log(
+                                "Deleting node in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + "/" +
+                                node.name + " as it can't satisfy its NEEDS");
+                            needsUnsatisfiedCount++;
+                        }
                     }
-                    else
+                    catch (ArgumentOutOfRangeException e)
                     {
-                        needsCopy = true;
-                        log("Deleting node in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + "/" +
-                            node.name + " as it can't satisfy its NEEDS");
-                        needsUnsatisfiedCount++;
+                        log("ArgumentOutOfRangeException in CheckNeeds for node \"" + node.name + "\"\n" + e);
+                        throw e;
                     }
                 }
 
