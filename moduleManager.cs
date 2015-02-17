@@ -1389,7 +1389,8 @@ namespace ModuleManager
                         constraints = subName.Substring(start + 5, subName.LastIndexOf(']') - start - 5);
                         subName = subName.Substring(0, start);
                     }
-                    else if (subName.Contains(","))
+                    
+                    if (subName.Contains(","))
                     {
                         tag = subName.Split(',')[1];
                         subName = subName.Split(',')[0];
