@@ -894,50 +894,74 @@ namespace ModuleManager
         {
             try
             {
+                int line = 1;
                 path.Add(subMod.name + "[" + subMod.GetValue("name") + "]");
-
+                line = 2;
                 bool needsCopy = false;
                 ConfigNode copy = new ConfigNode();
+                line = 3;
                 for (int i = 0; i < subMod.values.Count; ++i)
                 {
+                    line = 4;
                     ConfigNode.Value val = subMod.values[i];
+                    line = 5;
                     string name = val.name;
+                    line = 6;
                     try
                     {
+                        line = 7;
                         if (CheckNeeds(ref name))
                         {
+                            line = 8;
                             copy.AddValue(name, val.value);
+                            line = 9;
                         }
                         else
                         {
+                            line = 10;
                             needsCopy = true;
                             log(
                                 "Deleting value in file: " + url + " subnode: " + string.Join("/", path.ToArray()) +
                                 " value: " + val.name + " = " + val.value + " as it can't satisfy its NEEDS");
                             needsUnsatisfiedCount++;
                         }
+                        line = 11;
                     }
                     catch (ArgumentOutOfRangeException e)
                     {
-                        log("ArgumentOutOfRangeException in CheckNeeds for value \"" + val.name + "\"\n" + e);
+                        log("ArgumentOutOfRangeException in CheckNeeds for value \"" + val.name + "\"" + line + "\n" + e);
+                        throw e;
+                    }
+                    catch (Exception e)
+                    {
+                        log("General Exception " + e.GetType().Name + " for value \"" + val.name + " = " + val.value + "\" "  + line + "\n" + e.ToString());
                         throw e;
                     }
                 }
 
+                line = 1;
                 for (int i = 0; i < subMod.nodes.Count; ++i)
                 {
+                    line = 2;
                     ConfigNode node = subMod.nodes[i];
+                    line = 3;
                     string name = node.name;
+                    line = 4;
                     try
                     {
                         if (CheckNeeds(ref name))
                         {
+                            line = 5;
                             node.name = name;
+                            line = 6;
                             CheckNeeds(node, url, path);
+                            line = 7;
                             copy.AddNode(node);
+                            line = 8;
                         }
                         else
                         {
+                            line = 9;
                             needsCopy = true;
                             log(
                                 "Deleting node in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + "/" +
@@ -947,7 +971,12 @@ namespace ModuleManager
                     }
                     catch (ArgumentOutOfRangeException e)
                     {
-                        log("ArgumentOutOfRangeException in CheckNeeds for node \"" + node.name + "\"\n" + e);
+                        log("ArgumentOutOfRangeException in CheckNeeds for node \"" + node.name + "\"" + line + "\n" + e);
+                        throw e;
+                    }
+                    catch (Exception e)
+                    {
+                        log("General Exception " + e.GetType().Name + " for node \"" + node.name + "\" " + line + " \n " + node.ToString() + " \n" + e.ToString());
                         throw e;
                     }
                 }
@@ -1692,7 +1721,7 @@ namespace ModuleManager
         {
             // value = #xxxx$yyyyy$zzzzz$aaaa$bbbb
             // There is 2 or more '$'
-            if (value[0] == '#' && value.IndexOf('$') != value.LastIndexOf('$'))
+            if (value[0] == '#' && value.IndexOf('$') != -1 && value.IndexOf('$') != value.LastIndexOf('$'))
             {
                 //log("variable search input : =\"" + value + "\"");
                 string[] split = value.Split('$');
