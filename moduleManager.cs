@@ -1721,7 +1721,7 @@ namespace ModuleManager
         {
             // value = #xxxx$yyyyy$zzzzz$aaaa$bbbb
             // There is 2 or more '$'
-            if (value[0] == '#' && value.IndexOf('$') != -1 && value.IndexOf('$') != value.LastIndexOf('$'))
+            if (value.Length > 0 && value[0] == '#' && value.IndexOf('$') != -1 && value.IndexOf('$') != value.LastIndexOf('$'))
             {
                 //log("variable search input : =\"" + value + "\"");
                 string[] split = value.Split('$');
