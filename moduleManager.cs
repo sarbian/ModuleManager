@@ -885,16 +885,19 @@ namespace ModuleManager
                 }
                 catch (Exception ex)
                 {
-                    log("Exception while checking needs : " + mod.url + " with a type of " + mod.type + "\n" + ex);
+                    log("Exception while checking needs : " + mod.url + " with a type of " + mod.type + "line " + line +"\n" + ex);
+                    log("Node is : " + PrettyConfig(mod));
                 }
             }
         }
+
+        private int line;
 
         private void CheckNeeds(ConfigNode subMod, string url, List<string> path)
         {
             try
             {
-                int line = 1;
+                line = 1;
                 path.Add(subMod.name + "[" + subMod.GetValue("name") + "]");
                 line = 2;
                 bool needsCopy = false;
@@ -976,7 +979,8 @@ namespace ModuleManager
                     }
                     catch (Exception e)
                     {
-                        log("General Exception " + e.GetType().Name + " for node \"" + node.name + "\" " + line + " \n " + node.ToString() + " \n" + e.ToString());
+                        log("General Exception " + e.GetType().Name + " for node \"" + node.name + "\" " + line + " \n " + e.ToString());
+
                         throw e;
                     }
                 }
@@ -2100,6 +2104,52 @@ namespace ModuleManager
                 to.nodes.Add(newNode);
             }
             return to;
+        }
+
+        private string PrettyConfig(UrlDir.UrlConfig config)
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendFormat("{0}[{1}]\n",config.type ?? "NULL", config.name ?? "NULL");
+            
+            if (config.config !=null)
+            {
+                PrettyConfig(config.config, ref sb, "  ");
+            }
+            else
+            {
+                sb.Append("NULL\n");
+            }
+            sb.Append("\n");
+            return sb.ToString();
+        }
+
+        private void PrettyConfig(ConfigNode node, ref StringBuilder sb, string indent)
+        {
+            sb.AppendFormat("{0}{1}\n{2}{{\n", indent, node.name ?? "NULL", indent);
+            string newindent = indent + "  ";
+            if (node.values != null)
+            {
+                foreach (ConfigNode.Value value in node.values)
+                {
+                    sb.AppendFormat("{0}{1} = {2}\n", newindent, value.name ?? "null", value.value ?? "null");
+                }
+            }
+            else
+            {
+                sb.AppendFormat("{0} Null values\n", newindent);
+            }
+            if (node.nodes != null)
+            {
+                foreach (ConfigNode subnode in node.nodes)
+                {
+                    PrettyConfig(subnode, ref sb, newindent);
+                }
+            }
+            else
+            {
+                sb.AppendFormat("{0} Null nodes\n", newindent);
+            }
+            sb.AppendFormat("{0}}}\n", indent);
         }
 
         //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType.
