@@ -942,86 +942,64 @@ namespace ModuleManager
                 }
                 catch (Exception ex)
                 {
-                    log("Exception while checking needs : " + mod.url + " with a type of " + mod.type + "line " + line +"\n" + ex);
+                    log("Exception while checking needs : " + mod.url + " with a type of " + mod.type +"\n" + ex);
                     log("Node is : " + PrettyConfig(mod));
                 }
             }
         }
 
-        private int line;
-
         private void CheckNeeds(ConfigNode subMod, string url, List<string> path)
         {
             try
             {
-                line = 1;
                 path.Add(subMod.name + "[" + subMod.GetValue("name") + "]");
-                line = 2;
                 bool needsCopy = false;
                 ConfigNode copy = new ConfigNode();
-                line = 3;
                 for (int i = 0; i < subMod.values.Count; ++i)
                 {
-                    line = 4;
                     ConfigNode.Value val = subMod.values[i];
-                    line = 5;
-                    string name = val.name;
-                    line = 6;
+                    string valname = val.name;
                     try
                     {
-                        line = 7;
-                        if (CheckNeeds(ref name))
+                        if (CheckNeeds(ref valname))
                         {
-                            line = 8;
-                            copy.AddValue(name, val.value);
-                            line = 9;
+                            copy.AddValue(valname, val.value);
                         }
                         else
                         {
-                            line = 10;
                             needsCopy = true;
                             log(
                                 "Deleting value in file: " + url + " subnode: " + string.Join("/", path.ToArray()) +
                                 " value: " + val.name + " = " + val.value + " as it can't satisfy its NEEDS");
                             needsUnsatisfiedCount++;
                         }
-                        line = 11;
                     }
                     catch (ArgumentOutOfRangeException e)
                     {
-                        log("ArgumentOutOfRangeException in CheckNeeds for value \"" + val.name + "\"" + line + "\n" + e);
+                        log("ArgumentOutOfRangeException in CheckNeeds for value \"" + val.name + "\"\n" + e);
                         throw e;
                     }
                     catch (Exception e)
                     {
-                        log("General Exception " + e.GetType().Name + " for value \"" + val.name + " = " + val.value + "\" "  + line + "\n" + e.ToString());
+                        log("General Exception " + e.GetType().Name + " for value \"" + val.name + " = " + val.value + "\"\n" + e.ToString());
                         throw e;
                     }
                 }
 
-                line = 1;
                 for (int i = 0; i < subMod.nodes.Count; ++i)
                 {
-                    line = 2;
                     ConfigNode node = subMod.nodes[i];
-                    line = 3;
                     string name = node.name;
-                    line = 4;
                     try
                     {
                         if (CheckNeeds(ref name))
                         {
-                            line = 5;
                             node.name = name;
-                            line = 6;
                             CheckNeeds(node, url, path);
-                            line = 7;
                             copy.AddNode(node);
-                            line = 8;
                         }
                         else
                         {
-                            line = 9;
                             needsCopy = true;
                             log(
                                 "Deleting node in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + "/" +
@@ -1031,12 +1009,12 @@ namespace ModuleManager
                     }
                     catch (ArgumentOutOfRangeException e)
                     {
-                        log("ArgumentOutOfRangeException in CheckNeeds for node \"" + node.name + "\"" + line + "\n" + e);
+                        log("ArgumentOutOfRangeException in CheckNeeds for node \"" + node.name + "\"\n" + e);
                         throw e;
                     }
                     catch (Exception e)
                     {
-                        log("General Exception " + e.GetType().Name + " for node \"" + node.name + "\" " + line + " \n " + e.ToString());
+                        log("General Exception " + e.GetType().Name + " for node \"" + node.name + "\"\n " + e.ToString());
 
                         throw e;
                     }
