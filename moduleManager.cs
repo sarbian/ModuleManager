@@ -169,7 +169,7 @@ namespace ModuleManager
             {
                 float offsetY = Mathf.FloorToInt(0.8f * Screen.height);
 
-                if (IsWin64())
+                if (IsABadIdea())
                 {
                     var centeredWarningStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
                     {
@@ -206,7 +206,7 @@ namespace ModuleManager
                 }
 
 
-                if (IsWin64())
+                if (IsABadIdea() || (DateTime.Now.Month == 4 && DateTime.Now.Day == 1))
                 {
                     GUI.color = Color.white;
                     int scale = 1;
@@ -254,12 +254,13 @@ namespace ModuleManager
             }
         }
 
-        public static bool IsWin64()
+        private static IntPtr intPtr = new IntPtr(long.MaxValue);
+        public static bool IsABadIdea()
         {
-            return (IntPtr.Size == 8) && (Environment.OSVersion.Platform == PlatformID.Win32NT);
+            return (intPtr.ToInt64() == long.MaxValue) && (Environment.OSVersion.Platform == PlatformID.Win32NT);
         }
 
-        protected void WindowGUI(int windowID)
+        private void WindowGUI(int windowID)
         {
             GUILayout.BeginVertical();
 
@@ -536,7 +537,7 @@ namespace ModuleManager
             // Build a list of subdirectory that won't be processed
             List<String> excludePaths = new List<string>();
 
-            if (ModuleManager.IsWin64())
+            if (ModuleManager.IsABadIdea())
             {
                 foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
                 {
