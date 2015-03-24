@@ -518,15 +518,10 @@ namespace ModuleManager
 
             ready = false;
 
-            if (blocking)
-            {
-                IEnumerator fib = ProcessPatch();
-                while (fib.MoveNext())
-                {
-                }
-            }
-            else
-                StartCoroutine(ProcessPatch());
+            // DB check used to track the now fixed TextureReplacer corruption
+            //checkValues();
+
+            StartCoroutine(ProcessPatch(blocking), blocking);
         }
 
         public static void addPostPatchCallback(ModuleManagerPostPatchCallback callback)
@@ -564,17 +559,23 @@ namespace ModuleManager
             List<AssemblyName> modsWithDup =
                 AssemblyLoader.loadedAssemblies.Select(a => (a.assembly.GetName())).ToList();
 
-            mods = new List<AssemblyName>();
 
-            foreach (AssemblyName a in modsWithDup)
-            {
-                if (!mods.Any(m => m.Name == a.Name))
-                    mods.Add(a);
-            }
+            mods = new List<string>();
 
             string modlist = "compiling list of loaded mods...\nMod DLLs found:\n";
-            foreach (AssemblyName mod in mods)
-                modlist += "  " + mod.Name + " v" + mod.Version + "\n";
+
+            foreach (AssemblyLoader.LoadedAssembly mod in AssemblyLoader.loadedAssemblies)
+            {
+                FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(mod.assembly.Location);
+
+                AssemblyName assemblyName = mod.assembly.GetName();
+
+                modlist += "  " + assemblyName.Name + " v" + assemblyName.Version + " / v" + fileVersionInfo.ProductVersion + "\n";
+
+                if (!mods.Contains(assemblyName.Name, StringComparer.OrdinalIgnoreCase))
+                    mods.Add(assemblyName.Name);
+            }
+
             modlist += "Non-DLL mods added:\n";
             foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
             {
@@ -591,13 +592,10 @@ namespace ModuleManager
                         {
                             string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
                             dependency = dependency.Substring(0, dependency.IndexOf(']'));
-                            if (mods.Find(a => RemoveWS(a.Name.ToUpper()).Equals(RemoveWS(dependency.ToUpper())))
-                                == null)
+                            if (!mods.Contains(dependency, StringComparer.OrdinalIgnoreCase))
                             {
                                 // found one, now add it to the list.
-                                AssemblyName newMod = new AssemblyName(dependency);
-                                newMod.Name = dependency;
-                                mods.Add(newMod);
+                                mods.Add(dependency);
                                 modlist += "  " + dependency + "\n";
                             }
                         }
@@ -614,27 +612,49 @@ namespace ModuleManager
             foreach (string subdir in Directory.GetDirectories(gameData))
             {
                 string name = Path.GetFileName(subdir);
-                string upperName = RemoveWS(name.ToUpper());
-                if (mods.Find(a => RemoveWS(a.Name.ToUpper()) == upperName) == null)
+                string cleanName = RemoveWS(name);
+                if (!mods.Contains(cleanName, StringComparer.OrdinalIgnoreCase))
                 {
-                    AssemblyName newMod = new AssemblyName(name);
-                    newMod.Name = name;
-                    mods.Add(newMod);
-                    modlist += "  " + name + "\n";
+                    mods.Add(cleanName);
+                    modlist += "  " + cleanName + "\n";
                 }
             }
             log(modlist);
+
+            mods.Sort();
 
             return excludePaths;
 
             #endregion List of mods
         }
 
-        private IEnumerator ProcessPatch()
+
+        Coroutine StartCoroutine(IEnumerator enumerator, bool blocking)
         {
+            if (blocking)
+            {
+                while (enumerator.MoveNext()) {}
+                return null;
+            }
+            else
+            {
+                return StartCoroutine(enumerator);
+            }
+        }
+
+
+        private IEnumerator ProcessPatch(bool blocking)
+        {
+
+            AssemblyLoader.LoadedAssembly textureReplacer = AssemblyLoader.loadedAssemblies.FirstOrDefault(a => a.name.StartsWith("TextureReplacer", StringComparison.Ordinal));
+
             IsCacheUpToDate();
             yield return null;
 
+
+            #if DEBUG
+            useCache = false;
+            #endif
 
             if (!useCache)
             {
@@ -658,21 +678,22 @@ namespace ModuleManager
                 log("Applying patches");
 
                 // :First node
-                yield return StartCoroutine(ApplyPatch(excludePaths, ":FIRST"));
+                yield return StartCoroutine(ApplyPatch(excludePaths, ":FIRST"), blocking);
 
                 // any node without a :pass
-                yield return StartCoroutine(ApplyPatch(excludePaths, ":LEGACY"));
+                yield return StartCoroutine(ApplyPatch(excludePaths, ":LEGACY"), blocking);
 
-                foreach (AssemblyName mod in mods)
+                foreach (string mod in mods)
                 {
-                    string upperModName = mod.Name.ToUpper();
-                    yield return StartCoroutine(ApplyPatch(excludePaths, ":BEFORE[" + upperModName + "]"));
-                    yield return StartCoroutine(ApplyPatch(excludePaths, ":FOR[" + upperModName + "]"));
-                    yield return StartCoroutine(ApplyPatch(excludePaths, ":AFTER[" + upperModName + "]"));
+                    string upperModName = mod.ToUpper();
+                    yield return StartCoroutine(ApplyPatch(excludePaths, ":BEFORE[" + upperModName + "]"), blocking);
+                    yield return StartCoroutine(ApplyPatch(excludePaths, ":FOR[" + upperModName + "]"), blocking);
+                    yield return StartCoroutine(ApplyPatch(excludePaths, ":AFTER[" + upperModName + "]"), blocking);
                 }
 
                 // :Final node
-                yield return StartCoroutine(ApplyPatch(excludePaths, ":FINAL"));
+                yield return StartCoroutine(ApplyPatch(excludePaths, ":FINAL"), blocking);
+                
 
                 PurgeUnused(excludePaths);
 
@@ -1057,7 +1078,7 @@ namespace ModuleManager
 
                     bool not = orDependency[0] == '!';
                     string toFind = not ? orDependency.Substring(1) : orDependency;
-                    bool found = mods.Find(a => a.Name.ToUpper() == toFind) != null;
+                    bool found = mods.Contains(toFind, StringComparer.OrdinalIgnoreCase);
 
                     if (not == !found)
                     {
