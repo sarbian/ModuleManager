@@ -1229,6 +1229,7 @@ namespace ModuleManager
                 catch (Exception e)
                 {
                     log("Exception while processing node : " + mod.url + "\n" + e);
+                    log(PrettyConfig(mod));
                     mod.parent.configs.Remove(mod);
                 }
                 finally
@@ -2167,46 +2168,84 @@ namespace ModuleManager
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendFormat("{0}[{1}]\n",config.type ?? "NULL", config.name ?? "NULL");
-            
-            if (config.config !=null)
+            try
             {
-                PrettyConfig(config.config, ref sb, "  ");
+                if (config.config != null)
+                {
+                    PrettyConfig(config.config, ref sb, "  ");
+                }
+                else
+                {
+                    sb.Append("NULL\n");
+                }
+                sb.Append("\n");
             }
-            else
+            catch( Exception e )
             {
-                sb.Append("NULL\n");
+                log("PrettyConfig Exception " +e);
             }
-            sb.Append("\n");
             return sb.ToString();
         }
 
         private void PrettyConfig(ConfigNode node, ref StringBuilder sb, string indent)
         {
-            sb.AppendFormat("{0}{1}\n{2}{{\n", indent, node.name ?? "NULL", indent);
-            string newindent = indent + "  ";
-            if (node.values != null)
+            try
             {
-                foreach (ConfigNode.Value value in node.values)
+                sb.AppendFormat("{0}{1}\n{2}{{\n", indent, node.name ?? "NULL", indent);
+                string newindent = indent + "  ";
+                if (node.values != null)
                 {
-                    sb.AppendFormat("{0}{1} = {2}\n", newindent, value.name ?? "null", value.value ?? "null");
+                    foreach (ConfigNode.Value value in node.values)
+                    {
+                        if (value != null)
+                        {
+                            try
+                            {
+                                sb.AppendFormat("{0}{1} = {2}\n", newindent, value.name ?? "null", value.value ?? "null");
+                            }
+                            catch (Exception e)
+                            {
+                                log("value.name.Length=" + value.name.Length);
+                                log("value.name.IsNullOrEmpty=" + string.IsNullOrEmpty(value.name));
+                                log("n " +value.name ?? "null");
+                                log("v " + value.value ?? "null");
+                                throw e;
+                            }
+                        }
+                        else
+                        {
+                            sb.AppendFormat("{0} Null value\n", newindent);
+                        }
+                    }
                 }
-            }
-            else
-            {
-                sb.AppendFormat("{0} Null values\n", newindent);
-            }
-            if (node.nodes != null)
-            {
-                foreach (ConfigNode subnode in node.nodes)
+                else
                 {
-                    PrettyConfig(subnode, ref sb, newindent);
+                    sb.AppendFormat("{0} Null values\n", newindent);
                 }
+                if (node.nodes != null)
+                {
+                    foreach (ConfigNode subnode in node.nodes)
+                    {
+                        if (subnode != null)
+                        {
+                            PrettyConfig(subnode, ref sb, newindent);
+                        }
+                        else
+                        {
+                            sb.AppendFormat("{0} Null Subnode\n", newindent);
+                        }
+                    }
+                }
+                else
+                {
+                    sb.AppendFormat("{0} Null nodes\n", newindent);
+                }
+                sb.AppendFormat("{0}}}\n", indent);
             }
-            else
+            catch (Exception e)
             {
-                sb.AppendFormat("{0} Null nodes\n", newindent);
+                throw e;
             }
-            sb.AppendFormat("{0}}}\n", indent);
         }
 
         //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType.
