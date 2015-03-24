@@ -424,7 +424,7 @@ namespace ModuleManager
 
         private Dictionary<String, int> errorFiles;
 
-        private List<AssemblyName> mods;
+        private List<string> mods;
 
         public string status = "";
 
@@ -2156,7 +2156,7 @@ namespace ModuleManager
                 {
                     sb.Append("NULL\n");
                 }
-                sb.Append("\n");
+                sb.Append("\n"); 
             }
             catch( Exception e )
             {
