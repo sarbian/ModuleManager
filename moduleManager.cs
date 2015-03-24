@@ -2057,11 +2057,26 @@ namespace ModuleManager
 
         public static bool WildcardMatchValues(ConfigNode node, string type, string value)
         {
+            double val;
+            bool compare = value.Length > 1 && (value[0] == '<' || value[0] == '>');
+            compare = compare && Double.TryParse(value.Substring(1), out val);
+            
+
             string[] values = node.GetValues(type);
             for (int i = 0; i < values.Length; i++)
             {
-                if (WildcardMatch(values[i], value))
+                if (!compare && WildcardMatch(values[i], value))
                     return true;
+                
+                double val2;
+                if (compare && Double.TryParse(values[i], out val2)
+                    && ((value[0] == '<' && val2 < val) || (value[0] == '>' && val2 > val)) 
+                    )
+                {
+                    return true;
+
+                }
+
             }
             return false;
         }
