@@ -1432,8 +1432,42 @@ namespace ModuleManager
                     int index;
                     if (subName.Contains(",") && int.TryParse(subName.Split(',')[1], out index))
                     {
-                        // In this case insert the value at position index (with the same node names)
+                        // In this case insert the node at position index (with the same node names)
                         subMod.name = subName.Split(',')[0];
+                        InsertNode(newNode, newSubMod, index);
+                    }
+                    else
+                        newNode.AddNode(newSubMod);
+                }
+                else if (command == Command.Paste)
+                {
+                    //int start = subName.IndexOf('[');
+                    //int end = subName.LastIndexOf(']');
+                    //if (start == -1 || end == -1 || end - start < 1)
+                    //{
+                    //    log("Pasting a node require a [path] to the node to paste" + mod.name + " : \n" + subMod.name + "\n");
+                    //    errorCount++;
+                    //    continue;
+                    //}
+
+                    //string newName = subName.Substring(0, start);
+                    //string path = subName.Substring(start + 1, end - start - 1);
+
+                    ConfigNode toPaste = RecurseNodeSearch(subName.Substring(1), nodeStack.Peek());
+
+                    if (toPaste == null)
+                    {
+                        log("Can not find the node to paste in " + mod.name + " : " + subMod.name + "\n");
+                        errorCount++;
+                        continue;
+                    }
+
+                    ConfigNode newSubMod = new ConfigNode(toPaste.name);
+                    newSubMod = ModifyNode(newSubMod, toPaste);
+                    int index;
+                    if (subName.LastIndexOf(",") > 0 && int.TryParse(subName.Substring(subName.LastIndexOf(",") + 1), out index))
+                    {
+                        // In this case insert the node at position index
                         InsertNode(newNode, newSubMod, index);
                     }
                     else
@@ -1577,6 +1611,139 @@ namespace ModuleManager
             nodeStack.Pop();
 
             return newNode;
+        }
+
+
+        // Search for a ConfigNode by a path alike string
+        private ConfigNode RecurseNodeSearch(string path, ConfigNode currentNode)
+        {
+            //log("Path : \"" + path + "\"");
+
+            if (path[0] == '/')
+            {
+                currentNode = topNode;
+                path = path.Substring(1);
+            }
+
+            int nextSep = path.IndexOf('/');
+
+            bool root = (path[0] == '@');
+            int shift = root ? 1 : 0;
+            string subName = (nextSep != -1) ? path.Substring(shift, nextSep - shift) : path.Substring(shift);
+            string nodeType, nodeName;
+            string constraint = "";
+
+            int index = 0;
+            if (subName.Contains(":HAS["))
+            {
+                int start = subName.IndexOf(":HAS[");
+                constraint = subName.Substring(start + 5, subName.LastIndexOf(']') - start - 5);
+                subName = subName.Substring(0, start);
+            }
+            else if (subName.Contains(","))
+            {
+                string tag = subName.Split(',')[1];
+                subName = subName.Split(',')[0];
+                int.TryParse(tag, out index);
+            }
+
+            if (subName.Contains("["))
+            {
+                // NODETYPE[Name]
+                nodeType = subName.Split('[')[0];
+                nodeName = subName.Split('[')[1].Replace("]", "");
+            }
+            else
+            {
+                // NODETYPE
+                nodeType = subName;
+                nodeName = null;
+            }
+
+            // ../XXXXX
+            if (path.StartsWith("../"))
+            {
+                if (nodeStack.Count == 1)
+                    return null;
+                ConfigNode result;
+                ConfigNode top = nodeStack.Pop();
+                try
+                {
+                    result = RecurseNodeSearch(path.Substring(3), nodeStack.Peek());
+                }
+                finally
+                {
+                    nodeStack.Push(top);
+                }
+                return result;
+            }
+
+            //log("nextSep : \"" + nextSep + " \" root : \"" + root + " \" nodeType : \"" + nodeType + "\" nodeName : \"" + nodeName + "\"");
+
+            // @XXXXX
+            if (root)
+            {
+                ConfigNode[] list = GameDatabase.Instance.GetConfigNodes(nodeType);
+                if (list.Length == 0)
+                {
+                    log("Can't find nodeType:" + nodeType);
+                    return null;
+                }
+
+                if (nodeName == null)
+                {
+                    currentNode = list[0];
+                }
+                else
+                {
+                    for (int i = 0; i < list.Length; i++)
+                    {
+                        if (list[i].HasValue("name") && WildcardMatch(list[i].GetValue("name"), nodeName))
+                        {
+                            currentNode = list[i];
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (constraint.Length > 0)
+                {
+                    // get the first one matching
+                    ConfigNode n, last = null;
+                    while (true)
+                    {
+                        n = FindConfigNodeIn(currentNode, nodeType, nodeName, index++);
+                        if (n == last || n == null)
+                        {
+                            currentNode = null;
+                            break;
+                        }
+                        if (CheckConstraints(n, constraint))
+                        {
+                            currentNode = n;
+                            break;
+                        }
+                        last = n;
+                    }
+                }
+                else
+                {
+                    // just get one node
+                    currentNode = FindConfigNodeIn(currentNode, nodeType, nodeName, index);
+                }
+            }
+
+            // XXXXXX/
+            if (nextSep > 0 && currentNode != null)
+            {
+                path = path.Substring(nextSep + 1);
+                //log("NewPath : \"" + path + "\"");
+                return RecurseNodeSearch(path, currentNode);
+            }
+            
+            return currentNode;
         }
 
         // KeyName is group 1, index is group 2, value indexis  group 3, value separator is group 4
@@ -2057,10 +2224,9 @@ namespace ModuleManager
 
         public static bool WildcardMatchValues(ConfigNode node, string type, string value)
         {
-            double val;
+            double val = 0;
             bool compare = value.Length > 1 && (value[0] == '<' || value[0] == '>');
             compare = compare && Double.TryParse(value.Substring(1), out val);
-            
 
             string[] values = node.GetValues(type);
             for (int i = 0; i < values.Length; i++)
@@ -2070,13 +2236,10 @@ namespace ModuleManager
                 
                 double val2;
                 if (compare && Double.TryParse(values[i], out val2)
-                    && ((value[0] == '<' && val2 < val) || (value[0] == '>' && val2 > val)) 
-                    )
+                    && ((value[0] == '<' && val2 < val) || (value[0] == '>' && val2 > val)))
                 {
                     return true;
-
                 }
-
             }
             return false;
         }
