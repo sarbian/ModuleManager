@@ -57,11 +57,6 @@ namespace ModuleManager
         internal void Awake()
         {
             totalTime.Start();
-            // Since the game loads asset in coroutines it only loads 1 per frame
-            // Disabling Vsync while loading make sure you are not restricted to 
-            // 60 assets / seconds or whatever the display framerate is.
-            QualitySettings.vSyncCount = 0;
-            Application.targetFrameRate = -1;
 
             // Ensure that only one copy of the service is run per scene change.
             if (loadedInScene || !ElectionAndCheck())
@@ -135,8 +130,6 @@ namespace ModuleManager
             {
                 totalTime.Stop();
                 log("Total loading Time = " + ((float)totalTime.ElapsedMilliseconds / 1000).ToString("F3") + "s");
-                QualitySettings.vSyncCount = GameSettings.SYNC_VBL;
-                Application.targetFrameRate = GameSettings.FRAMERATE_LIMIT;
             }
 
 
