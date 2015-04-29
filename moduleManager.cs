@@ -435,6 +435,10 @@ namespace ModuleManager
         private static string cachePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData"
                           + Path.DirectorySeparatorChar + "ModuleManager.ConfigCache";
 
+        internal static string techTreeFile = "GameData" + Path.DirectorySeparatorChar + "ModuleManager.TechTree";
+
+        internal static string techTreePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + techTreeFile;
+
         private static string shaPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData"
                           + Path.DirectorySeparatorChar + "ModuleManager.ConfigSHA";
 
@@ -705,6 +709,7 @@ namespace ModuleManager
                 }
 
                 CreateCache();
+                SaveModdedTechTree();
             }
             else
             {
@@ -843,6 +848,27 @@ namespace ModuleManager
             }
 
             cache.Save(cachePath);
+        }
+
+        private void SaveModdedTechTree()
+        {
+            UrlDir.UrlConfig[] configs = GameDatabase.Instance.GetConfigs("TechTree");
+            
+
+            if (configs.Length == 0 )
+            {
+                log("No TechTree node found. No custom TechTree will be saved");
+                return;
+            }
+
+            if (configs.Length > 1)
+            {
+                log(configs.Length + " TechTree node found. A patch may be wrong. Using the first one");
+            }
+
+            ConfigNode techNode = new ConfigNode("TechTree");
+            techNode.AddNode(configs[0].config);
+            techNode.Save(techTreePath);
         }
 
         private void LoadCache()
