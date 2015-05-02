@@ -76,10 +76,7 @@ namespace ModuleManager
             GameEvents.onGUIRnDComplexSpawn.Add(OnRnDCenterSpawn);
             GameEvents.onGUIRnDComplexDespawn.Add(OnRnDCenterDeSpawn);
 
-            // This code is the one that should allow to plugin into the stock loading bar
-            // but it can't insert the LoadingSystembefore PartLoader ie too late
-            // So for now we keep using a blocking update
-
+            
             LoadingScreen screen = FindObjectOfType<LoadingScreen>();
             if (screen == null)
             {
@@ -87,7 +84,7 @@ namespace ModuleManager
                 return;
             }
             List<LoadingSystem> list = LoadingScreen.Instance.loaders;
-
+            
             if (list != null)
             {
                 // So you can insert a LoadingSystem object in this list at any point.
@@ -95,15 +92,13 @@ namespace ModuleManager
                 // We could insert ModuleManager after GameDatabase to get it to run there
                 // and SaveGameFixer after PartLoader.
 
-                GameObject aGameObject = new GameObject();
+                GameObject aGameObject = new GameObject("ModuleManager");
                 MMPatchLoader loader = aGameObject.AddComponent<MMPatchLoader>();
 
                 log(string.Format("Adding ModuleManager to the loading screen {0}", list.Count));
                 list.Insert(1, loader);
             }
-            else
-                Debug.LogWarning("Can't find the LoadingSystem list. Aborting ModuleManager execution");
-
+            
             tex = new Texture2D(33, 20, TextureFormat.ARGB32, false);
             tex.LoadImage(Properties.Resources.cat);
             Color[] pix = tex.GetPixels(0, 0, 1, tex.height);
@@ -703,7 +698,7 @@ namespace ModuleManager
                 {
                     foreach (String file in errorFiles.Keys)
                     {
-                        errors += errorFiles[file] + " error" + (errorFiles[file] > 1 ? "s" : "") + " in GameData/" + file
+                        errors += errorFiles[file] + " error" + (errorFiles[file] > 1 ? "s" : "") + " related to GameData/" + file
                                   + "\n";
                     }
                 }
@@ -1973,7 +1968,7 @@ namespace ModuleManager
             return value;
         }
 
-        private static string FindAndReplaceValue(
+        private string FindAndReplaceValue(
             ConfigNode mod,
             ref string valName,
             string value,
@@ -2013,6 +2008,7 @@ namespace ModuleManager
                             "\" regexp=\"" + value +
                             "\" \nNote - to use regexp, the first char is used to subdivide the string (much like sed)\n" +
                             ex);
+                        errorCount++;
                         return null;
                     }
                 }
@@ -2045,6 +2041,7 @@ namespace ModuleManager
                 {
                     log("Failed to do a maths replacement: " + mod.name + " : original value=\"" + oValue +
                         "\" operator=" + op + " mod value=\"" + value + "\"");
+                    errorCount++;
                     return null;
                 }
             }
