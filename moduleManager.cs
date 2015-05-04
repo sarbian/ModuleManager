@@ -409,7 +409,7 @@ namespace ModuleManager
 
         public int needsUnsatisfiedCount = 0;
 
-        public int catEatenCount = 0;
+        private int catEatenCount = 0;
 
         private Dictionary<String, int> errorFiles;
 
@@ -419,31 +419,37 @@ namespace ModuleManager
 
         public string errors = "";
 
-        public string activity = "Module Manager";
+        private string activity = "Module Manager";
 
-        private static Dictionary<string, Regex> regexCache = new Dictionary<string, Regex>();
+        private static readonly Dictionary<string, Regex> regexCache = new Dictionary<string, Regex>();
 
-        private static Stack<ConfigNode> nodeStack = new Stack<ConfigNode>();
+        private static readonly Stack<ConfigNode> nodeStack = new Stack<ConfigNode>();
 
         private static ConfigNode topNode;
 
         private static string cachePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData"
                           + Path.DirectorySeparatorChar + "ModuleManager.ConfigCache";
 
-        internal static string techTreeFile = "GameData" + Path.DirectorySeparatorChar + "ModuleManager.TechTree";
+        internal static readonly string techTreeFile = "GameData" + Path.DirectorySeparatorChar + "ModuleManager.TechTree";
+        internal static readonly string techTreePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + techTreeFile;
 
-        internal static string techTreePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + techTreeFile;
+        internal static readonly string physicsFile = "GameData" + Path.DirectorySeparatorChar + "ModuleManager.Physics";
+        internal static readonly string physicsPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + physicsFile;
+        private static readonly string defaultPhysicsPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "Physics.cfg";
 
-        private static string shaPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData"
+        private static readonly string shaPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData"
                           + Path.DirectorySeparatorChar + "ModuleManager.ConfigSHA";
+
+        private UrlDir.UrlFile physicsUrlFile;
+
 
         private static string configSha;
 
         private static bool useCache = false;
 
-        private static Stopwatch patchSw = new Stopwatch();
+        private static readonly Stopwatch patchSw = new Stopwatch();
 
-        private static List<ModuleManagerPostPatchCallback> postPatchCallbacks =
+        private static readonly List<ModuleManagerPostPatchCallback> postPatchCallbacks =
             new List<ModuleManagerPostPatchCallback>();
 
         public static MMPatchLoader Instance { get; private set; }
@@ -656,6 +662,8 @@ namespace ModuleManager
                 List<String> excludePaths = PrePatchInit();
 
                 yield return null;
+                
+                LoadPhysicsConfig();
 
                 // Do filtering with NEEDS
                 log("Checking NEEDS.");
@@ -705,6 +713,7 @@ namespace ModuleManager
 
                 CreateCache();
                 SaveModdedTechTree();
+                SaveModdedPhysics();
             }
             else
             {
@@ -741,6 +750,42 @@ namespace ModuleManager
             yield return null;
 
             ready = true;
+        }
+
+        private void LoadPhysicsConfig()
+        {
+            log("Loading Physics.cfg");
+            UrlDir gameDataDir = GameDatabase.Instance.root.AllDirectories.First(d => d.path.EndsWith("GameData") && d.name == "" && d.url == "");
+            // need to use a file with a cfg extenssion to get the right fileType or you can't AddConfig on it
+            physicsUrlFile = new UrlDir.UrlFile(gameDataDir, new FileInfo(defaultPhysicsPath));
+            // Since it loaded the default config badly (sub node only) we clear it first
+            physicsUrlFile.configs.Clear();
+            // And reload it properly
+            ConfigNode physicsContent = ConfigNode.Load(defaultPhysicsPath);  
+            physicsContent.name = "PHYSICSGLOBALS";
+            physicsUrlFile.AddConfig(physicsContent);
+            gameDataDir.files.Add(physicsUrlFile);
+        }
+
+
+        private void SaveModdedPhysics()
+        {
+            //UrlDir.UrlConfig[] configs = GameDatabase.Instance.GetConfigs("TechTree");
+
+            var configs = physicsUrlFile.configs;
+
+            if (configs.Count == 0)
+            {
+                log("No PHYSICSGLOBALS node found. No custom Physics config will be saved");
+                return;
+            }
+
+            if (configs.Count > 1)
+            {
+                log(configs.Count + " PHYSICSGLOBALS node found. A patch may be wrong. Using the first one");
+            }
+
+            configs[0].config.Save(physicsPath);
         }
 
 
@@ -813,6 +858,7 @@ namespace ModuleManager
                     useCache = storedSHA.Equals(configSha);
                     useCache = useCache && version.Equals(Assembly.GetExecutingAssembly().GetName().Version.ToString());
                     useCache = useCache && File.Exists(cachePath);
+                    useCache = useCache && File.Exists(physicsPath);
                     log("Cache SHA = " + storedSHA);
                     log("useCache = " + useCache);
                 }

@@ -1,14 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.IO;
 using UnityEngine;
 
 namespace ModuleManager
 {
     [KSPAddon(KSPAddon.Startup.SpaceCentre, false)]
-    public class TechTreeManager: MonoBehaviour
+    public class CustomConfigsManager : MonoBehaviour
     {
         internal void Start()
         {
@@ -17,11 +14,21 @@ namespace ModuleManager
                 log("Setting moddeed tech tree as the active one");
                 HighLogic.CurrentGame.Parameters.Career.TechTreeUrl = MMPatchLoader.techTreeFile;
             }
+
+            if (File.Exists(MMPatchLoader.physicsPath))
+            {
+                log("Setting moddeed physics as the active one");
+
+                PhysicsGlobals.PhysicsDatabaseFilename = MMPatchLoader.physicsFile;
+
+                if (!PhysicsGlobals.Instance.LoadDatabase())
+                    log("Something went wrong while setting the active physics config.");
+            }
         }
 
         public static void log(String s)
         {
-            print("[TechTreeManager] " + s);
+            print("[CustomConfigsManager] " + s);
         }
 
     }
