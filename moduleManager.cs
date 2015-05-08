@@ -242,7 +242,7 @@ namespace ModuleManager
             }
         }
 
-        private static IntPtr intPtr = new IntPtr(long.MaxValue);
+        internal static IntPtr intPtr = new IntPtr(long.MaxValue);
         public static bool IsABadIdea()
         {
             return (intPtr.ToInt64() == long.MaxValue) && (Environment.OSVersion.Platform == PlatformID.Win32NT);
@@ -568,14 +568,18 @@ namespace ModuleManager
                 FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(mod.assembly.Location);
 
                 AssemblyName assemblyName = mod.assembly.GetName();
-
-                modlist += "  " + assemblyName.Name + " v" + assemblyName.Version + " / v" + fileVersionInfo.ProductVersion + "\n";
+                
+                modlist += "  " + assemblyName.Name 
+                    + " v" + assemblyName.Version 
+                    + (fileVersionInfo.ProductVersion != " " && fileVersionInfo.ProductVersion != assemblyName.Version.ToString() ? " / v" + fileVersionInfo.ProductVersion : "")
+                    + (fileVersionInfo.FileVersion != " " && fileVersionInfo.FileVersion != assemblyName.Version.ToString() && fileVersionInfo.FileVersion != fileVersionInfo.ProductVersion ? " / v" + fileVersionInfo.FileVersion : "") 
+                    + "\n";
 
                 if (!mods.Contains(assemblyName.Name, StringComparer.OrdinalIgnoreCase))
                     mods.Add(assemblyName.Name);
             }
 
-            modlist += "Non-DLL mods added:\n";
+            modlist += "Non-DLL mods added (:FOR[xxx]):\n";
             foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
             {
                 string name;
@@ -618,6 +622,7 @@ namespace ModuleManager
                     modlist += "  " + cleanName + "\n";
                 }
             }
+            modlist += Environment.OSVersion.Platform + " " + ModuleManager.intPtr.ToInt64().ToString("X16");
             log(modlist);
 
             mods.Sort();
