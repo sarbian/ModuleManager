@@ -1178,7 +1178,7 @@ namespace ModuleManager
                         if (!IsBracketBalanced(mod.type))
                         {
                             log(
-                                "Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" +
+                                "Error - Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" +
                                 mod.name + "\n");
                             errorCount++;
 
@@ -1243,7 +1243,7 @@ namespace ModuleManager
                                                 else
                                                 {
                                                     errorCount++;
-                                                    log("Error while processing " + mod.config.name +
+                                                    log("Error - Error while processing " + mod.config.name +
                                                         " the copy needs to have a different name than the parent (use @name = xxx)");
                                                 }
                                                 break;
@@ -1313,7 +1313,7 @@ namespace ModuleManager
                 Match match = parseValue.Match(valName);
                 if (!match.Success)
                 {
-                    log("Cannot parse value modifying command: " + valName);
+                    log("Error - Cannot parse value modifying command: " + valName);
                     errorCount++;
                     continue;
                 }
@@ -1328,7 +1328,7 @@ namespace ModuleManager
                     // can have "node,n *" (for *= ect)
                     if (!int.TryParse(match.Groups[2].Value, out index))
                     {
-                        Debug.LogError("Unable to parse number as number. Very odd.");
+                        Debug.LogError("Error - Unable to parse number as number. Very odd.");
                         errorCount++;
                         continue;
                     }
@@ -1344,7 +1344,7 @@ namespace ModuleManager
                     case Command.Insert:
                         if (match.Groups[3].Success)
                         {
-                            log("Cannot use operators with insert value: " + mod.name);
+                            log("Error - Cannot use operators with insert value: " + mod.name);
                             errorCount++;
                         }
                         else
@@ -1355,7 +1355,7 @@ namespace ModuleManager
                                 InsertValue(newNode, match.Groups[2].Success ? index : int.MaxValue, valName, varValue);
                             else
                             {
-                                log("Cannot parse variable search when inserting new key " + valName + " = " +
+                                log("Error - Cannot parse variable search when inserting new key " + valName + " = " +
                                     modVal.value);
                                 errorCount++;
                             }
@@ -1367,11 +1367,11 @@ namespace ModuleManager
                             || valName.Contains('?'))
                         {
                             if (match.Groups[2].Success)
-                                log("Cannot use index with replace (%) value: " + mod.name);
+                                log("Error - Cannot use index with replace (%) value: " + mod.name);
                             if (match.Groups[3].Success)
-                                log("Cannot use operators with replace (%) value: " + mod.name);
+                                log("Error - Cannot use operators with replace (%) value: " + mod.name);
                             if (valName.Contains('*') || valName.Contains('?'))
-                                log("Cannot use wildcards (* or ?) with replace (%) value: " + mod.name);
+                                log("Error - Cannot use wildcards (* or ?) with replace (%) value: " + mod.name);
                             errorCount++;
                         }
                         else
@@ -1384,7 +1384,7 @@ namespace ModuleManager
                             }
                             else
                             {
-                                log("Cannot parse variable search when replacing (%) key " + valName + " = " +
+                                log("Error - Cannot parse variable search when replacing (%) key " + valName + " = " +
                                     modVal.value);
                                 errorCount++;
                             }
@@ -1418,7 +1418,7 @@ namespace ModuleManager
                         }
                         else
                         {
-                            log("Cannot parse variable search when editing key " + valName + " = " + modVal.value);
+                            log("Error - Cannot parse variable search when editing key " + valName + " = " + modVal.value);
                             errorCount++;
                         }
                         break;
@@ -1426,7 +1426,7 @@ namespace ModuleManager
                     case Command.Delete:
                         if (match.Groups[3].Success)
                         {
-                            log("Cannot use operators with delete (- or !) value: " + mod.name);
+                            log("Error - Cannot use operators with delete (- or !) value: " + mod.name);
                             errorCount++;
                         }
                         else if (match.Groups[2].Success)
@@ -1459,7 +1459,7 @@ namespace ModuleManager
                     case Command.Rename:
                         if (nodeStack.Count == 1)
                         {
-                            log("Renaming nodes does not work on top nodes");
+                            log("Error - Renaming nodes does not work on top nodes");
                             errorCount++;
                             break;
                         }
@@ -1480,7 +1480,7 @@ namespace ModuleManager
                 if (!IsBracketBalanced(subMod.name))
                 {
                     log(
-                        "Skipping a patch subnode with unbalanced square brackets or a space (replace them with a '?') in "
+                        "Error - Skipping a patch subnode with unbalanced square brackets or a space (replace them with a '?') in "
                         + mod.name + " : \n" + subMod.name + "\n");
                     errorCount++;
                     continue;
@@ -1522,7 +1522,7 @@ namespace ModuleManager
 
                     if (toPaste == null)
                     {
-                        log("Can not find the node to paste in " + mod.name + " : " + subMod.name + "\n");
+                        log("Error - Can not find the node to paste in " + mod.name + " : " + subMod.name + "\n");
                         errorCount++;
                         continue;
                     }
@@ -2055,7 +2055,7 @@ namespace ModuleManager
                     }
                     catch (Exception ex)
                     {
-                        log("Failed to do a regexp replacement: " + mod.name + " : original value=\"" + oValue +
+                        log("Error - Failed to do a regexp replacement: " + mod.name + " : original value=\"" + oValue +
                             "\" regexp=\"" + value +
                             "\" \nNote - to use regexp, the first char is used to subdivide the string (much like sed)\n" +
                             ex);
@@ -2090,7 +2090,7 @@ namespace ModuleManager
                 }
                 else
                 {
-                    log("Failed to do a maths replacement: " + mod.name + " : original value=\"" + oValue +
+                    log("Error - Failed to do a maths replacement: " + mod.name + " : original value=\"" + oValue +
                         "\" operator=" + op + " mod value=\"" + value + "\"");
                     errorCount++;
                     return null;
