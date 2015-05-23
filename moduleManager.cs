@@ -442,6 +442,8 @@ namespace ModuleManager
         internal static readonly string physicsPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + physicsFile;
         private static readonly string defaultPhysicsPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "Physics.cfg";
 
+        internal static readonly string partDatabasePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "PartDatabase.cfg";
+
         private static readonly string shaPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData"
                           + Path.DirectorySeparatorChar + "ModuleManager.ConfigSHA";
 
@@ -668,6 +670,9 @@ namespace ModuleManager
             if (!useCache)
             {
                 #region Check Needs
+                // If we don't use the cache then it is best to clean the PartDatabase.cfg
+                if (File.Exists(partDatabasePath))
+                    File.Delete(partDatabasePath);
 
                 List<String> excludePaths = PrePatchInit();
 
