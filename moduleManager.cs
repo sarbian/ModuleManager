@@ -78,7 +78,7 @@ namespace ModuleManager
             GameEvents.onGUIRnDComplexSpawn.Add(OnRnDCenterSpawn);
             GameEvents.onGUIRnDComplexDespawn.Add(OnRnDCenterDeSpawn);
 
-            
+
             LoadingScreen screen = FindObjectOfType<LoadingScreen>();
             if (screen == null)
             {
@@ -86,7 +86,7 @@ namespace ModuleManager
                 return;
             }
             List<LoadingSystem> list = LoadingScreen.Instance.loaders;
-            
+
             if (list != null)
             {
                 // So you can insert a LoadingSystem object in this list at any point.
@@ -100,7 +100,7 @@ namespace ModuleManager
                 log(string.Format("Adding ModuleManager to the loading screen {0}", list.Count));
                 list.Insert(1, loader);
             }
-            
+
             tex = new Texture2D(33, 20, TextureFormat.ARGB32, false);
             tex.LoadImage(Properties.Resources.cat);
             Color[] pix = tex.GetPixels(0, 0, 1, tex.height);
@@ -644,7 +644,7 @@ namespace ModuleManager
         {
             if (blocking)
             {
-                while (enumerator.MoveNext()) {}
+                while (enumerator.MoveNext()) { }
                 return null;
             }
             else
@@ -710,7 +710,7 @@ namespace ModuleManager
 
                 // :Final node
                 yield return StartCoroutine(ApplyPatch(excludePaths, ":FINAL"), blocking);
-                
+
 
                 PurgeUnused(excludePaths);
 
@@ -777,7 +777,7 @@ namespace ModuleManager
             // Since it loaded the default config badly (sub node only) we clear it first
             physicsUrlFile.configs.Clear();
             // And reload it properly
-            ConfigNode physicsContent = ConfigNode.Load(defaultPhysicsPath);  
+            ConfigNode physicsContent = ConfigNode.Load(defaultPhysicsPath);
             physicsContent.name = "PHYSICSGLOBALS";
             physicsUrlFile.AddConfig(physicsContent);
             gameDataDir.files.Add(physicsUrlFile);
@@ -826,7 +826,7 @@ namespace ModuleManager
                 if (value.name.Length == -1)
                     return true;
             }
-        
+
             foreach (ConfigNode subNode in node.nodes)
             {
                 if (checkValues(subNode))
@@ -911,9 +911,9 @@ namespace ModuleManager
         private void SaveModdedTechTree()
         {
             UrlDir.UrlConfig[] configs = GameDatabase.Instance.GetConfigs("TechTree");
-            
 
-            if (configs.Length == 0 )
+
+            if (configs.Length == 0)
             {
                 log("No TechTree node found. No custom TechTree will be saved");
                 return;
@@ -1020,7 +1020,7 @@ namespace ModuleManager
                 }
                 catch (Exception ex)
                 {
-                    log("Exception while checking needs : " + mod.url + " with a type of " + mod.type +"\n" + ex);
+                    log("Exception while checking needs : " + mod.url + " with a type of " + mod.type + "\n" + ex);
                     log("Node is : " + PrettyConfig(mod));
                 }
             }
@@ -1055,12 +1055,12 @@ namespace ModuleManager
                     catch (ArgumentOutOfRangeException e)
                     {
                         log("ArgumentOutOfRangeException in CheckNeeds for value \"" + val.name + "\"\n" + e);
-                        throw e;
+                        throw;
                     }
                     catch (Exception e)
                     {
                         log("General Exception " + e.GetType().Name + " for value \"" + val.name + " = " + val.value + "\"\n" + e.ToString());
-                        throw e;
+                        throw;
                     }
                 }
 
@@ -1088,13 +1088,13 @@ namespace ModuleManager
                     catch (ArgumentOutOfRangeException e)
                     {
                         log("ArgumentOutOfRangeException in CheckNeeds for node \"" + node.name + "\"\n" + e);
-                        throw e;
+                        throw;
                     }
                     catch (Exception e)
                     {
                         log("General Exception " + e.GetType().Name + " for node \"" + node.name + "\"\n " + e.ToString());
 
-                        throw e;
+                        throw;
                     }
                 }
 
@@ -1570,7 +1570,7 @@ namespace ModuleManager
                         constraints = subName.Substring(start + 5, subName.LastIndexOf(']') - start - 5);
                         subName = subName.Substring(0, start);
                     }
-                    
+
                     if (subName.Contains(","))
                     {
                         tag = subName.Split(',')[1];
@@ -1819,7 +1819,7 @@ namespace ModuleManager
                 //log("NewPath : \"" + path + "\"");
                 return RecurseNodeSearch(path, currentNode);
             }
-            
+
             return currentNode;
         }
 
@@ -2312,7 +2312,7 @@ namespace ModuleManager
             {
                 if (!compare && WildcardMatch(values[i], value))
                     return true;
-                
+
                 double val2;
                 if (compare && Double.TryParse(values[i], out val2)
                     && ((value[0] == '<' && val2 < val) || (value[0] == '>' && val2 > val)))
@@ -2403,7 +2403,7 @@ namespace ModuleManager
         private string PrettyConfig(UrlDir.UrlConfig config)
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendFormat("{0}[{1}]\n",config.type ?? "NULL", config.name ?? "NULL");
+            sb.AppendFormat("{0}[{1}]\n", config.type ?? "NULL", config.name ?? "NULL");
             try
             {
                 if (config.config != null)
@@ -2414,74 +2414,67 @@ namespace ModuleManager
                 {
                     sb.Append("NULL\n");
                 }
-                sb.Append("\n"); 
+                sb.Append("\n");
             }
-            catch( Exception e )
+            catch (Exception e)
             {
-                log("PrettyConfig Exception " +e);
+                log("PrettyConfig Exception " + e);
             }
             return sb.ToString();
         }
 
         private void PrettyConfig(ConfigNode node, ref StringBuilder sb, string indent)
         {
-            try
+            sb.AppendFormat("{0}{1}\n{2}{{\n", indent, node.name ?? "NULL", indent);
+            string newindent = indent + "  ";
+            if (node.values != null)
             {
-                sb.AppendFormat("{0}{1}\n{2}{{\n", indent, node.name ?? "NULL", indent);
-                string newindent = indent + "  ";
-                if (node.values != null)
+                foreach (ConfigNode.Value value in node.values)
                 {
-                    foreach (ConfigNode.Value value in node.values)
+                    if (value != null)
                     {
-                        if (value != null)
+                        try
                         {
-                            try
-                            {
-                                sb.AppendFormat("{0}{1} = {2}\n", newindent, value.name ?? "null", value.value ?? "null");
-                            }
-                            catch (Exception e)
-                            {
-                                log("value.name.Length=" + value.name.Length);
-                                log("value.name.IsNullOrEmpty=" + string.IsNullOrEmpty(value.name));
-                                log("n " +value.name ?? "null");
-                                log("v " + value.value ?? "null");
-                                throw e;
-                            }
+                            sb.AppendFormat("{0}{1} = {2}\n", newindent, value.name ?? "null", value.value ?? "null");
                         }
-                        else
+                        catch (Exception)
                         {
-                            sb.AppendFormat("{0} Null value\n", newindent);
+                            log("value.name.Length=" + value.name.Length);
+                            log("value.name.IsNullOrEmpty=" + string.IsNullOrEmpty(value.name));
+                            log("n " + value.name);
+                            log("v " + value.value);
+                            throw;
                         }
                     }
-                }
-                else
-                {
-                    sb.AppendFormat("{0} Null values\n", newindent);
-                }
-                if (node.nodes != null)
-                {
-                    foreach (ConfigNode subnode in node.nodes)
+                    else
                     {
-                        if (subnode != null)
-                        {
-                            PrettyConfig(subnode, ref sb, newindent);
-                        }
-                        else
-                        {
-                            sb.AppendFormat("{0} Null Subnode\n", newindent);
-                        }
+                        sb.AppendFormat("{0} Null value\n", newindent);
                     }
                 }
-                else
-                {
-                    sb.AppendFormat("{0} Null nodes\n", newindent);
-                }
-                sb.AppendFormat("{0}}}\n", indent);
             }
-            catch (Exception e)
+            else
             {
-                throw e;
+                sb.AppendFormat("{0} Null values\n", newindent);
             }
+            if (node.nodes != null)
+            {
+                foreach (ConfigNode subnode in node.nodes)
+                {
+                    if (subnode != null)
+                    {
+                        PrettyConfig(subnode, ref sb, newindent);
+                    }
+                    else
+                    {
+                        sb.AppendFormat("{0} Null Subnode\n", newindent);
+                    }
+                }
+            }
+            else
+            {
+                sb.AppendFormat("{0} Null nodes\n", newindent);
+            }
+            sb.AppendFormat("{0}}}\n", indent);
         }
 
         //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType.
