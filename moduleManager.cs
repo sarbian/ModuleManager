@@ -875,6 +875,7 @@ namespace ModuleManager
                     useCache = useCache && version.Equals(Assembly.GetExecutingAssembly().GetName().Version.ToString());
                     useCache = useCache && File.Exists(cachePath);
                     useCache = useCache && File.Exists(physicsPath);
+                    useCache = useCache && File.Exists(techTreePath);
                     log("Cache SHA = " + storedSHA);
                     log("useCache = " + useCache);
                 }
