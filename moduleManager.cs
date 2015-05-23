@@ -31,6 +31,8 @@ namespace ModuleManager
         private Texture2D tex2;
         private int activePos = 0;
 
+        private bool nyan = false;
+
         #endregion state
 
         #region Top Level - Update
@@ -105,6 +107,9 @@ namespace ModuleManager
             tex2 = new Texture2D(1, 20, TextureFormat.ARGB32, false);
             tex2.SetPixels(pix);
             tex2.Apply();
+
+            nyan = (DateTime.Now.Month == 4 && DateTime.Now.Day == 1) ||
+                   Environment.GetCommandLineArgs().Contains("-nyan-nyan");
 
             loadedInScene = true;
         }
@@ -194,7 +199,7 @@ namespace ModuleManager
                 }
 
 
-                if (IsABadIdea() || (DateTime.Now.Month == 4 && DateTime.Now.Day == 1))
+                if (IsABadIdea() || nyan)
                 {
                     GUI.color = Color.white;
                     int scale = 1;
