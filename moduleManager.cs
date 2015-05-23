@@ -562,9 +562,10 @@ namespace ModuleManager
 
             #region List of mods
 
-            List<AssemblyName> modsWithDup =
-                AssemblyLoader.loadedAssemblies.Select(a => (a.assembly.GetName())).ToList();
-
+            string envinfo = "ModuleManager env info\n";
+            envinfo += Environment.OSVersion.Platform + " " + ModuleManager.intPtr.ToInt64().ToString("X16") + "\n";
+            envinfo += "Args: " + string.Join(" ", Environment.GetCommandLineArgs().Skip(1).ToArray());
+            log(envinfo);
 
             mods = new List<string>();
 
@@ -575,11 +576,11 @@ namespace ModuleManager
                 FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(mod.assembly.Location);
 
                 AssemblyName assemblyName = mod.assembly.GetName();
-                
-                modlist += "  " + assemblyName.Name 
-                    + " v" + assemblyName.Version 
+
+                modlist += "  " + assemblyName.Name
+                    + " v" + assemblyName.Version
                     + (fileVersionInfo.ProductVersion != " " && fileVersionInfo.ProductVersion != assemblyName.Version.ToString() ? " / v" + fileVersionInfo.ProductVersion : "")
-                    + (fileVersionInfo.FileVersion != " " && fileVersionInfo.FileVersion != assemblyName.Version.ToString() && fileVersionInfo.FileVersion != fileVersionInfo.ProductVersion ? " / v" + fileVersionInfo.FileVersion : "") 
+                    + (fileVersionInfo.FileVersion != " " && fileVersionInfo.FileVersion != assemblyName.Version.ToString() && fileVersionInfo.FileVersion != fileVersionInfo.ProductVersion ? " / v" + fileVersionInfo.FileVersion : "")
                     + "\n";
 
                 if (!mods.Contains(assemblyName.Name, StringComparer.OrdinalIgnoreCase))
@@ -629,7 +630,6 @@ namespace ModuleManager
                     modlist += "  " + cleanName + "\n";
                 }
             }
-            modlist += Environment.OSVersion.Platform + " " + ModuleManager.intPtr.ToInt64().ToString("X16");
             log(modlist);
 
             mods.Sort();
@@ -663,22 +663,23 @@ namespace ModuleManager
             yield return null;
 
 
-            #if DEBUG
+#if DEBUG
             useCache = false;
-            #endif
+#endif
+
+            List<String> excludePaths = PrePatchInit();
+
+            yield return null;
 
             if (!useCache)
             {
-                #region Check Needs
                 // If we don't use the cache then it is best to clean the PartDatabase.cfg
                 if (File.Exists(partDatabasePath))
                     File.Delete(partDatabasePath);
 
-                List<String> excludePaths = PrePatchInit();
-
-                yield return null;
-                
                 LoadPhysicsConfig();
+
+                #region Check Needs
 
                 // Do filtering with NEEDS
                 log("Checking NEEDS.");
