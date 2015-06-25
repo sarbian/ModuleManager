@@ -258,7 +258,15 @@ namespace ModuleManager
             GUILayout.BeginVertical();
 
             if (GUILayout.Button("Reload Database"))
+            {
+                MMPatchLoader.keepPartDB = false;
                 StartCoroutine(DataBaseReloadWithMM());
+            }
+            if (GUILayout.Button("Quick Reload Database"))
+            {
+                MMPatchLoader.keepPartDB = true;
+                StartCoroutine(DataBaseReloadWithMM());
+            }
             if (GUILayout.Button("Dump Database to File"))
                 StartCoroutine(DataBaseReloadWithMM(true));
             GUILayout.EndVertical();
@@ -423,6 +431,9 @@ namespace ModuleManager
         public string status = "";
 
         public string errors = "";
+
+        public static bool keepPartDB = false;
+
 
         private string activity = "Module Manager";
 
@@ -674,7 +685,7 @@ namespace ModuleManager
             if (!useCache)
             {
                 // If we don't use the cache then it is best to clean the PartDatabase.cfg
-                if (File.Exists(partDatabasePath))
+                if (!keepPartDB && File.Exists(partDatabasePath))
                     File.Delete(partDatabasePath);
 
                 LoadPhysicsConfig();
