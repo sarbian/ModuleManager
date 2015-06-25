@@ -878,12 +878,14 @@ namespace ModuleManager
             if (File.Exists(shaPath))
             {
                 ConfigNode shaConfigNode = ConfigNode.Load(shaPath);
-                if (shaConfigNode != null && shaConfigNode.HasValue("SHA") && shaConfigNode.HasValue("version"))
+                if (shaConfigNode != null && shaConfigNode.HasValue("SHA") && shaConfigNode.HasValue("version") && shaConfigNode.HasValue("KSPVersion"))
                 {
                     string storedSHA = shaConfigNode.GetValue("SHA");
                     string version = shaConfigNode.GetValue("version");
+                    string kspVersion = shaConfigNode.GetValue("KSPVersion");
                     useCache = storedSHA.Equals(configSha);
                     useCache = useCache && version.Equals(Assembly.GetExecutingAssembly().GetName().Version.ToString());
+                    useCache = useCache && kspVersion.Equals(Versioning.version_major + "." + Versioning.version_minor + "." + Versioning.Revision + "." + Versioning.BuildID);
                     useCache = useCache && File.Exists(cachePath);
                     useCache = useCache && File.Exists(physicsPath);
                     useCache = useCache && File.Exists(techTreePath);
@@ -898,6 +900,7 @@ namespace ModuleManager
             ConfigNode shaConfigNode = new ConfigNode();
             shaConfigNode.AddValue("SHA", configSha);
             shaConfigNode.AddValue("version", Assembly.GetExecutingAssembly().GetName().Version.ToString());
+            shaConfigNode.AddValue("KSPVersion", Versioning.version_major + "." + Versioning.version_minor + "." + Versioning.Revision + "." + Versioning.BuildID);
             shaConfigNode.Save(shaPath);
 
             ConfigNode cache = new ConfigNode();
