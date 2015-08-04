@@ -164,7 +164,7 @@ namespace ModuleManager
 
                 if (IsABadIdea())
                 {
-                    var centeredWarningStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
+                    GUIStyle centeredWarningStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
                     {
                         alignment = TextAnchor.UpperCenter,
                         fontSize = 16,
@@ -177,7 +177,7 @@ namespace ModuleManager
                     offsetY += sizeOfWarningLabel.y;
                 }
 
-                var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
+                GUIStyle centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
                 {
                     alignment = TextAnchor.UpperCenter,
                     fontSize = 16
@@ -188,7 +188,7 @@ namespace ModuleManager
 
                 if (MMPatchLoader.Instance.errorCount > 0)
                 {
-                    var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
+                    GUIStyle errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
                     {
                         alignment = TextAnchor.UpperLeft,
                         fontSize = 16
@@ -335,7 +335,7 @@ namespace ModuleManager
                           + Path.DirectorySeparatorChar;
             Directory.CreateDirectory(path);
 
-            foreach (var d in GameDatabase.Instance.root.AllConfigs)
+            foreach (UrlDir.UrlConfig d in GameDatabase.Instance.root.AllConfigs)
                 File.WriteAllText(path + d.url.Replace('/', '.') + ".cfg", d.config.ToString());
         }
 
@@ -348,15 +348,15 @@ namespace ModuleManager
             // TODO : Move the old version check in a process that call Update.
 
             // Check for old version and MMSarbianExt
-            var oldMM =
+            IEnumerable<AssemblyLoader.LoadedAssembly> oldMM =
                 AssemblyLoader.loadedAssemblies.Where(
                     a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name)
                     .Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 5, 0)) == -1);
-            var oldAssemblies =
+            IEnumerable<AssemblyLoader.LoadedAssembly> oldAssemblies =
                 oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
             if (oldAssemblies.Any())
             {
-                var badPaths =
+                IEnumerable<string> badPaths =
                     oldAssemblies.Select(a => a.path)
                         .Select(
                             p =>
@@ -373,7 +373,7 @@ namespace ModuleManager
             }
 
             Assembly currentAssembly = Assembly.GetExecutingAssembly();
-            var eligible = from a in AssemblyLoader.loadedAssemblies
+            IEnumerable<AssemblyLoader.LoadedAssembly> eligible = from a in AssemblyLoader.loadedAssemblies
                            let ass = a.assembly
                            where ass.GetName().Name == currentAssembly.GetName().Name
                            orderby ass.GetName().Version descending, a.path ascending
@@ -773,7 +773,7 @@ namespace ModuleManager
             log("Reloading ressources definitions");
             PartResourceLibrary.Instance.LoadDefinitions();
 
-            foreach (var callback in postPatchCallbacks)
+            foreach (ModuleManagerPostPatchCallback callback in postPatchCallbacks)
             {
                 try
                 {
@@ -862,7 +862,7 @@ namespace ModuleManager
         {
             //UrlDir.UrlConfig[] configs = GameDatabase.Instance.GetConfigs("TechTree");
 
-            var configs = physicsUrlFile.configs;
+            List<UrlDir.UrlConfig> configs = physicsUrlFile.configs;
 
             if (configs.Count == 0)
             {
@@ -1033,7 +1033,7 @@ namespace ModuleManager
         private void LoadCache()
         {
             // Clear the config DB
-            foreach (var files in GameDatabase.Instance.root.AllConfigFiles)
+            foreach (UrlDir.UrlFile files in GameDatabase.Instance.root.AllConfigFiles)
             {
                 files.configs.Clear();
             }
