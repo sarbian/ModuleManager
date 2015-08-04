@@ -546,12 +546,12 @@ namespace ModuleManager
             if (!postPatchCallbacks.Contains(callback))
                 postPatchCallbacks.Add(callback);
         }
-        private List<String> PrePatchInit()
+        private List<string> PrePatchInit()
         {
             #region Excluding directories
 
             // Build a list of subdirectory that won't be processed
-            List<String> excludePaths = new List<string>();
+            List<string> excludePaths = new List<string>();
 
             if (ModuleManager.IsABadIdea())
             {
@@ -689,7 +689,7 @@ namespace ModuleManager
             useCache = false;
 #endif
 
-            List<String> excludePaths = PrePatchInit();
+            List<string> excludePaths = PrePatchInit();
 
             yield return null;
 
@@ -742,7 +742,7 @@ namespace ModuleManager
 
                 if (errorCount > 0)
                 {
-                    foreach (String file in errorFiles.Keys)
+                    foreach (string file in errorFiles.Keys)
                     {
                         errors += errorFiles[file] + " error" + (errorFiles[file] > 1 ? "s" : "") + " related to GameData/" + file
                                   + "\n";
@@ -1027,7 +1027,7 @@ namespace ModuleManager
 
         #region Needs checking
 
-        private void CheckNeeds(List<String> excludePaths)
+        private void CheckNeeds(List<string> excludePaths)
         {
             UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
 
@@ -1214,7 +1214,7 @@ namespace ModuleManager
         #region Applying Patches
 
         // Apply patch to all relevent nodes
-        public IEnumerator ApplyPatch(List<String> excludePaths, string Stage)
+        public IEnumerator ApplyPatch(List<string> excludePaths, string Stage)
         {
             log(Stage + (Stage == ":LEGACY" ? " (default) pass" : " pass"));
 
@@ -2229,7 +2229,7 @@ namespace ModuleManager
 
         #region Sanity checking & Utility functions
 
-        public static bool IsBracketBalanced(String str)
+        public static bool IsBracketBalanced(string str)
         {
             Stack<char> stack = new Stack<char>();
 
@@ -2258,7 +2258,7 @@ namespace ModuleManager
             return new string(withWhite.ToCharArray().Where(c => !Char.IsWhiteSpace(c)).ToArray());
         }
 
-        public bool IsPathInList(string modPath, List<String> pathList)
+        public bool IsPathInList(string modPath, List<string> pathList)
         {
             return pathList.Any(modPath.StartsWith);
         }
@@ -2372,11 +2372,11 @@ namespace ModuleManager
             return false;
         }
 
-        public static bool WildcardMatch(String s, String wildcard)
+        public static bool WildcardMatch(string s, string wildcard)
         {
             if (wildcard == null)
                 return true;
-            String pattern = "^" + Regex.Escape(wildcard).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
+            string pattern = "^" + Regex.Escape(wildcard).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
 
             Regex regex;
             if (!regexCache.TryGetValue(pattern, out regex))
