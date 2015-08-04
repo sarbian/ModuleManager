@@ -573,10 +573,14 @@ namespace ModuleManager
 
             #region List of mods
 
-            string envinfo = "ModuleManager env info\n";
-            envinfo += Environment.OSVersion.Platform + " " + ModuleManager.intPtr.ToInt64().ToString("X16") + "\n";
-            envinfo += "Args: " + string.Join(" ", Environment.GetCommandLineArgs().Skip(1).ToArray());
-            log(envinfo);
+            string envInfo = "ModuleManager env info\n";
+            envInfo += "  " + Environment.OSVersion.Platform + " " + ModuleManager.intPtr.ToInt64().ToString("X16") + "\n";
+            //envInfo += "  " + Convert.ToString(ModuleManager.intPtr.ToInt64(), 2)  + " " + Convert.ToString(ModuleManager.intPtr.ToInt64() >> 63, 2) + "\n";
+            string gamePath = Environment.GetCommandLineArgs()[0];
+            envInfo += "  Args: " + gamePath.Split(Path.DirectorySeparatorChar).Last() + string.Join(" ", Environment.GetCommandLineArgs().Skip(1).ToArray()) + "\n";
+            envInfo += "  Executable SHA256 " + FileSHA(gamePath);
+
+            log(envInfo);
 
             mods = new List<string>();
 
@@ -588,11 +592,18 @@ namespace ModuleManager
 
                 AssemblyName assemblyName = mod.assembly.GetName();
 
-                modlist += "  " + assemblyName.Name
-                    + " v" + assemblyName.Version
-                    + (fileVersionInfo.ProductVersion != " " && fileVersionInfo.ProductVersion != assemblyName.Version.ToString() ? " / v" + fileVersionInfo.ProductVersion : "")
-                    + (fileVersionInfo.FileVersion != " " && fileVersionInfo.FileVersion != assemblyName.Version.ToString() && fileVersionInfo.FileVersion != fileVersionInfo.ProductVersion ? " / v" + fileVersionInfo.FileVersion : "")
-                    + "\n";
+                string modInfo = "  " + assemblyName.Name
+                                 + " v" + assemblyName.Version
+                                 +
+                                 (fileVersionInfo.ProductVersion != " " && fileVersionInfo.ProductVersion != assemblyName.Version.ToString()
+                                     ? " / v" + fileVersionInfo.ProductVersion
+                                     : "")
+                                 +
+                                 (fileVersionInfo.FileVersion != " " &&fileVersionInfo.FileVersion != assemblyName.Version.ToString() && fileVersionInfo.FileVersion != fileVersionInfo.ProductVersion
+                                     ? " / v" + fileVersionInfo.FileVersion
+                                     : "");
+
+                modlist += String.Format("  {0,-50} SHA256 {1}\n", modInfo, FileSHA(mod.assembly.Location));
 
                 if (!mods.Contains(assemblyName.Name, StringComparer.OrdinalIgnoreCase))
                     mods.Add(assemblyName.Name);
@@ -844,6 +855,30 @@ namespace ModuleManager
                     return true;
             }
             return false;
+        }
+
+        private string FileSHA(string filename)
+        {
+            if (File.Exists(filename))
+            {
+                System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
+
+                byte[] data = null;
+                using (FileStream fs = File.Open(filename, FileMode.Open, FileAccess.Read))
+                {
+                    data = sha.ComputeHash(fs);
+                }
+
+                string hashedValue = string.Empty;
+
+                foreach (byte b in data)
+                {
+                    hashedValue += String.Format("{0,2:x2}", b);
+                }
+
+                return hashedValue;
+            }
+            return "0";
         }
 
         private void IsCacheUpToDate()
