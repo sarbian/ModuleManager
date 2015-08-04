@@ -787,6 +787,58 @@ namespace ModuleManager
             }
             yield return null;
 
+            // Call all "public static void ModuleManagerPostLoad()" on all class
+            foreach (Assembly ass in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    foreach (Type type in ass.GetTypes())
+                    {
+                        MethodInfo method = type.GetMethod("ModuleManagerPostLoad", BindingFlags.Public | BindingFlags.Static);
+                        
+                        if (method != null && method.GetParameters().Length == 0)
+                        {
+                            try
+                            {
+                                log("Calling " + ass.GetName().Name + "." + type.Name + "." + method.Name + "()");
+                                method.Invoke(null, null);
+                            }
+                            catch (Exception e)
+                            {
+                                log("Exception while calling " + ass.GetName().Name + "." + type.Name + "." + method.Name + "() :\n" + e);
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    log("Post run call threw an exception in loading " + ass.FullName + ": " + e);
+                }
+            }
+
+            yield return null;
+
+            // Call "public void ModuleManagerPostLoad()" on all active MonoBehaviour instance
+            foreach (MonoBehaviour obj in FindObjectsOfType<MonoBehaviour>())
+            {
+                MethodInfo method = obj.GetType().GetMethod("ModuleManagerPostLoad", BindingFlags.Public | BindingFlags.Instance);
+
+                if (method != null && method.GetParameters().Length == 0)
+                {
+                    try
+                    {
+                        log("Calling " + obj.GetType().Name + "." + method.Name + "()");
+                        method.Invoke(obj, null);
+                    }
+                    catch (Exception e)
+                    {
+                        log("Exception while calling " + obj.GetType().Name + "." + method.Name + "() :\n" + e);
+                    }
+                }
+            }
+
+            yield return null;
+
             ready = true;
         }
 
