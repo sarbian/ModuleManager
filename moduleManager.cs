@@ -164,7 +164,7 @@ namespace ModuleManager
 
                 if (IsABadIdea())
                 {
-                    var centeredWarningStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
+                    GUIStyle centeredWarningStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
                     {
                         alignment = TextAnchor.UpperCenter,
                         fontSize = 16,
@@ -177,7 +177,7 @@ namespace ModuleManager
                     offsetY += sizeOfWarningLabel.y;
                 }
 
-                var centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
+                GUIStyle centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
                 {
                     alignment = TextAnchor.UpperCenter,
                     fontSize = 16
@@ -188,7 +188,7 @@ namespace ModuleManager
 
                 if (MMPatchLoader.Instance.errorCount > 0)
                 {
-                    var errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
+                    GUIStyle errorStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
                     {
                         alignment = TextAnchor.UpperLeft,
                         fontSize = 16
@@ -335,7 +335,7 @@ namespace ModuleManager
                           + Path.DirectorySeparatorChar;
             Directory.CreateDirectory(path);
 
-            foreach (var d in GameDatabase.Instance.root.AllConfigs)
+            foreach (UrlDir.UrlConfig d in GameDatabase.Instance.root.AllConfigs)
                 File.WriteAllText(path + d.url.Replace('/', '.') + ".cfg", d.config.ToString());
         }
 
@@ -348,15 +348,15 @@ namespace ModuleManager
             // TODO : Move the old version check in a process that call Update.
 
             // Check for old version and MMSarbianExt
-            var oldMM =
+            IEnumerable<AssemblyLoader.LoadedAssembly> oldMM =
                 AssemblyLoader.loadedAssemblies.Where(
                     a => a.assembly.GetName().Name == Assembly.GetExecutingAssembly().GetName().Name)
                     .Where(a => a.assembly.GetName().Version.CompareTo(new System.Version(1, 5, 0)) == -1);
-            var oldAssemblies =
+            IEnumerable<AssemblyLoader.LoadedAssembly> oldAssemblies =
                 oldMM.Concat(AssemblyLoader.loadedAssemblies.Where(a => a.assembly.GetName().Name == "MMSarbianExt"));
             if (oldAssemblies.Any())
             {
-                var badPaths =
+                IEnumerable<string> badPaths =
                     oldAssemblies.Select(a => a.path)
                         .Select(
                             p =>
@@ -373,7 +373,7 @@ namespace ModuleManager
             }
 
             Assembly currentAssembly = Assembly.GetExecutingAssembly();
-            var eligible = from a in AssemblyLoader.loadedAssemblies
+            IEnumerable<AssemblyLoader.LoadedAssembly> eligible = from a in AssemblyLoader.loadedAssemblies
                            let ass = a.assembly
                            where ass.GetName().Name == currentAssembly.GetName().Name
                            orderby ass.GetName().Version descending, a.path ascending
@@ -546,12 +546,12 @@ namespace ModuleManager
             if (!postPatchCallbacks.Contains(callback))
                 postPatchCallbacks.Add(callback);
         }
-        private List<String> PrePatchInit()
+        private List<string> PrePatchInit()
         {
             #region Excluding directories
 
             // Build a list of subdirectory that won't be processed
-            List<String> excludePaths = new List<string>();
+            List<string> excludePaths = new List<string>();
 
             if (ModuleManager.IsABadIdea())
             {
@@ -573,10 +573,14 @@ namespace ModuleManager
 
             #region List of mods
 
-            string envinfo = "ModuleManager env info\n";
-            envinfo += Environment.OSVersion.Platform + " " + ModuleManager.intPtr.ToInt64().ToString("X16") + "\n";
-            envinfo += "Args: " + string.Join(" ", Environment.GetCommandLineArgs().Skip(1).ToArray());
-            log(envinfo);
+            string envInfo = "ModuleManager env info\n";
+            envInfo += "  " + Environment.OSVersion.Platform + " " + ModuleManager.intPtr.ToInt64().ToString("X16") + "\n";
+            //envInfo += "  " + Convert.ToString(ModuleManager.intPtr.ToInt64(), 2)  + " " + Convert.ToString(ModuleManager.intPtr.ToInt64() >> 63, 2) + "\n";
+            string gamePath = Environment.GetCommandLineArgs()[0];
+            envInfo += "  Args: " + gamePath.Split(Path.DirectorySeparatorChar).Last() + string.Join(" ", Environment.GetCommandLineArgs().Skip(1).ToArray()) + "\n";
+            envInfo += "  Executable SHA256 " + FileSHA(gamePath);
+
+            log(envInfo);
 
             mods = new List<string>();
 
@@ -588,11 +592,18 @@ namespace ModuleManager
 
                 AssemblyName assemblyName = mod.assembly.GetName();
 
-                modlist += "  " + assemblyName.Name
-                    + " v" + assemblyName.Version
-                    + (fileVersionInfo.ProductVersion != " " && fileVersionInfo.ProductVersion != assemblyName.Version.ToString() ? " / v" + fileVersionInfo.ProductVersion : "")
-                    + (fileVersionInfo.FileVersion != " " && fileVersionInfo.FileVersion != assemblyName.Version.ToString() && fileVersionInfo.FileVersion != fileVersionInfo.ProductVersion ? " / v" + fileVersionInfo.FileVersion : "")
-                    + "\n";
+                string modInfo = "  " + assemblyName.Name
+                                 + " v" + assemblyName.Version
+                                 +
+                                 (fileVersionInfo.ProductVersion != " " && fileVersionInfo.ProductVersion != assemblyName.Version.ToString()
+                                     ? " / v" + fileVersionInfo.ProductVersion
+                                     : "")
+                                 +
+                                 (fileVersionInfo.FileVersion != " " &&fileVersionInfo.FileVersion != assemblyName.Version.ToString() && fileVersionInfo.FileVersion != fileVersionInfo.ProductVersion
+                                     ? " / v" + fileVersionInfo.FileVersion
+                                     : "");
+
+                modlist += String.Format("  {0,-50} SHA256 {1}\n", modInfo, FileSHA(mod.assembly.Location));
 
                 if (!mods.Contains(assemblyName.Name, StringComparer.OrdinalIgnoreCase))
                     mods.Add(assemblyName.Name);
@@ -678,7 +689,7 @@ namespace ModuleManager
             useCache = false;
 #endif
 
-            List<String> excludePaths = PrePatchInit();
+            List<string> excludePaths = PrePatchInit();
 
             yield return null;
 
@@ -731,7 +742,7 @@ namespace ModuleManager
 
                 if (errorCount > 0)
                 {
-                    foreach (String file in errorFiles.Keys)
+                    foreach (string file in errorFiles.Keys)
                     {
                         errors += errorFiles[file] + " error" + (errorFiles[file] > 1 ? "s" : "") + " related to GameData/" + file
                                   + "\n";
@@ -762,7 +773,7 @@ namespace ModuleManager
             log("Reloading ressources definitions");
             PartResourceLibrary.Instance.LoadDefinitions();
 
-            foreach (var callback in postPatchCallbacks)
+            foreach (ModuleManagerPostPatchCallback callback in postPatchCallbacks)
             {
                 try
                 {
@@ -774,6 +785,58 @@ namespace ModuleManager
                 }
                 yield return null;
             }
+            yield return null;
+
+            // Call all "public static void ModuleManagerPostLoad()" on all class
+            foreach (Assembly ass in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    foreach (Type type in ass.GetTypes())
+                    {
+                        MethodInfo method = type.GetMethod("ModuleManagerPostLoad", BindingFlags.Public | BindingFlags.Static);
+                        
+                        if (method != null && method.GetParameters().Length == 0)
+                        {
+                            try
+                            {
+                                log("Calling " + ass.GetName().Name + "." + type.Name + "." + method.Name + "()");
+                                method.Invoke(null, null);
+                            }
+                            catch (Exception e)
+                            {
+                                log("Exception while calling " + ass.GetName().Name + "." + type.Name + "." + method.Name + "() :\n" + e);
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    log("Post run call threw an exception in loading " + ass.FullName + ": " + e);
+                }
+            }
+
+            yield return null;
+
+            // Call "public void ModuleManagerPostLoad()" on all active MonoBehaviour instance
+            foreach (MonoBehaviour obj in FindObjectsOfType<MonoBehaviour>())
+            {
+                MethodInfo method = obj.GetType().GetMethod("ModuleManagerPostLoad", BindingFlags.Public | BindingFlags.Instance);
+
+                if (method != null && method.GetParameters().Length == 0)
+                {
+                    try
+                    {
+                        log("Calling " + obj.GetType().Name + "." + method.Name + "()");
+                        method.Invoke(obj, null);
+                    }
+                    catch (Exception e)
+                    {
+                        log("Exception while calling " + obj.GetType().Name + "." + method.Name + "() :\n" + e);
+                    }
+                }
+            }
+
             yield return null;
 
             ready = true;
@@ -799,7 +862,7 @@ namespace ModuleManager
         {
             //UrlDir.UrlConfig[] configs = GameDatabase.Instance.GetConfigs("TechTree");
 
-            var configs = physicsUrlFile.configs;
+            List<UrlDir.UrlConfig> configs = physicsUrlFile.configs;
 
             if (configs.Count == 0)
             {
@@ -844,6 +907,30 @@ namespace ModuleManager
                     return true;
             }
             return false;
+        }
+
+        private string FileSHA(string filename)
+        {
+            if (File.Exists(filename))
+            {
+                System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
+
+                byte[] data = null;
+                using (FileStream fs = File.Open(filename, FileMode.Open, FileAccess.Read))
+                {
+                    data = sha.ComputeHash(fs);
+                }
+
+                string hashedValue = string.Empty;
+
+                foreach (byte b in data)
+                {
+                    hashedValue += String.Format("{0,2:x2}", b);
+                }
+
+                return hashedValue;
+            }
+            return "0";
         }
 
         private void IsCacheUpToDate()
@@ -946,7 +1033,7 @@ namespace ModuleManager
         private void LoadCache()
         {
             // Clear the config DB
-            foreach (var files in GameDatabase.Instance.root.AllConfigFiles)
+            foreach (UrlDir.UrlFile files in GameDatabase.Instance.root.AllConfigFiles)
             {
                 files.configs.Clear();
             }
@@ -992,7 +1079,7 @@ namespace ModuleManager
 
         #region Needs checking
 
-        private void CheckNeeds(List<String> excludePaths)
+        private void CheckNeeds(List<string> excludePaths)
         {
             UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
 
@@ -1179,7 +1266,7 @@ namespace ModuleManager
         #region Applying Patches
 
         // Apply patch to all relevent nodes
-        public IEnumerator ApplyPatch(List<String> excludePaths, string Stage)
+        public IEnumerator ApplyPatch(List<string> excludePaths, string Stage)
         {
             log(Stage + (Stage == ":LEGACY" ? " (default) pass" : " pass"));
 
@@ -2194,7 +2281,7 @@ namespace ModuleManager
 
         #region Sanity checking & Utility functions
 
-        public static bool IsBracketBalanced(String str)
+        public static bool IsBracketBalanced(string str)
         {
             Stack<char> stack = new Stack<char>();
 
@@ -2223,7 +2310,7 @@ namespace ModuleManager
             return new string(withWhite.ToCharArray().Where(c => !Char.IsWhiteSpace(c)).ToArray());
         }
 
-        public bool IsPathInList(string modPath, List<String> pathList)
+        public bool IsPathInList(string modPath, List<string> pathList)
         {
             return pathList.Any(modPath.StartsWith);
         }
@@ -2337,11 +2424,11 @@ namespace ModuleManager
             return false;
         }
 
-        public static bool WildcardMatch(String s, String wildcard)
+        public static bool WildcardMatch(string s, string wildcard)
         {
             if (wildcard == null)
                 return true;
-            String pattern = "^" + Regex.Escape(wildcard).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
+            string pattern = "^" + Regex.Escape(wildcard).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
 
             Regex regex;
             if (!regexCache.TryGetValue(pattern, out regex))
