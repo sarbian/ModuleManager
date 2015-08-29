@@ -1086,43 +1086,45 @@ namespace ModuleManager
             // Check the NEEDS parts first.
             foreach (UrlDir.UrlConfig mod in allConfigs)
             {
+                UrlDir.UrlConfig currentMod = mod; 
                 try
                 {
                     string name;
-                    if (IsPathInList(mod.url, excludePaths) && (ParseCommand(mod.type, out name) != Command.Insert))
+                    if (IsPathInList(currentMod.url, excludePaths) && (ParseCommand(currentMod.type, out name) != Command.Insert))
                     {
-                        mod.parent.configs.Remove(mod);
+                        mod.parent.configs.Remove(currentMod);
                         catEatenCount++;
-                        log("Deleting Node in file " + mod.parent.url + " subnode: " + mod.type +
+                        log("Deleting Node in file " + currentMod.parent.url + " subnode: " + currentMod.type +
                                 " as it is set to be disabled on KSP Win64");
                         continue;
                     }
 
-                    if (mod.type.Contains(":NEEDS["))
+                    if (currentMod.type.Contains(":NEEDS["))
                     {
-                        mod.parent.configs.Remove(mod);
-                        string type = mod.type;
+                        mod.parent.configs.Remove(currentMod);
+                        string type = currentMod.type;
 
                         if (!CheckNeeds(ref type))
                         {
-                            log("Deleting Node in file " + mod.parent.url + " subnode: " + mod.type +
+                            log("Deleting Node in file " + currentMod.parent.url + " subnode: " + currentMod.type +
                                 " as it can't satisfy its NEEDS");
                             needsUnsatisfiedCount++;
                             continue;
                         }
 
                         ConfigNode copy = new ConfigNode(type);
-                        ShallowCopy(mod.config, copy);
-                        mod.parent.configs.Add(new UrlDir.UrlConfig(mod.parent, copy));
+                        ShallowCopy(currentMod.config, copy);
+                        currentMod = new UrlDir.UrlConfig(currentMod.parent, copy);
+                        mod.parent.configs.Add(currentMod);
                     }
 
                     // Recursively check the contents
-                    CheckNeeds(mod.config, mod.parent.url, new List<string> { mod.type });
+                    CheckNeeds(currentMod.config, currentMod.parent.url, new List<string>());
                 }
                 catch (Exception ex)
                 {
-                    log("Exception while checking needs : " + mod.url + " with a type of " + mod.type + "\n" + ex);
-                    log("Node is : " + PrettyConfig(mod));
+                    log("Exception while checking needs : " + currentMod.url + " with a type of " + currentMod.type + "\n" + ex);
+                    log("Node is : " + PrettyConfig(currentMod));
                 }
             }
         }
@@ -1131,9 +1133,9 @@ namespace ModuleManager
         {
             try
             {
-                path.Add(subMod.name + "[" + subMod.GetValue("name") + "]");
+                path.Add(subMod.name);
                 bool needsCopy = false;
-                ConfigNode copy = new ConfigNode();
+                ConfigNode copy = new ConfigNode(subMod.name);
                 for (int i = 0; i < subMod.values.Count; ++i)
                 {
                     ConfigNode.Value val = subMod.values[i];
@@ -1168,12 +1170,12 @@ namespace ModuleManager
                 for (int i = 0; i < subMod.nodes.Count; ++i)
                 {
                     ConfigNode node = subMod.nodes[i];
-                    string name = node.name;
+                    string nodeName = node.name;
                     try
                     {
-                        if (CheckNeeds(ref name))
+                        if (CheckNeeds(ref nodeName))
                         {
-                            node.name = name;
+                            node.name = nodeName;
                             CheckNeeds(node, url, path);
                             copy.AddNode(node);
                         }
@@ -1194,7 +1196,6 @@ namespace ModuleManager
                     catch (Exception e)
                     {
                         log("General Exception " + e.GetType().Name + " for node \"" + node.name + "\"\n " + e.ToString());
-
                         throw;
                     }
                 }
