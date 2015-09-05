@@ -470,6 +470,8 @@ namespace ModuleManager
         private static readonly List<ModuleManagerPostPatchCallback> postPatchCallbacks =
             new List<ModuleManagerPostPatchCallback>();
 
+        private const float yieldInterval = 1f/30f; // Patch at ~30fps
+
         public static MMPatchLoader Instance { get; private set; }
 
         private void Awake()
@@ -577,7 +579,7 @@ namespace ModuleManager
             envInfo += "  " + Environment.OSVersion.Platform + " " + ModuleManager.intPtr.ToInt64().ToString("X16") + "\n";
             //envInfo += "  " + Convert.ToString(ModuleManager.intPtr.ToInt64(), 2)  + " " + Convert.ToString(ModuleManager.intPtr.ToInt64() >> 63, 2) + "\n";
             string gamePath = Environment.GetCommandLineArgs()[0];
-            envInfo += "  Args: " + gamePath.Split(Path.DirectorySeparatorChar).Last() + string.Join(" ", Environment.GetCommandLineArgs().Skip(1).ToArray()) + "\n";
+            envInfo += "  Args: " + gamePath.Split(Path.DirectorySeparatorChar).Last() + " " + string.Join(" ", Environment.GetCommandLineArgs().Skip(1).ToArray()) + "\n";
             envInfo += "  Executable SHA256 " + FileSHA(gamePath);
 
             log(envInfo);
@@ -678,9 +680,6 @@ namespace ModuleManager
 
         private IEnumerator ProcessPatch(bool blocking)
         {
-
-            AssemblyLoader.LoadedAssembly textureReplacer = AssemblyLoader.loadedAssemblies.FirstOrDefault(a => a.name.StartsWith("TextureReplacer", StringComparison.Ordinal));
-
             IsCacheUpToDate();
             yield return null;
 
@@ -1311,8 +1310,8 @@ namespace ModuleManager
             activity = "ModuleManager " + Stage;
 
             UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
-
-            int yieldRate = Math.Max(allConfigs.Length / 4, 10);
+            
+            float nextYield = Time.realtimeSinceStartup + yieldInterval;
 
             for (int modsIndex = 0; modsIndex < allConfigs.Length; modsIndex++)
             {
@@ -1432,8 +1431,11 @@ namespace ModuleManager
                     if (lastErrorCount < errorCount)
                         addErrorFiles(mod.parent, errorCount - lastErrorCount);
                 }
-                if (modsIndex % yieldRate == yieldRate - 1)
+                if (nextYield < Time.realtimeSinceStartup)
+                {
+                    nextYield = Time.realtimeSinceStartup + yieldInterval;
                     yield return null;
+                }
             }
         }
 
