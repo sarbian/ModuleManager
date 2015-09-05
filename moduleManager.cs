@@ -1006,13 +1006,37 @@ namespace ModuleManager
                 node.AddNode(config.config);
             }
 
-            cache.Save(cachePath);
+            try
+            {
+                cache.Save(cachePath);
+                return;
+            }
+            catch (NullReferenceException e)
+            {
+                log("NullReferenceException while saving the cache\n" + e.ToString());
+            }
+            catch (Exception e)
+            {
+                log("Exception while saving the cache\n" + e.ToString());
+            }
+
+            try
+            {
+                log("An error occured while creating the cache. Deleting the cache files to avoid keeping a bad cache");
+                if (File.Exists(cachePath))
+                    File.Delete(cachePath);
+                if (File.Exists(shaPath))
+                    File.Delete(shaPath);
+            }
+            catch (Exception e)
+            {
+                log("Exception while deleting the cache\n" + e.ToString());
+            }
         }
 
         private void SaveModdedTechTree()
         {
             UrlDir.UrlConfig[] configs = GameDatabase.Instance.GetConfigs("TechTree");
-
 
             if (configs.Length == 0)
             {
@@ -1099,6 +1123,12 @@ namespace ModuleManager
                         continue;
                     }
 
+                    if (mod.config.name == null)
+                    {
+                        log("Error - Node in file " + currentMod.parent.url + " subnode: " + currentMod.type +
+                                " has config.name == null");
+                    }
+
                     if (currentMod.type.Contains(":NEEDS["))
                     {
                         mod.parent.configs.Remove(currentMod);
@@ -1171,6 +1201,13 @@ namespace ModuleManager
                 {
                     ConfigNode node = subMod.nodes[i];
                     string nodeName = node.name;
+
+                    if (nodeName == null)
+                    {
+                        log("Error - Node in file " + url + " subnode: " + string.Join("/", path.ToArray()) +
+                                " has config.name == null");
+                    }
+
                     try
                     {
                         if (CheckNeeds(ref nodeName))
