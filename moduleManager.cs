@@ -470,6 +470,8 @@ namespace ModuleManager
         private static readonly List<ModuleManagerPostPatchCallback> postPatchCallbacks =
             new List<ModuleManagerPostPatchCallback>();
 
+        private const float yieldInterval = 1f/30f; // Patch at ~30fps
+
         public static MMPatchLoader Instance { get; private set; }
 
         private void Awake()
@@ -577,7 +579,7 @@ namespace ModuleManager
             envInfo += "  " + Environment.OSVersion.Platform + " " + ModuleManager.intPtr.ToInt64().ToString("X16") + "\n";
             //envInfo += "  " + Convert.ToString(ModuleManager.intPtr.ToInt64(), 2)  + " " + Convert.ToString(ModuleManager.intPtr.ToInt64() >> 63, 2) + "\n";
             string gamePath = Environment.GetCommandLineArgs()[0];
-            envInfo += "  Args: " + gamePath.Split(Path.DirectorySeparatorChar).Last() + string.Join(" ", Environment.GetCommandLineArgs().Skip(1).ToArray()) + "\n";
+            envInfo += "  Args: " + gamePath.Split(Path.DirectorySeparatorChar).Last() + " " + string.Join(" ", Environment.GetCommandLineArgs().Skip(1).ToArray()) + "\n";
             envInfo += "  Executable SHA256 " + FileSHA(gamePath);
 
             log(envInfo);
@@ -678,9 +680,6 @@ namespace ModuleManager
 
         private IEnumerator ProcessPatch(bool blocking)
         {
-
-            AssemblyLoader.LoadedAssembly textureReplacer = AssemblyLoader.loadedAssemblies.FirstOrDefault(a => a.name.StartsWith("TextureReplacer", StringComparison.Ordinal));
-
             IsCacheUpToDate();
             yield return null;
 
@@ -1006,13 +1005,37 @@ namespace ModuleManager
                 node.AddNode(config.config);
             }
 
-            cache.Save(cachePath);
+            try
+            {
+                cache.Save(cachePath);
+                return;
+            }
+            catch (NullReferenceException e)
+            {
+                log("NullReferenceException while saving the cache\n" + e.ToString());
+            }
+            catch (Exception e)
+            {
+                log("Exception while saving the cache\n" + e.ToString());
+            }
+
+            try
+            {
+                log("An error occured while creating the cache. Deleting the cache files to avoid keeping a bad cache");
+                if (File.Exists(cachePath))
+                    File.Delete(cachePath);
+                if (File.Exists(shaPath))
+                    File.Delete(shaPath);
+            }
+            catch (Exception e)
+            {
+                log("Exception while deleting the cache\n" + e.ToString());
+            }
         }
 
         private void SaveModdedTechTree()
         {
             UrlDir.UrlConfig[] configs = GameDatabase.Instance.GetConfigs("TechTree");
-
 
             if (configs.Length == 0)
             {
@@ -1086,43 +1109,51 @@ namespace ModuleManager
             // Check the NEEDS parts first.
             foreach (UrlDir.UrlConfig mod in allConfigs)
             {
+                UrlDir.UrlConfig currentMod = mod; 
                 try
                 {
                     string name;
-                    if (IsPathInList(mod.url, excludePaths) && (ParseCommand(mod.type, out name) != Command.Insert))
+                    if (IsPathInList(currentMod.url, excludePaths) && (ParseCommand(currentMod.type, out name) != Command.Insert))
                     {
-                        mod.parent.configs.Remove(mod);
+                        mod.parent.configs.Remove(currentMod);
                         catEatenCount++;
-                        log("Deleting Node in file " + mod.parent.url + " subnode: " + mod.type +
+                        log("Deleting Node in file " + currentMod.parent.url + " subnode: " + currentMod.type +
                                 " as it is set to be disabled on KSP Win64");
                         continue;
                     }
 
-                    if (mod.type.Contains(":NEEDS["))
+                    if (mod.config.name == null)
                     {
-                        mod.parent.configs.Remove(mod);
-                        string type = mod.type;
+                        log("Error - Node in file " + currentMod.parent.url + " subnode: " + currentMod.type +
+                                " has config.name == null");
+                    }
+
+                    if (currentMod.type.Contains(":NEEDS["))
+                    {
+                        mod.parent.configs.Remove(currentMod);
+                        string type = currentMod.type;
 
                         if (!CheckNeeds(ref type))
                         {
-                            log("Deleting Node in file " + mod.parent.url + " subnode: " + mod.type +
+                            log("Deleting Node in file " + currentMod.parent.url + " subnode: " + currentMod.type +
                                 " as it can't satisfy its NEEDS");
                             needsUnsatisfiedCount++;
                             continue;
                         }
 
                         ConfigNode copy = new ConfigNode(type);
-                        ShallowCopy(mod.config, copy);
-                        mod.parent.configs.Add(new UrlDir.UrlConfig(mod.parent, copy));
+                        ShallowCopy(currentMod.config, copy);
+                        currentMod = new UrlDir.UrlConfig(currentMod.parent, copy);
+                        mod.parent.configs.Add(currentMod);
                     }
 
                     // Recursively check the contents
-                    CheckNeeds(mod.config, mod.parent.url, new List<string> { mod.type });
+                    CheckNeeds(currentMod.config, currentMod.parent.url, new List<string>());
                 }
                 catch (Exception ex)
                 {
-                    log("Exception while checking needs : " + mod.url + " with a type of " + mod.type + "\n" + ex);
-                    log("Node is : " + PrettyConfig(mod));
+                    log("Exception while checking needs : " + currentMod.url + " with a type of " + currentMod.type + "\n" + ex);
+                    log("Node is : " + PrettyConfig(currentMod));
                 }
             }
         }
@@ -1131,9 +1162,9 @@ namespace ModuleManager
         {
             try
             {
-                path.Add(subMod.name + "[" + subMod.GetValue("name") + "]");
+                path.Add(subMod.name);
                 bool needsCopy = false;
-                ConfigNode copy = new ConfigNode();
+                ConfigNode copy = new ConfigNode(subMod.name);
                 for (int i = 0; i < subMod.values.Count; ++i)
                 {
                     ConfigNode.Value val = subMod.values[i];
@@ -1168,12 +1199,19 @@ namespace ModuleManager
                 for (int i = 0; i < subMod.nodes.Count; ++i)
                 {
                     ConfigNode node = subMod.nodes[i];
-                    string name = node.name;
+                    string nodeName = node.name;
+
+                    if (nodeName == null)
+                    {
+                        log("Error - Node in file " + url + " subnode: " + string.Join("/", path.ToArray()) +
+                                " has config.name == null");
+                    }
+
                     try
                     {
-                        if (CheckNeeds(ref name))
+                        if (CheckNeeds(ref nodeName))
                         {
-                            node.name = name;
+                            node.name = nodeName;
                             CheckNeeds(node, url, path);
                             copy.AddNode(node);
                         }
@@ -1194,7 +1232,6 @@ namespace ModuleManager
                     catch (Exception e)
                     {
                         log("General Exception " + e.GetType().Name + " for node \"" + node.name + "\"\n " + e.ToString());
-
                         throw;
                     }
                 }
@@ -1273,8 +1310,8 @@ namespace ModuleManager
             activity = "ModuleManager " + Stage;
 
             UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
-
-            int yieldRate = Math.Max(allConfigs.Length / 4, 10);
+            
+            float nextYield = Time.realtimeSinceStartup + yieldInterval;
 
             for (int modsIndex = 0; modsIndex < allConfigs.Length; modsIndex++)
             {
@@ -1394,8 +1431,11 @@ namespace ModuleManager
                     if (lastErrorCount < errorCount)
                         addErrorFiles(mod.parent, errorCount - lastErrorCount);
                 }
-                if (modsIndex % yieldRate == yieldRate - 1)
+                if (nextYield < Time.realtimeSinceStartup)
+                {
+                    nextYield = Time.realtimeSinceStartup + yieldInterval;
                     yield return null;
+                }
             }
         }
 
