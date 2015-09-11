@@ -2139,6 +2139,8 @@ namespace ModuleManager
                 string[] split = value.Split(sep);
                 if (splitIdx < split.Length)
                     value = split[splitIdx];
+				else
+					value = "";
             }
             return value;
         }
