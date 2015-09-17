@@ -910,25 +910,33 @@ namespace ModuleManager
 
         private string FileSHA(string filename)
         {
-            if (File.Exists(filename))
-            {
-                System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
+			try
+			{
+				if (File.Exists(filename))
+	            {
+	                System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
 
-                byte[] data = null;
-                using (FileStream fs = File.Open(filename, FileMode.Open, FileAccess.Read))
-                {
-                    data = sha.ComputeHash(fs);
-                }
+	                byte[] data = null;
+	                using (FileStream fs = File.Open(filename, FileMode.Open, FileAccess.Read))
+	                {
+	                    data = sha.ComputeHash(fs);
+	                }
 
-                string hashedValue = string.Empty;
+	                string hashedValue = string.Empty;
 
-                foreach (byte b in data)
-                {
-                    hashedValue += String.Format("{0,2:x2}", b);
-                }
+	                foreach (byte b in data)
+	                {
+	                    hashedValue += String.Format("{0,2:x2}", b);
+	                }
 
-                return hashedValue;
-            }
+	                return hashedValue;
+	            }
+			}
+			catch (Exception e)
+			{
+				log("Exception hashing file " + filename + "\n" + e.ToString());
+				return "0";
+			}
             return "0";
         }
 
