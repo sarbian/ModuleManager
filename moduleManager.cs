@@ -590,6 +590,10 @@ namespace ModuleManager
 
             foreach (AssemblyLoader.LoadedAssembly mod in AssemblyLoader.loadedAssemblies)
             {
+
+                if (string.IsNullOrEmpty(mod.assembly.Location)) //Diazo Edit for xEvilReeperx AssemblyReloader mod
+                    continue;
+
                 FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(mod.assembly.Location);
 
                 AssemblyName assemblyName = mod.assembly.GetName();
