@@ -1,64 +1,59 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <PropertyGroup>
-    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
-    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProductVersion>10.0.0</ProductVersion>
-    <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{02C8E3AF-69F9-4102-AB60-DD6DE60662D3}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <RootNamespace>ModuleManager</RootNamespace>
-    <AssemblyName>ModuleManager</AssemblyName>
-    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-    <DebugSymbols>True</DebugSymbols>
-    <DebugType>full</DebugType>
-    <Optimize>False</Optimize>
-    <OutputPath>..\..\1.0.4 reloader test\</OutputPath>
-    <DefineConstants>DEBUG;</DefineConstants>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <ConsolePause>False</ConsolePause>
-  </PropertyGroup>
-  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>none</DebugType>
-    <Optimize>True</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
-    <ErrorReport>prompt</ErrorReport>
-    <WarningLevel>4</WarningLevel>
-    <ConsolePause>False</ConsolePause>
-  </PropertyGroup>
-  <ItemGroup>
-    <Compile Include="moduleManager.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Properties\Resources.Designer.cs" />
-    <Compile Include="CustomConfigsManager.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="Assembly-CSharp, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\1.0.4 Dev\KSP_Data\Managed\Assembly-CSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="Assembly-CSharp-firstpass">
-      <HintPath>..\..\1.0.4 Dev\KSP_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="UnityEngine, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\1.0.4 Dev\KSP_Data\Managed\UnityEngine.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="Properties\Resources.resx" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Properties\cat" />
-  </ItemGroup>
-  <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <PropertyGroup>
-    <PostBuildEvent>echo copying to "%25KSPDIR%25\GameData\"
+<PropertyGroup>
+<Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+<Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+<ProductVersion>10.0.0</ProductVersion>
+<SchemaVersion>2.0</SchemaVersion>
+<ProjectGuid>{02C8E3AF-69F9-4102-AB60-DD6DE60662D3}</ProjectGuid>
+<OutputType>Library</OutputType>
+<RootNamespace>ModuleManager</RootNamespace>
+<AssemblyName>ModuleManager</AssemblyName>
+<TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+</PropertyGroup>
+<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+<DebugSymbols>True</DebugSymbols>
+<DebugType>full</DebugType>
+<Optimize>False</Optimize>
+<OutputPath>..</OutputPath>
+<DefineConstants>DEBUG;</DefineConstants>
+<ErrorReport>prompt</ErrorReport>
+<WarningLevel>4</WarningLevel>
+<ConsolePause>False</ConsolePause>
+</PropertyGroup>
+<PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+<DebugType>none</DebugType>
+<Optimize>True</Optimize>
+<OutputPath>bin\Release\</OutputPath>
+<ErrorReport>prompt</ErrorReport>
+<WarningLevel>4</WarningLevel>
+<ConsolePause>False</ConsolePause>
+</PropertyGroup>
+<ItemGroup>
+<Compile Include="moduleManager.cs" />
+<Compile Include="Properties\AssemblyInfo.cs" />
+<Compile Include="Properties\Resources.Designer.cs" />
+<Compile Include="CustomConfigsManager.cs" />
+</ItemGroup>
+<ItemGroup>
+<Reference Include="Assembly-CSharp, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+<SpecificVersion>False</SpecificVersion>
+</Reference>
+<Reference Include="System, Version=2.0.5.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e, processorArchitecture=MSIL" />
+<Reference Include="UnityEngine, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+<SpecificVersion>False</SpecificVersion>
+</Reference>
+</ItemGroup>
+<ItemGroup>
+<EmbeddedResource Include="Properties\Resources.resx" />
+</ItemGroup>
+<ItemGroup>
+<None Include="Properties\cat" />
+</ItemGroup>
+<Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+<PropertyGroup>
+<PostBuildEvent>echo copying to "%25KSPDIR%25\GameData\"
 copy "$(TargetPath)" "C:\Games\ksp-win_dev\GameData\"
 del "C:\Games\ksp-win_dev\GameData\ModuleManager.ConfigCache"</PostBuildEvent>
-  </PropertyGroup>
+</PropertyGroup>
 </Project>
