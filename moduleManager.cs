@@ -1452,7 +1452,7 @@ namespace ModuleManager
         }
 
         // Name is group 1, index is group 2, operator is group 3
-        private static Regex parseValue = new Regex(@"([\w\&\-\.\?\*]*)(?:,(-?[0-9]+))?(?:\s([+\-*/^!]))?");
+        private static Regex parseValue = new Regex(@"([\w\&\-\.\?\*]*)(?:,(-?[0-9\*]+))?(?:\s([+\-*/^!]))?");
 
         // ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original, then returns the patched ConfigNode.
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
@@ -1488,10 +1488,13 @@ namespace ModuleManager
 
                 // In this case insert the value at position index (with the same node names)
                 int index = 0;
+                bool isStar = false;
                 if (match.Groups[2].Success)
                 {
+                    if (match.Groups[2].Value == "*")
+                        isStar = true;
                     // can have "node,n *" (for *= ect)
-                    if (!int.TryParse(match.Groups[2].Value, out index))
+                    else if (!int.TryParse(match.Groups[2].Value, out index))
                     {
                         Debug.LogError("Error - Unable to parse number as number. Very odd.");
                         errorCount++;
@@ -1562,29 +1565,35 @@ namespace ModuleManager
                         // Format is @key = value or @key *= value or @key += value or @key -= value
                         // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value
 
-                        varValue = ProcessVariableSearch(modVal.value, newNode);
-
-                        if (varValue != null)
+                        while(index < newNode.values.Count)
                         {
-                            ConfigNode.Value origVal;
-                            string value = FindAndReplaceValue(mod, ref valName, varValue, newNode, op, index,
-                                out origVal);
+                            varValue = ProcessVariableSearch(modVal.value, newNode);
 
-                            if (value != null)
+                            if (varValue != null)
                             {
-                                if (origVal.value != value)
-                                    vals += ": " + origVal.value + " -> " + value;
+                                ConfigNode.Value origVal;
+                                string value = FindAndReplaceValue(mod, ref valName, varValue, newNode, op, index,
+                                    out origVal);
 
-                                if (cmd != Command.Copy)
-                                    origVal.value = value;
-                                else
-                                    newNode.AddValue(valName, value);
+                                if (value != null)
+                                {
+                                    if (origVal.value != value)
+                                        vals += ": " + origVal.value + " -> " + value;
+
+                                    if (cmd != Command.Copy)
+                                        origVal.value = value;
+                                    else
+                                        newNode.AddValue(valName, value);
+                                }
                             }
-                        }
-                        else
-                        {
-                            log("Error - Cannot parse variable search when editing key " + valName + " = " + modVal.value);
-                            errorCount++;
+                            else
+                            {
+                                log("Error - Cannot parse variable search when editing key " + valName + " = " + modVal.value);
+                                errorCount++;
+                            }
+
+                            if (isStar) index++;
+                            else break;
                         }
                         break;
 
