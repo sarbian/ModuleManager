@@ -1452,7 +1452,7 @@ namespace ModuleManager
         }
 
         // Name is group 1, index is group 2, operator is group 3
-        private static Regex parseValue = new Regex(@"([\w\&\-\.\?\*]*)(?:,(-?[0-9\*]+))?(?:\s([+\-*/^!]))?");
+        private static Regex parseValue = new Regex(@"([\w\&\-\.\?\*]*)(?:,(-?[0-9\*]+))(?:\[(-?[0-9\*]+))(?:,-?(.)+\])?(?:\s([+\-*/^!]))?");
 
         // ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original, then returns the patched ConfigNode.
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
@@ -1486,6 +1486,26 @@ namespace ModuleManager
                 // Get the bits and pieces from the regexp
                 valName = match.Groups[1].Value;
 
+                // Get a position for editing a vector
+                int position = 0;
+                bool isPosStar = false;
+                if (match.Groups[3].Success)
+                {
+                    if (match.Groups[3].Value == "*")
+                        isPosStar = true;
+                    else if (!int.TryParse(match.Groups[3].Value, out position))
+                    {
+                        Debug.LogError("Error - Unable to parse number as number. Very odd.");
+                        errorCount++;
+                        continue;
+                    }
+                }
+                char seperator = ',';
+                if (match.Groups[4].Success)
+                {
+                    seperator = match.Groups[4].Value[0];
+                }
+
                 // In this case insert the value at position index (with the same node names)
                 int index = 0;
                 bool isStar = false;
@@ -1503,14 +1523,14 @@ namespace ModuleManager
                 }
 
                 char op = ' ';
-                if (match.Groups[3].Success)
-                    op = match.Groups[3].Value[0];
+                if (match.Groups[5].Success)
+                    op = match.Groups[5].Value[0];
 
                 string varValue;
                 switch (cmd)
                 {
                     case Command.Insert:
-                        if (match.Groups[3].Success)
+                        if (match.Groups[5].Success)
                         {
                             log("Error - Cannot use operators with insert value: " + mod.name);
                             errorCount++;
@@ -1531,7 +1551,7 @@ namespace ModuleManager
                         break;
 
                     case Command.Replace:
-                        if (match.Groups[2].Success || match.Groups[3].Success || valName.Contains('*')
+                        if (match.Groups[2].Success || match.Groups[5].Success || valName.Contains('*')
                             || valName.Contains('?'))
                         {
                             if (match.Groups[2].Success)
@@ -1565,7 +1585,7 @@ namespace ModuleManager
                         // Format is @key = value or @key *= value or @key += value or @key -= value
                         // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value
 
-                        while(index < newNode.values.Count)
+                        while (index < newNode.values.Count)
                         {
                             varValue = ProcessVariableSearch(modVal.value, newNode);
 
@@ -1573,7 +1593,7 @@ namespace ModuleManager
                             {
                                 ConfigNode.Value origVal;
                                 string value = FindAndReplaceValue(mod, ref valName, varValue, newNode, op, index,
-                                    out origVal);
+                                    out origVal, match.Groups[3].Success, position, isPosStar, seperator);
 
                                 if (value != null)
                                 {
@@ -2202,76 +2222,101 @@ namespace ModuleManager
             ConfigNode newNode,
             char op,
             int index,
-            out ConfigNode.Value origVal)
+            out ConfigNode.Value origVal,
+            bool hasPosIndex = false,
+            int posIndex = 0,
+            bool hasPosStar = false,
+            char seperator = ',')
         {
             origVal = FindValueIn(newNode, valName, index);
             if (origVal == null)
                 return null;
             string oValue = origVal.value;
 
-            if (op != ' ')
+            string[] strArray = new string[] { oValue };
+            if (hasPosIndex)
             {
-                double s, os;
-                if (op == '^')
+                strArray = oValue.Split(new char[] { seperator }, StringSplitOptions.RemoveEmptyEntries);
+                if (posIndex >= strArray.Length)
                 {
-                    try
-                    {
-                        string[] split = value.Split(value[0]);
-
-                        Regex replace;
-                        if (regexCache.ContainsKey(split[1]))
-                            replace = regexCache[split[1]];
-                        else
-                        {
-                            replace = new Regex(split[1], RegexOptions.None);
-                            regexCache.Add(split[1], replace);
-                        }
-
-                        value = replace.Replace(oValue, split[2]);
-                    }
-                    catch (Exception ex)
-                    {
-                        log("Error - Failed to do a regexp replacement: " + mod.name + " : original value=\"" + oValue +
-                            "\" regexp=\"" + value +
-                            "\" \nNote - to use regexp, the first char is used to subdivide the string (much like sed)\n" +
-                            ex);
-                        errorCount++;
-                        return null;
-                    }
-                }
-                else if (double.TryParse(value, out s) && double.TryParse(oValue, out os))
-                {
-                    switch (op)
-                    {
-                        case '*':
-                            value = (os * s).ToString();
-                            break;
-
-                        case '/':
-                            value = (os / s).ToString();
-                            break;
-
-                        case '+':
-                            value = (os + s).ToString();
-                            break;
-
-                        case '-':
-                            value = (os - s).ToString();
-                            break;
-
-                        case '!':
-                            value = Math.Pow(os, s).ToString();
-                            break;
-                    }
-                }
-                else
-                {
-                    log("Error - Failed to do a maths replacement: " + mod.name + " : original value=\"" + oValue +
-                        "\" operator=" + op + " mod value=\"" + value + "\"");
+                    log("Invalid Vector Index!");
                     errorCount++;
                     return null;
                 }
             }
+            string backupValue = value;
+            while (posIndex < strArray.Length)
+            {
+                value = backupValue;
+                oValue = strArray[posIndex];
+                if (op != ' ')
+                {
+                    double s, os;
+                    if (op == '^')
+                    {
+                        try
+                        {
+                            string[] split = value.Split(value[0]);
+
+                            Regex replace;
+                            if (regexCache.ContainsKey(split[1]))
+                                replace = regexCache[split[1]];
+                            else
+                            {
+                                replace = new Regex(split[1], RegexOptions.None);
+                                regexCache.Add(split[1], replace);
+                            }
+
+                            value = replace.Replace(oValue, split[2]);
+                        }
+                        catch (Exception ex)
+                        {
+                            log("Error - Failed to do a regexp replacement: " + mod.name + " : original value=\"" + oValue +
+                                "\" regexp=\"" + value +
+                                "\" \nNote - to use regexp, the first char is used to subdivide the string (much like sed)\n" +
+                                ex);
+                            errorCount++;
+                            return null;
+                        }
+                    }
+                    else if (double.TryParse(value, out s) && double.TryParse(oValue, out os))
+                    {
+                        switch (op)
+                        {
+                            case '*':
+                                value = (os * s).ToString();
+                                break;
+
+                            case '/':
+                                value = (os / s).ToString();
+                                break;
+
+                            case '+':
+                                value = (os + s).ToString();
+                                break;
+
+                            case '-':
+                                value = (os - s).ToString();
+                                break;
+
+                            case '!':
+                                value = Math.Pow(os, s).ToString();
+                                break;
+                        }
+                    }
+                    else
+                    {
+                        log("Error - Failed to do a maths replacement: " + mod.name + " : original value=\"" + oValue +
+                            "\" operator=" + op + " mod value=\"" + value + "\"");
+                        errorCount++;
+                        return null;
+                    }
+                }
+                strArray[posIndex] = value;
+                if (hasPosStar) posIndex++;
+                else break;
+            }
+            value = String.Join(new string(seperator, 1), strArray);
             return value;
         }
 
