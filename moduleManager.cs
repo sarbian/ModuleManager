@@ -1556,7 +1556,7 @@ namespace ModuleManager
                         {
                             if (match.Groups[2].Success)
                                 log("Error - Cannot use index with replace (%) value: " + mod.name);
-                            if (match.Groups[3].Success)
+                            if (match.Groups[5].Success)
                                 log("Error - Cannot use operators with replace (%) value: " + mod.name);
                             if (valName.Contains('*') || valName.Contains('?'))
                                 log("Error - Cannot use wildcards (* or ?) with replace (%) value: " + mod.name);
@@ -1618,17 +1618,22 @@ namespace ModuleManager
                         break;
 
                     case Command.Delete:
-                        if (match.Groups[3].Success)
+                        if (match.Groups[5].Success)
                         {
                             log("Error - Cannot use operators with delete (- or !) value: " + mod.name);
                             errorCount++;
                         }
                         else if (match.Groups[2].Success)
                         {
-                            // If there is an index, use it.
-                            ConfigNode.Value v = FindValueIn(newNode, valName, index);
-                            if (v != null)
-                                newNode.values.Remove(v);
+                            while (index < newNode.values.Count)
+                            {
+                                // If there is an index, use it.
+                                ConfigNode.Value v = FindValueIn(newNode, valName, index);
+                                if (v != null)
+                                    newNode.values.Remove(v);
+                                if (isStar) index++;
+                                else break;
+                            }
                         }
                         else if (valName.Contains('*') || valName.Contains('?'))
                         {
