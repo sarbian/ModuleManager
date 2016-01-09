@@ -132,7 +132,6 @@ namespace ModuleManager
                 log("Total loading Time = " + ((float)totalTime.ElapsedMilliseconds / 1000).ToString("F3") + "s");
             }
 
-
             if (reloading)
             {
                 float percent = 0;
@@ -147,11 +146,6 @@ namespace ModuleManager
                 ScreenMessages.PostScreenMessage("Database reloading " + intPercent + "%", Time.deltaTime,
                     ScreenMessageStyle.UPPER_CENTER);
             }
-
-            // DB check used to track the now fixed TextureReplacer corruption
-            //if (HighLogic.LoadedScene == GameScenes.LOADING)
-            //    MMPatchLoader.checkValues();
-
         }
 
         #region GUI stuff.
@@ -161,6 +155,27 @@ namespace ModuleManager
             if (HighLogic.LoadedScene == GameScenes.LOADING && MMPatchLoader.Instance != null)
             {
                 float offsetY = Mathf.FloorToInt(0.8f * Screen.height);
+                
+                if (Versioning.version_major == 1 && Versioning.version_minor == 0 && Versioning.Revision == 5 && Versioning.BuildID == 1024)
+                {
+                    GUIStyle centeredWarningStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
+                    {
+                        alignment = TextAnchor.UpperCenter,
+                        fontSize = 16,
+                        normal = { textColor = Color.yellow }
+                    };
+                    const string warning = "Your KSP 1.0.5 is running on build 1024. You should upgrade to build 1028 to avoid problems with addons.";
+
+                    Vector2 sizeOfWarningLabel = centeredWarningStyle.CalcSize(new GUIContent(warning));
+
+                    GUI.Label(new Rect(Screen.width / 2f - (sizeOfWarningLabel.x / 2f), offsetY, sizeOfWarningLabel.x, sizeOfWarningLabel.y), warning, centeredWarningStyle);
+                    
+                    offsetY += sizeOfWarningLabel.y;
+                    if (GUI.Button(new Rect(Screen.width/2f - 100, offsetY, 200, 20), "Click to open the Forum thread"))
+                        Application.OpenURL("http://forum.kerbalspaceprogram.com/index.php?/topic/124998-silent-patch-for-ksp-105-published/");
+
+                    offsetY += 25;
+                }
 
                 if (IsABadIdea())
                 {
