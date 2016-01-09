@@ -703,8 +703,9 @@ namespace ModuleManager
             {
                 IsCacheUpToDate();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                log("Exception in IsCacheUpToDate : " + ex.Message + "\n" + ex.StackTrace);
                 useCache = false;
             }
 
