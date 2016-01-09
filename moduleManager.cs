@@ -684,13 +684,20 @@ namespace ModuleManager
 
         private IEnumerator ProcessPatch(bool blocking)
         {
-            IsCacheUpToDate();
-            yield return null;
-
+            try
+            {
+                IsCacheUpToDate();
+            }
+            catch (Exception)
+            {
+                useCache = false;
+            }
 
 #if DEBUG
             useCache = false;
 #endif
+
+            yield return null;
 
             List<string> excludePaths = PrePatchInit();
 
