@@ -449,7 +449,6 @@ namespace ModuleManager
 
         public static bool keepPartDB = false;
 
-
         private string activity = "Module Manager";
 
         private static readonly Dictionary<string, Regex> regexCache = new Dictionary<string, Regex>();
@@ -475,12 +474,12 @@ namespace ModuleManager
 
         private UrlDir.UrlFile physicsUrlFile;
 
+        private string configSha;
+        private Dictionary<string, string> filesSha = new Dictionary<string, string>();
 
-        private static string configSha;
+        private bool useCache = false;
 
-        private static bool useCache = false;
-
-        private static readonly Stopwatch patchSw = new Stopwatch();
+        private readonly Stopwatch patchSw = new Stopwatch();
 
         private static readonly List<ModuleManagerPostPatchCallback> postPatchCallbacks =
             new List<ModuleManagerPostPatchCallback>();
@@ -695,7 +694,6 @@ namespace ModuleManager
                 return StartCoroutine(enumerator);
             }
         }
-
 
         private IEnumerator ProcessPatch(bool blocking)
         {
@@ -973,22 +971,30 @@ namespace ModuleManager
             sw.Start();
 
             System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
+            System.Security.Cryptography.SHA256 filesha = System.Security.Cryptography.SHA256.Create();
             UrlDir.UrlFile[] files = GameDatabase.Instance.root.AllConfigFiles.ToArray();
             for (int i = 0; i < files.Length; i++)
             {
                 // Hash the file path so the checksum change if files are moved
                 byte[] pathBytes = Encoding.UTF8.GetBytes(files[i].url);
                 sha.TransformBlock(pathBytes, 0, pathBytes.Length, pathBytes, 0);
-
+                
                 // hash the file content
                 byte[] contentBytes = File.ReadAllBytes(files[i].fullPath);
                 if (i == files.Length - 1)
                     sha.TransformFinalBlock(contentBytes, 0, contentBytes.Length);
                 else
                     sha.TransformBlock(contentBytes, 0, contentBytes.Length, contentBytes, 0);
+
+                
+                filesha.ComputeHash(contentBytes);
+                filesSha.Add(files[i].url, BitConverter.ToString(filesha.Hash));
+                
             }
 
             configSha = BitConverter.ToString(sha.Hash);
+            sha.Clear();
+            filesha.Clear();
 
             sw.Stop();
 
@@ -1004,7 +1010,9 @@ namespace ModuleManager
                     string storedSHA = shaConfigNode.GetValue("SHA");
                     string version = shaConfigNode.GetValue("version");
                     string kspVersion = shaConfigNode.GetValue("KSPVersion");
-                    useCache = storedSHA.Equals(configSha);
+                    ConfigNode filesShaNode = shaConfigNode.GetNode("FilesSHA");
+                    useCache = CheckFilesChange(files, filesShaNode);
+                    useCache = useCache && storedSHA.Equals(configSha);
                     useCache = useCache && version.Equals(Assembly.GetExecutingAssembly().GetName().Version.ToString());
                     useCache = useCache && kspVersion.Equals(Versioning.version_major + "." + Versioning.version_minor + "." + Versioning.Revision + "." + Versioning.BuildID);
                     useCache = useCache && File.Exists(cachePath);
@@ -1016,13 +1024,65 @@ namespace ModuleManager
             }
         }
 
+        private bool CheckFilesChange(UrlDir.UrlFile[] files, ConfigNode shaConfigNode)
+        {
+            bool noChange = true;
+            StringBuilder changes = new StringBuilder();
+            
+            for (int i = 0; i < files.Length; i++)
+            {
+                ConfigNode fileNode = getFileNode(shaConfigNode, files[i].url);
+                string fileSha = fileNode != null ? fileNode.GetValue("SHA") : null;
+
+                if (fileNode == null)
+                    continue;
+
+                if (fileSha == null || filesSha[files[i].url] != fileSha)
+                {
+                    changes.Append("Changed : " + fileNode.GetValue("filename") + ".cfg\n");
+                    noChange = false;
+                }
+            }
+            for (int i = 0; i < files.Length; i++)
+            {
+                ConfigNode fileNode = getFileNode(shaConfigNode, files[i].url);
+
+                if (fileNode == null)
+                {
+                    changes.Append("Added   : " + files[i].url + ".cfg\n");
+                    noChange = false;
+                }
+                shaConfigNode.RemoveNode(fileNode);
+            }
+            foreach (ConfigNode fileNode in shaConfigNode.GetNodes())
+            {
+                changes.Append("Deleted : " + fileNode.GetValue("filename") + ".cfg\n");
+                noChange = false;
+            }
+            if (!noChange)
+                log("Changes :\n" + changes.ToString());
+            return noChange;
+        }
+
+        private ConfigNode getFileNode(ConfigNode shaConfigNode, string filename)
+        {
+            for (int i = 0; i < shaConfigNode.nodes.Count; i++)
+            {
+                ConfigNode file = shaConfigNode.nodes[i];
+                if (file.name == "FILE" && file.GetValue("filename") == filename)
+                    return file;
+            }
+            return null;
+        }
+        
+
         private void CreateCache()
         {
             ConfigNode shaConfigNode = new ConfigNode();
             shaConfigNode.AddValue("SHA", configSha);
             shaConfigNode.AddValue("version", Assembly.GetExecutingAssembly().GetName().Version.ToString());
             shaConfigNode.AddValue("KSPVersion", Versioning.version_major + "." + Versioning.version_minor + "." + Versioning.Revision + "." + Versioning.BuildID);
-            shaConfigNode.Save(shaPath);
+            ConfigNode filesSHANode = shaConfigNode.AddNode("FilesSHA");
 
             ConfigNode cache = new ConfigNode();
 
@@ -1040,6 +1100,28 @@ namespace ModuleManager
                 node.AddNode(config.config);
             }
 
+            foreach (var file in GameDatabase.Instance.root.AllConfigFiles)
+            {
+                // "/Physics" is the node we created manually to loads the PHYSIC config
+                if (file.url != "/Physics" && filesSha.ContainsKey(file.url))
+                {
+                    ConfigNode shaNode = filesSHANode.AddNode("FILE");
+                    shaNode.AddValue("filename", file.url);
+                    shaNode.AddValue("SHA", filesSha[file.url]);
+                    filesSha.Remove(file.url);
+                }
+            }
+
+            log("Saving cache");
+
+            try
+            {
+                shaConfigNode.Save(shaPath);
+            }
+            catch (Exception e)
+            {
+                log("Exception while saving the sha\n" + e.ToString());
+            }
             try
             {
                 cache.Save(cachePath);
