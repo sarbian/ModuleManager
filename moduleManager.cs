@@ -884,8 +884,6 @@ namespace ModuleManager
 
         private void SaveModdedPhysics()
         {
-            //UrlDir.UrlConfig[] configs = GameDatabase.Instance.GetConfigs("TechTree");
-
             List<UrlDir.UrlConfig> configs = physicsUrlFile.configs;
 
             if (configs.Count == 0)
@@ -1186,6 +1184,13 @@ namespace ModuleManager
 
             if (cache.HasValue("catEatenCount"))
                 int.TryParse(cache.GetValue("catEatenCount"), out catEatenCount);
+
+
+            // Create the fake file where we load the physic config cache
+            UrlDir gameDataDir = GameDatabase.Instance.root.AllDirectories.First(d => d.path.EndsWith("GameData") && d.name == "" && d.url == "");
+            // need to use a file with a cfg extension to get the right fileType or you can't AddConfig on it
+            physicsUrlFile = new UrlDir.UrlFile(gameDataDir, new FileInfo(defaultPhysicsPath));
+            gameDataDir.files.Add(physicsUrlFile);
 
             foreach (ConfigNode node in cache.nodes)
             {
