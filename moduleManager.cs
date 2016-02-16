@@ -1579,6 +1579,9 @@ namespace ModuleManager
         // Name is group 1, index is group 2, vector related filed is group 3, vector separator is group 4, operator is group 5
         private static Regex parseValue = new Regex(@"([\w\&\-\.\?\*]*)(?:,(-?[0-9\*]+))?(?:\[((?:[0-9\*]+)+)(?:,(.))?\])?(?:\s([+\-*/^!]))?");
 
+        // Path is group 1, operator is group 5
+        private static Regex parseAssign = new Regex(@"(.*)(?:\s)+([+\-*/^!])?");
+
         // ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original, then returns the patched ConfigNode.
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
         public ConfigNode ModifyNode(ConfigNode original, ConfigNode mod)
@@ -1599,6 +1602,68 @@ namespace ModuleManager
 
                 string valName;
                 Command cmd = ParseCommand(modVal.name, out valName);
+
+                if (cmd == Command.Special)
+                {
+                    Match assignMatch = parseAssign.Match(valName);
+                    if (!assignMatch.Success)
+                    {
+                        log("Error - Cannot parse value assigning command: " + valName);
+                        errorCount++;
+                        continue;
+                    }
+
+                    valName = assignMatch.Groups[1].Value;
+
+                    log(valName);
+
+                    ConfigNode.Value val = RecurseVariableSearch(valName, mod);
+
+                    if (val == null)
+                    {
+                        log("Error - Cannot find value assigning command: " + valName);
+                        errorCount++;
+                        continue;
+                    }
+                    
+                    if (assignMatch.Groups[2].Success)
+                    {
+                        double os, s;
+                        if (double.TryParse(modVal.value, out s) && double.TryParse(val.value, out os))
+                        {
+                            switch (assignMatch.Groups[2].Value[0])
+                            {
+                                case '*':
+                                    val.value = (os * s).ToString();
+                                    break;
+
+                                case '/':
+                                    val.value = (os / s).ToString();
+                                    break;
+
+                                case '+':
+                                    val.value = (os + s).ToString();
+                                    break;
+
+                                case '-':
+                                    val.value = (os - s).ToString();
+                                    break;
+
+                                case '!':
+                                    val.value = Math.Pow(os, s).ToString();
+                                    break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        val.value = modVal.value;
+                    }
+
+                    log("new val is " + val.value);
+
+                    continue;
+                }
 
                 Match match = parseValue.Match(valName);
                 if (!match.Success)
@@ -2135,11 +2200,11 @@ namespace ModuleManager
             return currentNode;
         }
 
-        // KeyName is group 1, index is group 2, value indexis  group 3, value separator is group 4
+        // KeyName is group 1, index is group 2, value index is group 3, value separator is group 4
         private static readonly Regex parseVarKey = new Regex(@"([\w\&\-\.]+)(?:,((?:[0-9]+)+))?(?:\[((?:[0-9]+)+)(?:,(.))?\])?");
 
         // Search for a value by a path alike string
-        private static string RecurseVariableSearch(string path, ConfigNode currentNode)
+        private static ConfigNode.Value RecurseVariableSearch(string path, ConfigNode currentNode)
         {
             //log("path:" + path);
             if (path[0] == '/')
@@ -2201,7 +2266,7 @@ namespace ModuleManager
             {
                 if (nodeStack.Count == 1)
                     return null;
-                string result;
+                ConfigNode.Value result;
                 ConfigNode top = nodeStack.Pop();
                 try
                 {
@@ -2297,23 +2362,24 @@ namespace ModuleManager
                 log("Cannot find key " + valName + " in " + currentNode.name);
                 return null;
             }
-            string value = cVal.value;
-
+            
             if (match.Groups[3].Success)
             {
+                ConfigNode.Value newVal = new ConfigNode.Value(cVal.name, cVal.value);
                 int splitIdx = 0;
                 int.TryParse(match.Groups[3].Value, out splitIdx);
 
                 char sep = ',';
                 if (match.Groups[4].Success)
                     sep = match.Groups[4].Value[0];
-                string[] split = value.Split(sep);
+                string[] split = newVal.value.Split(sep);
                 if (splitIdx < split.Length)
-                    value = split[splitIdx];
+                    newVal.value = split[splitIdx];
                 else
-                    value = "";
+                    newVal.value = "";
+                return newVal;
             }
-            return value;
+            return cVal;
         }
 
         private static string ProcessVariableSearch(string value, ConfigNode node)
@@ -2333,7 +2399,7 @@ namespace ModuleManager
 
                 for (int i = 1; i < split.Length - 1; i = i + 2)
                 {
-                    string result = RecurseVariableSearch(split[i], node);
+                    string result = RecurseVariableSearch(split[i], node).value;
                     if (result == null)
                         return null;
                     builder.Append(result);
