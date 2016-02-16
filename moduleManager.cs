@@ -1615,8 +1615,6 @@ namespace ModuleManager
 
                     valName = assignMatch.Groups[1].Value;
 
-                    log(valName);
-
                     ConfigNode.Value val = RecurseVariableSearch(valName, mod);
 
                     if (val == null)
@@ -1659,9 +1657,6 @@ namespace ModuleManager
                     {
                         val.value = modVal.value;
                     }
-
-                    log("new val is " + val.value);
-
                     continue;
                 }
 
