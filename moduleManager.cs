@@ -1493,44 +1493,59 @@ namespace ModuleManager
                             {
                                 foreach (string pattern in patterns)
                                 {
-                                    if (url.type == type && WildcardMatch(url.name, pattern)
-                                        && CheckConstraints(url.config, condition) && !IsPathInList(mod.url, excludePaths))
+                                    bool loop = false;
+                                    do
                                     {
-                                        nodeStack.Clear();
-                                        switch (cmd)
+                                        if (url.type == type && WildcardMatch(url.name, pattern)
+                                            && CheckConstraints(url.config, condition) && !IsPathInList(mod.url, excludePaths))
                                         {
-                                            case Command.Edit:
-                                                log("Applying node " + mod.url + " to " + url.url);
-                                                patchedNodeCount++;
-                                                url.config = ModifyNode(url.config, mod.config);
-                                                break;
+                                            nodeStack.Clear();
+                                            switch (cmd)
+                                            {
+                                                case Command.Edit:
+                                                    log("Applying node " + mod.url + " to " + url.url);
+                                                    patchedNodeCount++;
+                                                    url.config = ModifyNode(url.config, mod.config);
+                                                    break;
 
-                                            case Command.Copy:
-                                                ConfigNode clone = ModifyNode(url.config, mod.config);
-                                                if (url.config.name != mod.name)
-                                                {
-                                                    log("Copying Node " + url.config.name + " into " + clone.name);
-                                                    url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                                }
-                                                else
-                                                {
-                                                    errorCount++;
-                                                    log("Error - Error while processing " + mod.config.name +
-                                                        " the copy needs to have a different name than the parent (use @name = xxx)");
-                                                }
-                                                break;
+                                                case Command.Copy:
+                                                    ConfigNode clone = ModifyNode(url.config, mod.config);
+                                                    if (url.config.name != mod.name)
+                                                    {
+                                                        log("Copying Node " + url.config.name + " into " + clone.name);
+                                                        url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
+                                                    }
+                                                    else
+                                                    {
+                                                        errorCount++;
+                                                        log("Error - Error while processing " + mod.config.name +
+                                                            " the copy needs to have a different name than the parent (use @name = xxx)");
+                                                    }
+                                                    break;
 
-                                            case Command.Delete:
-                                                log("Deleting Node " + url.config.name);
-                                                url.parent.configs.Remove(url);
-                                                break;
+                                                case Command.Delete:
+                                                    log("Deleting Node " + url.config.name);
+                                                    url.parent.configs.Remove(url);
+                                                    break;
 
-                                            case Command.Replace:
+                                                case Command.Replace:
 
-                                                // TODO: do something sensible here.
-                                                break;
+                                                    // TODO: do something sensible here.
+                                                    break;
+                                            }
+                                            // When this special node is found then try to apply the patch once more on the same NODE
+                                            if (mod.config.HasNode(">MM_PATCH_LOOP"))
+                                            {
+                                                log("Looping on " + mod.url + " to " + url.url);
+                                                loop = true;
+                                            }
                                         }
-                                    }
+                                        else
+                                        {
+                                            loop = false;
+                                        }
+                                    } while (loop);
+
                                 }
                             }
                         }
@@ -2453,7 +2468,9 @@ namespace ModuleManager
 
             Rename,
 
-            Paste
+            Paste,
+
+            Special
         }
 
         private static Command ParseCommand(string name, out string valueName)
@@ -2490,6 +2507,10 @@ namespace ModuleManager
 
                 case '#':
                     ret = Command.Paste;
+                    break;
+
+                case '*':
+                    ret = Command.Special;
                     break;
 
                 default:
