@@ -1534,7 +1534,7 @@ namespace ModuleManager
                                                     break;
                                             }
                                             // When this special node is found then try to apply the patch once more on the same NODE
-                                            if (mod.config.HasNode(">MM_PATCH_LOOP"))
+                                            if (mod.config.HasNode("MM_PATCH_LOOP"))
                                             {
                                                 log("Looping on " + mod.url + " to " + url.url);
                                                 loop = true;
