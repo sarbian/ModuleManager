@@ -708,7 +708,7 @@ namespace ModuleManager
             }
 
 #if DEBUG
-            useCache = false;
+            //useCache = false;
 #endif
 
             yield return null;
@@ -771,9 +771,25 @@ namespace ModuleManager
                         errors += errorFiles[file] + " error" + (errorFiles[file] > 1 ? "s" : "") + " related to GameData/" + file
                                   + "\n";
                     }
+                    
+                    log("Errors in patch prevents the creation of the cache");
+                    try
+                    {
+                        if (File.Exists(cachePath))
+                            File.Delete(cachePath);
+                        if (File.Exists(shaPath))
+                            File.Delete(shaPath);
+                    }
+                    catch (Exception e)
+                    {
+                        log("Exception while deleting stale cache " + e);
+                    }
                 }
-
-                CreateCache();
+                else
+                {
+                    CreateCache();
+                }
+                
                 SaveModdedTechTree();
                 SaveModdedPhysics();
             }
