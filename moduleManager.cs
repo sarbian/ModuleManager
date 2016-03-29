@@ -177,20 +177,20 @@ namespace ModuleManager
                     offsetY += 25;
                 }
 
-                if (IsABadIdea())
-                {
-                    GUIStyle centeredWarningStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
-                    {
-                        alignment = TextAnchor.UpperCenter,
-                        fontSize = 16,
-                        normal = { textColor = Color.yellow }
-                    };
-                    const string warning = "You are using 64-bit KSP on Windows. This version of KSP is known to cause crashes unrelated to mods.";
-                    Vector2 sizeOfWarningLabel = centeredWarningStyle.CalcSize(new GUIContent(warning));
-
-                    GUI.Label(new Rect(Screen.width / 2f - (sizeOfWarningLabel.x / 2f), offsetY, sizeOfWarningLabel.x, sizeOfWarningLabel.y), warning, centeredWarningStyle);
-                    offsetY += sizeOfWarningLabel.y;
-                }
+                //if (IsABadIdea())
+                //{
+                //    GUIStyle centeredWarningStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
+                //    {
+                //        alignment = TextAnchor.UpperCenter,
+                //        fontSize = 16,
+                //        normal = { textColor = Color.yellow }
+                //    };
+                //    const string warning = "You are using 64-bit KSP on Windows. This version of KSP is known to cause crashes unrelated to mods.";
+                //    Vector2 sizeOfWarningLabel = centeredWarningStyle.CalcSize(new GUIContent(warning));
+                //
+                //    GUI.Label(new Rect(Screen.width / 2f - (sizeOfWarningLabel.x / 2f), offsetY, sizeOfWarningLabel.x, sizeOfWarningLabel.y), warning, centeredWarningStyle);
+                //    offsetY += sizeOfWarningLabel.y;
+                //}
 
                 GUIStyle centeredStyle = new GUIStyle(GUI.skin.GetStyle("Label"))
                 {
@@ -214,7 +214,7 @@ namespace ModuleManager
                 }
 
 
-                if (IsABadIdea() || nyan)
+                if (nyan)
                 {
                     GUI.color = Color.white;
                     int scale = 1;
@@ -262,11 +262,14 @@ namespace ModuleManager
             }
         }
 
+        
         internal static IntPtr intPtr = new IntPtr(long.MaxValue);
+        /* Not required anymore. At least
         public static bool IsABadIdea()
         {
             return (intPtr.ToInt64() == long.MaxValue) && (Environment.OSVersion.Platform == PlatformID.Win32NT);
         }
+        */
 
         private void WindowGUI(int windowID)
         {
@@ -382,10 +385,13 @@ namespace ModuleManager
                 string status =
                     "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" +
                     String.Join("\n", badPaths.ToArray());
-                PopupDialog.SpawnPopupDialog("Old versions of Module Manager", status, "OK", false, HighLogic.Skin);
+                PopupDialog.SpawnPopupDialog(new Vector2(0f, 1f), new Vector2(0f, 1f), "Old versions of Module Manager", status, "OK", false, UISkinManager.defaultSkin);
                 log("Old version of Module Manager present. Stopping");
                 return false;
             }
+
+
+            //PopupDialog.SpawnPopupDialog(new Vector2(0.1f, 1f), new Vector2(0.2f, 1f), "Test of the dialog", "Stuff", "OK", false, UISkinManager.defaultSkin);
 
             Assembly currentAssembly = Assembly.GetExecutingAssembly();
             IEnumerable<AssemblyLoader.LoadedAssembly> eligible = from a in AssemblyLoader.loadedAssemblies
@@ -569,34 +575,34 @@ namespace ModuleManager
             // Build a list of subdirectory that won't be processed
             List<string> excludePaths = new List<string>();
 
-            if (ModuleManager.IsABadIdea())
-            {
-                foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
-                {
-                    if (mod.name == "MODULEMANAGER[NOWIN64]")
-                    {
-                        string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
-                        string excludepath = fullpath.Substring(0, fullpath.LastIndexOf('/'));
-                        excludePaths.Add(excludepath);
-                        log("excludepath: " + excludepath);
-                    }
-                }
-                if (excludePaths.Any())
-                    log("will not process patches in these subdirectories since they were disbaled on KSP Win64:\n" + String.Join("\n", excludePaths.ToArray()));
-            }
+            //if (ModuleManager.IsABadIdea())
+            //{
+            //    foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
+            //    {
+            //        if (mod.name == "MODULEMANAGER[NOWIN64]")
+            //        {
+            //            string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
+            //            string excludepath = fullpath.Substring(0, fullpath.LastIndexOf('/'));
+            //            excludePaths.Add(excludepath);
+            //            log("excludepath: " + excludepath);
+            //        }
+            //    }
+            //    if (excludePaths.Any())
+            //        log("will not process patches in these subdirectories since they were disbaled on KSP Win64:\n" + String.Join("\n", excludePaths.ToArray()));
+            //}
 
             #endregion Excluding directories
 
             #region List of mods
 
-            string envInfo = "ModuleManager env info\n";
-            envInfo += "  " + Environment.OSVersion.Platform + " " + ModuleManager.intPtr.ToInt64().ToString("X16") + "\n";
+            //string envInfo = "ModuleManager env info\n";
+            //envInfo += "  " + Environment.OSVersion.Platform + " " + ModuleManager.intPtr.ToInt64().ToString("X16") + "\n";
             //envInfo += "  " + Convert.ToString(ModuleManager.intPtr.ToInt64(), 2)  + " " + Convert.ToString(ModuleManager.intPtr.ToInt64() >> 63, 2) + "\n";
-            string gamePath = Environment.GetCommandLineArgs()[0];
-            envInfo += "  Args: " + gamePath.Split(Path.DirectorySeparatorChar).Last() + " " + string.Join(" ", Environment.GetCommandLineArgs().Skip(1).ToArray()) + "\n";
-            envInfo += "  Executable SHA256 " + FileSHA(gamePath);
-
-            log(envInfo);
+            //string gamePath = Environment.GetCommandLineArgs()[0];
+            //envInfo += "  Args: " + gamePath.Split(Path.DirectorySeparatorChar).Last() + " " + string.Join(" ", Environment.GetCommandLineArgs().Skip(1).ToArray()) + "\n";
+            //envInfo += "  Executable SHA256 " + FileSHA(gamePath);
+            //
+            //log(envInfo);
 
             mods = new List<string>();
 
