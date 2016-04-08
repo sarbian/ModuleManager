@@ -1012,6 +1012,14 @@ namespace ModuleManager
                 
             }
 
+            // Hash the mods dll path so the checksum change if dlls are moved or removed (impact NEEDS)
+            foreach (AssemblyLoader.LoadedAssembly dll in AssemblyLoader.loadedAssemblies)
+            {
+                string path = dll.url + "/" + dll.name;
+                byte[] pathBytes = Encoding.UTF8.GetBytes(path);
+                sha.TransformBlock(pathBytes, 0, pathBytes.Length, pathBytes, 0);
+            }
+
             configSha = BitConverter.ToString(sha.Hash);
             sha.Clear();
             filesha.Clear();
