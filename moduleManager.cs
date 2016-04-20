@@ -537,7 +537,7 @@ namespace ModuleManager
 
         public void Update()
         {
-            if (appliedPatchCount > 0)
+            if (appliedPatchCount > 0 && HighLogic.LoadedScene == GameScenes.LOADING)
                 StatusUpdate();
         }
 
