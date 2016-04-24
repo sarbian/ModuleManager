@@ -60,6 +60,9 @@ namespace ModuleManager
         {
             totalTime.Start();
 
+            // Allow loading the background in the laoding screen
+            Application.runInBackground = true;
+
             // Ensure that only one copy of the service is run per scene change.
             if (loadedInScene || !ElectionAndCheck())
             {
@@ -130,6 +133,9 @@ namespace ModuleManager
             {
                 totalTime.Stop();
                 log("Total loading Time = " + ((float)totalTime.ElapsedMilliseconds / 1000).ToString("F3") + "s");
+
+                Application.runInBackground = GameSettings.SIMULATE_IN_BACKGROUND;
+
             }
 
             if (reloading)
