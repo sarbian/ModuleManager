@@ -1562,6 +1562,11 @@ namespace ModuleManager
 
                                                     // TODO: do something sensible here.
                                                     break;
+
+                                                case Command.Create:
+
+                                                    // TODO: something similar to above
+                                                    break;
                                             }
                                             // When this special node is found then try to apply the patch once more on the same NODE
                                             if (mod.config.HasNode("MM_PATCH_LOOP"))
@@ -1879,6 +1884,35 @@ namespace ModuleManager
                         }
                         newNode.name = modVal.value;
                         break;
+
+                    case Command.Create:
+                        if (match.Groups[2].Success || match.Groups[5].Success || valName.Contains('*')
+                            || valName.Contains('?'))
+                        {
+                            if (match.Groups[2].Success)
+                                log("Error - Cannot use index with create (&) value: " + mod.name);
+                            if (match.Groups[5].Success)
+                                log("Error - Cannot use operators with create (&) value: " + mod.name);
+                            if (valName.Contains('*') || valName.Contains('?'))
+                                log("Error - Cannot use wildcards (* or ?) with create (&) value: " + mod.name);
+                            errorCount++;
+                        }
+                        else
+                        {
+                            varValue = ProcessVariableSearch(modVal.value, newNode);
+                            if (varValue != null)
+                            {
+                                if (!newNode.HasValue(valName))
+                                    newNode.AddValue(valName, varValue);
+                            }
+                            else
+                            {
+                                log("Error - Cannot parse variable search when replacing (%) key " + valName + " = " +
+                                    modVal.value);
+                                errorCount++;
+                            }
+                        }
+                        break;
                 }
             }
             //log(vals);
@@ -2020,8 +2054,47 @@ namespace ModuleManager
                         if (n != null)
                             subNodes.Add(n);
                     }
+                    
+                    if (command == Command.Replace)
+                    {
+                        // if the original exists modify it
+                        if (subNodes.Count > 0)
+                        {
+                            msg += "  Applying subnode " + subMod.name + "\n";
+                            ConfigNode newSubNode = ModifyNode(subNodes[0], subMod);
+                            subNodes[0].ClearData();
+                            newSubNode.CopyTo(subNodes[0], newSubNode.name);
+                        }
+                        else
+                        {
+                            // if not add the mod node without the % in its name
+                            msg += "  Adding subnode " + subMod.name + "\n";
 
-                    if (command != Command.Replace)
+                            ConfigNode copy = new ConfigNode(nodeType);
+
+                            if (nodeName != null)
+                                copy.AddValue("name", nodeName);
+
+                            ConfigNode newSubNode = ModifyNode(copy, subMod);
+                            newNode.nodes.Add(newSubNode);
+                        }
+                    }
+                    else if (command == Command.Create)
+                    {
+                        if (subNodes.Count == 0)
+                        {
+                            msg += "  Adding subnode " + subMod.name + "\n";
+
+                            ConfigNode copy = new ConfigNode(nodeType);
+
+                            if (nodeName != null)
+                                copy.AddValue("name", nodeName);
+
+                            ConfigNode newSubNode = ModifyNode(copy, subMod);
+                            newNode.nodes.Add(newSubNode);
+                        }
+                    }
+                    else
                     {
                         // find each original subnode to modify, modify it and add the modified.
                         if (subNodes.Count == 0) // no nodes to modify!
@@ -2054,30 +2127,6 @@ namespace ModuleManager
                                     newNode.nodes.Add(newSubNode);
                                     break;
                             }
-                        }
-                    }
-                    else // command == Command.Replace
-                    {
-                        // if the original exists modify it
-                        if (subNodes.Count > 0)
-                        {
-                            msg += "  Applying subnode " + subMod.name + "\n";
-                            ConfigNode newSubNode = ModifyNode(subNodes[0], subMod);
-                            subNodes[0].ClearData();
-                            newSubNode.CopyTo(subNodes[0], newSubNode.name);
-                        }
-                        else
-                        {
-                            // if not add the mod node without the % in its name
-                            msg += "  Adding subnode " + subMod.name + "\n";
-
-                            ConfigNode copy = new ConfigNode(nodeType);
-
-                            if (nodeName != null)
-                                copy.AddValue("name", nodeName);
-
-                            ConfigNode newSubNode = ModifyNode(copy, subMod);
-                            newNode.nodes.Add(newSubNode);
                         }
                     }
 
@@ -2561,7 +2610,9 @@ namespace ModuleManager
 
             Paste,
 
-            Special
+            Special,
+
+            Create
         }
 
         private static Command ParseCommand(string name, out string valueName)
@@ -2602,6 +2653,10 @@ namespace ModuleManager
 
                 case '*':
                     ret = Command.Special;
+                    break;
+
+                case '&':
+                    ret = Command.Create;
                     break;
 
                 default:
