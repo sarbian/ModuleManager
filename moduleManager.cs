@@ -2772,9 +2772,21 @@ namespace ModuleManager
 
                         // @MODULE[ModuleAlternator] or !MODULE[ModuleAlternator]
                         bool not = (constraints[0] == '!');
-                        ConfigNode subNode = MMPatchLoader.FindConfigNodeIn(node, type, name);
-                        if (subNode != null)
-                            return not ^ CheckConstraints(subNode, remainingConstraints);
+
+                        bool any = false;
+                        int index = 0;
+                        ConfigNode last = null;
+                        while (true)
+                        {
+                            ConfigNode subNode = FindConfigNodeIn(node, type, name, index++);
+                            if (subNode == last || subNode == null)
+                                break;
+                            any = any || CheckConstraints(subNode, remainingConstraints);
+                            last = subNode;
+                        }
+                        if (last != null)
+                            return not ^ any;
+
                         return not ^ false;
 
                     case '#':
