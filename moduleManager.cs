@@ -1948,15 +1948,18 @@ namespace ModuleManager
                 {
                     ConfigNode newSubMod = new ConfigNode(subMod.name);
                     newSubMod = ModifyNode(newSubMod, subMod);
+                    subName = newSubMod.name;
                     int index;
                     if (subName.Contains(",") && int.TryParse(subName.Split(',')[1], out index))
                     {
                         // In this case insert the node at position index (with the same node names)
-                        subMod.name = subName.Split(',')[0];
+                        newSubMod.name = subName.Split(',')[0];
                         InsertNode(newNode, newSubMod, index);
                     }
                     else
+                    {
                         newNode.AddNode(newSubMod);
+                    }
                 }
                 else if (command == Command.Paste)
                 {
