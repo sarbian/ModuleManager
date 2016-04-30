@@ -17,7 +17,7 @@ using System.Runtime.CompilerServices;
 // The form "{Major}.{Minor}.*" will automatically update the build and revision,
 // and "{Major}.{Minor}.{Build}.*" will update just the revision.
 
-[assembly: AssemblyVersion("2.6.23")]
+[assembly: AssemblyVersion("2.6.24")]
 [assembly: KSPAssembly("ModuleManager", 2, 5)]
 
 // The following attributes are used to specify the signing key for the assembly, 
