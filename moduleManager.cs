@@ -2482,10 +2482,10 @@ namespace ModuleManager
 
                 for (int i = 1; i < split.Length - 1; i = i + 2)
                 {
-                    string result = RecurseVariableSearch(split[i], node).value;
-                    if (result == null)
+                    ConfigNode.Value result = RecurseVariableSearch(split[i], node);
+                    if (result == null || result.value == null)
                         return null;
-                    builder.Append(result);
+                    builder.Append(result.value);
                     builder.Append(split[i + 1]);
                 }
                 value = builder.ToString();
