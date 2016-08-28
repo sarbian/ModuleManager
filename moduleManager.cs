@@ -822,7 +822,7 @@ namespace ModuleManager
 #endif
 
             // TODO : Remove if we ever get a way to load sooner
-            log("Reloading ressources definitions");
+            log("Reloading resources definitions");
             PartResourceLibrary.Instance.LoadDefinitions();
 
             foreach (ModuleManagerPostPatchCallback callback in postPatchCallbacks)
