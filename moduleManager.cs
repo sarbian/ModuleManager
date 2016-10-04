@@ -469,20 +469,18 @@ namespace ModuleManager
 
         private static ConfigNode topNode;
 
-        private static string cachePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData"
-                          + Path.DirectorySeparatorChar + "ModuleManager.ConfigCache";
+        private static string cachePath = null;
 
         internal static readonly string techTreeFile = "GameData" + Path.DirectorySeparatorChar + "ModuleManager.TechTree";
-        internal static readonly string techTreePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + techTreeFile;
+        internal static string techTreePath = null;
 
         internal static readonly string physicsFile = "GameData" + Path.DirectorySeparatorChar + "ModuleManager.Physics";
-        internal static readonly string physicsPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + physicsFile;
-        private static readonly string defaultPhysicsPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "Physics.cfg";
+        internal static string physicsPath = null;
+        private static string defaultPhysicsPath = null;
 
-        internal static readonly string partDatabasePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "PartDatabase.cfg";
+        internal static string partDatabasePath = null;
 
-        private static readonly string shaPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData"
-                          + Path.DirectorySeparatorChar + "ModuleManager.ConfigSHA";
+        private static string shaPath = null;
 
         private UrlDir.UrlFile physicsUrlFile;
 
@@ -506,6 +504,33 @@ namespace ModuleManager
             {
                 DestroyImmediate(this);
                 return;
+            }
+
+            if (cachePath == null)
+            {
+                cachePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData"
+                          + Path.DirectorySeparatorChar + "ModuleManager.ConfigCache";
+            }
+            if (techTreePath == null)
+            {
+                techTreePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + techTreeFile;
+            }
+            if (physicsPath == null)
+            {
+                physicsPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + physicsFile;
+            }
+            if (defaultPhysicsPath == null)
+            {
+                defaultPhysicsPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "Physics.cfg";
+            }
+            if (partDatabasePath == null)
+            {
+                partDatabasePath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "PartDatabase.cfg";
+            }
+            if (shaPath == null)
+            {
+                shaPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData"
+                          + Path.DirectorySeparatorChar + "ModuleManager.ConfigSHA";
             }
             Instance = this;
             DontDestroyOnLoad(gameObject);
