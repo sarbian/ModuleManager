@@ -11,13 +11,13 @@ namespace ModuleManager
         {
             if (HighLogic.CurrentGame.Parameters.Career.TechTreeUrl != MMPatchLoader.techTreeFile &&  File.Exists(MMPatchLoader.techTreePath))
             {
-                log("Setting moddeed tech tree as the active one");
+                log("Setting modded tech tree as the active one");
                 HighLogic.CurrentGame.Parameters.Career.TechTreeUrl = MMPatchLoader.techTreeFile;
             }
 
             if (PhysicsGlobals.PhysicsDatabaseFilename != MMPatchLoader.physicsFile && File.Exists(MMPatchLoader.physicsPath))
             {
-                log("Setting moddeed physics as the active one");
+                log("Setting modded physics as the active one");
 
                 PhysicsGlobals.PhysicsDatabaseFilename = MMPatchLoader.physicsFile;
 
