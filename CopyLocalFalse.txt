@@ -1,0 +1,2 @@
+﻿Copy Local has been set to false for all dependencies.
+Remark by Jan Van der Haegen: This file has been added because Nuget would installs packages to the solution instead of the project if there are only PowerShell scripts... (So yes: it's safe to remove this file!)

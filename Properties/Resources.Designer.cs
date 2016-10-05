@@ -63,11 +63,111 @@ namespace ModuleManager.Properties {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] cat {
+        internal static byte[] cat1 {
             get {
-                object obj = ResourceManager.GetObject("cat", resourceCulture);
+                object obj = ResourceManager.GetObject("cat-1", resourceCulture);
                 return ((byte[])(obj));
             }
         }
+
+        internal static byte[] cat2
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("cat-2", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+
+        internal static byte[] cat3
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("cat-3", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        internal static byte[] cat4
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("cat-4", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        internal static byte[] cat5
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("cat-5", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        internal static byte[] cat6
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("cat-6", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        internal static byte[] cat7
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("cat-7", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        internal static byte[] cat8
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("cat-8", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        internal static byte[] cat9
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("cat-9", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        internal static byte[] cat10
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("cat-10", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        internal static byte[] cat11
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("cat-11", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        internal static byte[] cat12
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("cat-12", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+
+        internal static byte[] rainbow
+        {
+            get
+            {
+                object obj = ResourceManager.GetObject("rainbow2", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+
     }
 }

@@ -118,7 +118,43 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <assembly alias="System.Windows.Forms" name="System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089" />
-  <data name="cat" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>cat;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  <data name="cat-1" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>cat-1.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="cat-10" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>cat-10.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="cat-11" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>cat-11.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="cat-12" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>cat-12.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="cat-2" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>cat-2.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="cat-3" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>cat-3.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="cat-4" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>cat-4.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="cat-5" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>cat-5.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="cat-6" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>cat-6.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="cat-7" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>cat-7.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="cat-8" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>cat-8.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="cat-9" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>cat-9.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </data>
+  <data name="rainbow2" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>rainbow2.png;System.Byte[], mscorlib, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
 </root>
