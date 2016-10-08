@@ -353,7 +353,7 @@ namespace ModuleManager
 
             log("DB Reload OK with patchCount=" + MMPatchLoader.Instance.patchedNodeCount + " errorCount=" +
                 MMPatchLoader.Instance.errorCount + " needsUnsatisfiedCount=" +
-                MMPatchLoader.Instance.needsUnsatisfiedCount);
+                MMPatchLoader.Instance.needsUnsatisfiedCount + " exceptionCount=" + MMPatchLoader.Instance.exceptionCount);
 
             PartResourceLibrary.Instance.LoadDefinitions();
 
@@ -478,6 +478,8 @@ namespace ModuleManager
         public int patchedNodeCount = 0;
 
         public int errorCount = 0;
+
+        public int exceptionCount = 0;
 
         public int needsUnsatisfiedCount = 0;
 
@@ -707,6 +709,7 @@ namespace ModuleManager
                         {
                             log("Skipping :FOR init for line " + name +
                                 ". The line most likely contain a space that should be removed");
+                            errorCount++;
                         }
                     }
                 }
@@ -1292,7 +1295,11 @@ namespace ModuleManager
             status = "ModuleManager: " + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") + (useCache ? " loaded from cache" : " applied");
 
             if (errorCount > 0)
-                status += ", found " + errorCount + " error" + (errorCount != 1 ? "s" : "");
+                status += ", found <color=orange>" + errorCount + " error" + (errorCount != 1 ? "s" : "") + "</color>";
+
+            if (exceptionCount > 0)
+                status += ", encountered <color=red>" + exceptionCount + " exception" + (exceptionCount != 1 ? "s" : "") + "</color>";
+
             if (catEatenCount > 0)
                 status += ", " + catEatenCount + " patch" + (catEatenCount != 1 ? "es were" : " was") + " eaten by the Win64 cat";
         }
@@ -1351,6 +1358,7 @@ namespace ModuleManager
                 {
                     log("Exception while checking needs : " + currentMod.url + " with a type of " + currentMod.type + "\n" + ex);
                     log("Node is : " + PrettyConfig(currentMod));
+                    exceptionCount++;
                 }
             }
         }
@@ -1640,7 +1648,8 @@ namespace ModuleManager
                 catch (Exception e)
                 {
                     log("Exception while processing node : " + mod.url + "\n" + e);
-                    log(PrettyConfig(mod));
+                    exceptionCount++;
+                    log("Processed node was\n" + PrettyConfig(mod));
                     mod.parent.configs.Remove(mod);
                 }
                 finally
