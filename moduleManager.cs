@@ -1657,7 +1657,7 @@ namespace ModuleManager
         }
 
         // Name is group 1, index is group 2, vector related filed is group 3, vector separator is group 4, operator is group 5
-        private static Regex parseValue = new Regex(@"([\w\&\-\.\?\*]*)(?:,(-?[0-9\*]+))?(?:\[((?:[0-9\*]+)+)(?:,(.))?\])?(?:\s([+\-*/^!]))?");
+        private static Regex parseValue = new Regex(@"([\w\&\-\.\?\*]+(?:,\D[\w\&\-\.\?\*]*)*)(?:,(-?[0-9\*]+))?(?:\[((?:[0-9\*]+)+)(?:,(.))?\])?(?:\s([+\-*/^!]))?");
 
         // Path is group 1, operator is group 5
         private static Regex parseAssign = new Regex(@"(.*)(?:\s)+([+\-*/^!])?");
