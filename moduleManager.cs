@@ -753,6 +753,10 @@ namespace ModuleManager
 
         private IEnumerator ProcessPatch(bool blocking)
         {
+            status = "Checking Cache";
+            log(status);
+            yield return null;
+            
             try
             {
                 IsCacheUpToDate();
@@ -766,15 +770,17 @@ namespace ModuleManager
 #if DEBUG
             //useCache = false;
 #endif
-
-            yield return null;
-
-            List<string> excludePaths = PrePatchInit();
-
-            yield return null;
-
             if (!useCache)
             {
+                status = "Pre patch init";
+                log(status);
+                yield return null;
+
+                List<string> excludePaths = PrePatchInit();
+
+                yield return null;
+
+
                 // If we don't use the cache then it is best to clean the PartDatabase.cfg
                 if (!keepPartDB && File.Exists(partDatabasePath))
                     File.Delete(partDatabasePath);
@@ -783,18 +789,22 @@ namespace ModuleManager
 
                 #region Check Needs
 
-                // Do filtering with NEEDS
-                log("Checking NEEDS.");
 
+
+                // Do filtering with NEEDS
+                status = "Checking NEEDS.";
+                log(status);
+                yield return null;
                 CheckNeeds(excludePaths);
 
                 #endregion Check Needs
 
-                yield return null;
-
                 #region Applying patches
 
-                log("Applying patches");
+                status = "Applying patches";
+                log(status);
+
+                yield return null;
 
                 // :First node
                 yield return StartCoroutine(ApplyPatch(excludePaths, ":FIRST"), blocking);
@@ -842,6 +852,9 @@ namespace ModuleManager
                 }
                 else
                 {
+                    status = "Saving Cache";
+                    log(status);
+                    yield return null;
                     CreateCache();
                 }
                 
@@ -850,7 +863,9 @@ namespace ModuleManager
             }
             else
             {
-                log("Loading from Cache");
+                status = "Loading from Cache";
+                log(status);
+                yield return null;
                 LoadCache();
             }
 
@@ -1511,7 +1526,9 @@ namespace ModuleManager
         // Apply patch to all relevent nodes
         public IEnumerator ApplyPatch(List<string> excludePaths, string Stage)
         {
+            StatusUpdate();
             log(Stage + (Stage == ":LEGACY" ? " (default) pass" : " pass"));
+            yield return null;
 
             activity = "ModuleManager " + Stage;
 
@@ -1662,9 +1679,12 @@ namespace ModuleManager
                 if (nextYield < Time.realtimeSinceStartup)
                 {
                     nextYield = Time.realtimeSinceStartup + yieldInterval;
+                    StatusUpdate();
                     yield return null;
                 }
             }
+            StatusUpdate();
+            yield return null;
         }
 
         // Name is group 1, index is group 2, vector related filed is group 3, vector separator is group 4, operator is group 5
