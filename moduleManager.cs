@@ -813,14 +813,13 @@ namespace ModuleManager
                 // :Final node
                 yield return StartCoroutine(ApplyPatch(excludePaths, ":FINAL"), blocking);
 
-
                 PurgeUnused(excludePaths);
 
                 #endregion Applying patches
 
                 #region Logging
 
-                if (errorCount > 0)
+                if (errorCount > 0 || exceptionCount > 0)
                 {
                     foreach (string file in errorFiles.Keys)
                     {
@@ -1524,6 +1523,7 @@ namespace ModuleManager
             {
                 UrlDir.UrlConfig mod = allConfigs[modsIndex];
                 int lastErrorCount = errorCount;
+                int lastExceptionCount = exceptionCount;
                 try
                 {
                     string name = RemoveWS(mod.type);
@@ -1656,8 +1656,8 @@ namespace ModuleManager
                 }
                 finally
                 {
-                    if (lastErrorCount < errorCount)
-                        addErrorFiles(mod.parent, errorCount - lastErrorCount);
+                    if (lastErrorCount < errorCount || lastExceptionCount < exceptionCount)
+                        addErrorFiles(mod.parent, errorCount - lastErrorCount + exceptionCount - lastExceptionCount);
                 }
                 if (nextYield < Time.realtimeSinceStartup)
                 {
