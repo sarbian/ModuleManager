@@ -562,7 +562,6 @@ namespace ModuleManager
             {
                 patchSw.Stop();
                 log("Ran in " + ((float)patchSw.ElapsedMilliseconds / 1000).ToString("F3") + "s");
-
             }
             return ready;
         }
@@ -2339,10 +2338,10 @@ namespace ModuleManager
                 if (constraint.Length > 0)
                 {
                     // get the first one matching
-                    ConfigNode n, last = null;
+                    ConfigNode last = null;
                     while (true)
                     {
-                        n = FindConfigNodeIn(currentNode, nodeType, nodeName, index++);
+                        ConfigNode n = FindConfigNodeIn(currentNode, nodeType, nodeName, index++);
                         if (n == last || n == null)
                         {
                             currentNode = null;
@@ -2493,10 +2492,10 @@ namespace ModuleManager
                 if (constraint.Length > 0)
                 {
                     // get the first one matching
-                    ConfigNode n, last = null;
+                    ConfigNode last = null;
                     while (true)
                     {
-                        n = FindConfigNodeIn(currentNode, nodeType, nodeName, index++);
+                        ConfigNode n = FindConfigNodeIn(currentNode, nodeType, nodeName, index++);
                         if (n == last || n == null)
                             break;
                         if (CheckConstraints(n, constraint))
