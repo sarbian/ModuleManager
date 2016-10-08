@@ -9,7 +9,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 using Debug = UnityEngine.Debug;
 
 namespace ModuleManager
@@ -2788,6 +2787,8 @@ namespace ModuleManager
             return conditions;
         }
 
+        static readonly char[] contraintSeparators = { '[', ']' };
+
         public static bool CheckConstraints(ConfigNode node, string constraints)
         {
             constraints = RemoveWS(constraints);
@@ -2809,8 +2810,7 @@ namespace ModuleManager
                     constraints = constraints.Substring(0, start - 5);
                 }
 
-                char[] sep = { '[', ']' };
-                string[] splits = constraints.Split(sep, 3);
+                string[] splits = constraints.Split(contraintSeparators, 3);
                 string type = splits[0].Substring(1);
                 string name = splits.Length > 1 ? splits[1] : null;
 
@@ -2876,7 +2876,12 @@ namespace ModuleManager
                         return false;
                 }
             }
-            bool ret3 = constraintList.TrueForAll(c => CheckConstraints(node, c));
+
+            bool ret3 = true;
+            foreach (string constraint in constraintList)
+            {
+                ret3 = ret3 && CheckConstraints(node, constraint);
+            }
             //print("CheckConstraints: " + constraints + " " + ret3);
             return ret3;
         }
