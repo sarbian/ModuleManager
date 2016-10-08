@@ -1686,11 +1686,14 @@ namespace ModuleManager
 
             #region Values
 
+            #if LOGSPAM
             string vals = "[ModuleManager] modding values";
+            #endif
             foreach (ConfigNode.Value modVal in mod.values)
             {
+                #if LOGSPAM
                 vals += "\n   " + modVal.name + "= " + modVal.value;
-
+                #endif
                 string valName;
                 Command cmd = ParseCommand(modVal.name, out valName);
 
@@ -1873,8 +1876,10 @@ namespace ModuleManager
 
                                 if (value != null)
                                 {
+                                    #if LOGSPAM
                                     if (origVal.value != value)
                                         vals += ": " + origVal.value + " -> " + value;
+                                    #endif
 
                                     if (cmd != Command.Copy)
                                         origVal.value = value;
@@ -1971,7 +1976,9 @@ namespace ModuleManager
                         break;
                 }
             }
-            //log(vals);
+            #if LOGSPAM
+            log(vals);
+            #endif
 
             #endregion Values
 
@@ -2051,8 +2058,9 @@ namespace ModuleManager
                     string tag = "";
                     string nodeType, nodeName;
                     int index = 0;
+                    #if LOGSPAM
                     string msg = "";
-
+                    #endif
                     List<ConfigNode> subNodes = new List<ConfigNode>();
 
                     // three ways to specify:
@@ -2090,9 +2098,7 @@ namespace ModuleManager
                     if (tag == "*" || constraints.Length > 0)
                     {
                         // get ALL nodes
-                        if (command == Command.Replace)
-                            msg += "  cannot wildcard a % node: " + subMod.name + "\n";
-                        else
+                        if (command != Command.Replace)
                         {
                             ConfigNode n, last = null;
                             while (true)
@@ -2105,6 +2111,10 @@ namespace ModuleManager
                                 last = n;
                             }
                         }
+#if LOGSPAM
+                        else
+                            msg += "  cannot wildcard a % node: " + subMod.name + "\n";
+#endif
                     }
                     else
                     {
@@ -2119,7 +2129,9 @@ namespace ModuleManager
                         // if the original exists modify it
                         if (subNodes.Count > 0)
                         {
+                            #if LOGSPAM
                             msg += "  Applying subnode " + subMod.name + "\n";
+                            #endif
                             ConfigNode newSubNode = ModifyNode(subNodes[0], subMod);
                             subNodes[0].ClearData();
                             newSubNode.CopyTo(subNodes[0], newSubNode.name);
@@ -2127,7 +2139,9 @@ namespace ModuleManager
                         else
                         {
                             // if not add the mod node without the % in its name
+                            #if LOGSPAM
                             msg += "  Adding subnode " + subMod.name + "\n";
+                            #endif
 
                             ConfigNode copy = new ConfigNode(nodeType);
 
@@ -2142,7 +2156,9 @@ namespace ModuleManager
                     {
                         if (subNodes.Count == 0)
                         {
+                            #if LOGSPAM
                             msg += "  Adding subnode " + subMod.name + "\n";
+                            #endif
 
                             ConfigNode copy = new ConfigNode(nodeType);
 
@@ -2156,12 +2172,16 @@ namespace ModuleManager
                     else
                     {
                         // find each original subnode to modify, modify it and add the modified.
+                        #if LOGSPAM
                         if (subNodes.Count == 0) // no nodes to modify!
                             msg += "  Could not find node(s) to modify: " + subMod.name + "\n";
+                        #endif
 
                         foreach (ConfigNode subNode in subNodes)
                         {
+                            #if LOGSPAM
                             msg += "  Applying subnode " + subMod.name + "\n";
+                            #endif
                             ConfigNode newSubNode;
                             switch (command)
                             {
@@ -2188,8 +2208,9 @@ namespace ModuleManager
                             }
                         }
                     }
-
-                    //print(msg);
+                    #if LOGSPAM
+                    print(msg);
+                    #endif
                 }
             }
 
