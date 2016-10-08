@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -468,6 +469,8 @@ namespace ModuleManager
 
     public delegate void ModuleManagerPostPatchCallback();
 
+    [SuppressMessage("ReSharper", "StringLastIndexOfIsCultureSpecific.1")]
+    [SuppressMessage("ReSharper", "StringIndexOfIsCultureSpecific.1")]
     public class MMPatchLoader : LoadingSystem
     {
         public int totalPatchCount = 0;
