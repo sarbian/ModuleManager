@@ -2835,10 +2835,10 @@ namespace ModuleManager
                         }
                         if (last != null)
                         {
-                            print("CheckConstraints: " + constraints + " " + (not ^ any));
+                            //print("CheckConstraints: " + constraints + " " + (not ^ any));
                             return not ^ any;
                         }
-                        print("CheckConstraints: " + constraints + " " + (not ^ false));
+                        //print("CheckConstraints: " + constraints + " " + (not ^ false));
                         return not ^ false;
 
                     case '#':
@@ -2847,10 +2847,10 @@ namespace ModuleManager
                         if (node.HasValue(type) && WildcardMatchValues(node, type, name))
                         {
                             bool ret2 = CheckConstraints(node, remainingConstraints);
-                            print("CheckConstraints: " + constraints + " " + ret2);
+                            //print("CheckConstraints: " + constraints + " " + ret2);
                             return ret2;
                         }
-                        print("CheckConstraints: " + constraints + " false");
+                        //print("CheckConstraints: " + constraints + " false");
                         return false;
 
                     case '~':
@@ -2859,25 +2859,25 @@ namespace ModuleManager
                         // or: ~breakingForce[100]  will be true if it's present but not 100, too.
                         if (name == "" && node.HasValue(type))
                         {
-                            print("CheckConstraints: " + constraints + " false");
+                            //print("CheckConstraints: " + constraints + " false");
                             return false;
                         }
                         if (name != "" && WildcardMatchValues(node, type, name))
                         {
-                            print("CheckConstraints: " + constraints + " false");
+                            //print("CheckConstraints: " + constraints + " false");
                             return false;
                         }
                         bool ret = CheckConstraints(node, remainingConstraints);
-                        print("CheckConstraints: " + constraints + " " + ret);
+                        //print("CheckConstraints: " + constraints + " " + ret);
                         return ret;
 
                     default:
-                        print("CheckConstraints: " + constraints + " false");
+                        //print("CheckConstraints: " + constraints + " false");
                         return false;
                 }
             }
             bool ret3 = constraintList.TrueForAll(c => CheckConstraints(node, c));
-            print("CheckConstraints: " + constraints + " " + ret3);
+            //print("CheckConstraints: " + constraints + " " + ret3);
             return ret3;
         }
 
