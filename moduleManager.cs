@@ -769,16 +769,17 @@ namespace ModuleManager
 #if DEBUG
             //useCache = false;
 #endif
+
+            status = "Pre patch init";
+            log(status);
+            yield return null;
+
+            List<string> excludePaths = PrePatchInit();
+
+
             if (!useCache)
             {
-                status = "Pre patch init";
-                log(status);
                 yield return null;
-
-                List<string> excludePaths = PrePatchInit();
-
-                yield return null;
-
 
                 // If we don't use the cache then it is best to clean the PartDatabase.cfg
                 if (!keepPartDB && File.Exists(partDatabasePath))
