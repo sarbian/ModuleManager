@@ -709,7 +709,7 @@ namespace ModuleManager
                         catch (ArgumentOutOfRangeException)
                         {
                             log("Skipping :FOR init for line " + name +
-                                ". The line most likely contain a space that should be removed");
+                                ". The line most likely contains a space that should be removed");
                             errorCount++;
                         }
                     }
@@ -1988,7 +1988,7 @@ namespace ModuleManager
                             }
                             else
                             {
-                                log("Error - Cannot parse variable search when replacing (%) key " + valName + " = " +
+                                log("Error - Cannot parse variable search when replacing (&) key " + valName + " = " +
                                     modVal.value);
                                 errorCount++;
                             }
