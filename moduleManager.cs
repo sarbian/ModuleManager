@@ -1821,6 +1821,11 @@ namespace ModuleManager
                     }
                 }
 
+                int valCount = 0;
+                for (int i=0; i<newNode.CountValues; i++)
+                    if (newNode.values[i].name == valName)
+                        valCount++;
+
                 char op = ' ';
                 if (match.Groups[5].Success)
                     op = match.Groups[5].Value[0];
@@ -1884,7 +1889,7 @@ namespace ModuleManager
                         // Format is @key = value or @key *= value or @key += value or @key -= value
                         // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value
 
-                        while (index < newNode.values.Count)
+                        while (index < valCount)
                         {
                             varValue = ProcessVariableSearch(modVal.value, newNode);
 
@@ -1926,7 +1931,7 @@ namespace ModuleManager
                         }
                         else if (match.Groups[2].Success)
                         {
-                            while (index < newNode.values.Count)
+                            while (index < valCount)
                             {
                                 // If there is an index, use it.
                                 ConfigNode.Value v = FindValueIn(newNode, valName, index);
