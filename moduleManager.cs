@@ -883,6 +883,9 @@ namespace ModuleManager
             log("Reloading resources definitions");
             PartResourceLibrary.Instance.LoadDefinitions();
 
+            log("Reloading Trait configs");
+            GameDatabase.Instance.ExperienceConfigs.LoadTraitConfigs();
+
             foreach (ModuleManagerPostPatchCallback callback in postPatchCallbacks)
             {
                 try
