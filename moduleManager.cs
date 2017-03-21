@@ -108,7 +108,9 @@ namespace ModuleManager
                 MMPatchLoader loader = aGameObject.AddComponent<MMPatchLoader>();
 
                 log(string.Format("Adding ModuleManager to the loading screen {0}", list.Count));
-                list.Insert(1, loader);
+
+                int gameDatabaseIndex = list.FindIndex(s => s is GameDatabase);
+                list.Insert(gameDatabaseIndex + 1, loader);
             }
             
             nyan = (DateTime.Now.Month == 4 && DateTime.Now.Day == 1)
