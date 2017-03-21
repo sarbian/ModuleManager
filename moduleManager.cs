@@ -37,6 +37,8 @@ namespace ModuleManager
 
         private bool nyan = false;
 
+        private PopupDialog menu;
+
         #endregion state
 
         #region Top Level - Update
@@ -236,38 +238,46 @@ namespace ModuleManager
                 && (HighLogic.LoadedScene == GameScenes.SPACECENTER || HighLogic.LoadedScene == GameScenes.MAINMENU)
                 && !inRnDCenter)
             {
-                PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f),
-                    new Vector2(0.5f, 0.5f),
-                    new MultiOptionDialog(
-                        "ModuleManagerMenu",
-                        "",
-                        "ModuleManager",
-                        HighLogic.UISkin,
-                        new Rect(0.5f, 0.5f, 150f, 60f),
-                        new DialogGUIFlexibleSpace(),
-                        new DialogGUIVerticalLayout(
+                if (menu == null)
+                {
+                    menu = PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f),
+                        new Vector2(0.5f, 0.5f),
+                        new MultiOptionDialog(
+                            "ModuleManagerMenu",
+                            "",
+                            "ModuleManager",
+                            HighLogic.UISkin,
+                            new Rect(0.5f, 0.5f, 150f, 60f),
                             new DialogGUIFlexibleSpace(),
-                            new DialogGUIButton("Reload Database",
-                                delegate
-                                {
-                                    MMPatchLoader.keepPartDB = false;
-                                    StartCoroutine(DataBaseReloadWithMM());
-                                }, 140.0f, 30.0f, true), 
-                            new DialogGUIButton("Quick Reload Database",
-                                delegate
-                                {
-                                    MMPatchLoader.keepPartDB = true;
-                                    StartCoroutine(DataBaseReloadWithMM());
-                                }, 140.0f, 30.0f, true),
-                            new DialogGUIButton("Dump Database to Files",
-                                delegate
-                                {
-                                    StartCoroutine(DataBaseReloadWithMM(true));
-                                }, 140.0f, 30.0f, true),
-                            new DialogGUIButton("Close",() => {}, 140.0f, 30.0f, true)
-                            )),
-                    false,
-                    HighLogic.UISkin);
+                            new DialogGUIVerticalLayout(
+                                new DialogGUIFlexibleSpace(),
+                                new DialogGUIButton("Reload Database",
+                                    delegate
+                                    {
+                                        MMPatchLoader.keepPartDB = false;
+                                        StartCoroutine(DataBaseReloadWithMM());
+                                    }, 140.0f, 30.0f, true),
+                                new DialogGUIButton("Quick Reload Database",
+                                    delegate
+                                    {
+                                        MMPatchLoader.keepPartDB = true;
+                                        StartCoroutine(DataBaseReloadWithMM());
+                                    }, 140.0f, 30.0f, true),
+                                new DialogGUIButton("Dump Database to Files",
+                                    delegate
+                                    {
+                                        StartCoroutine(DataBaseReloadWithMM(true));
+                                    }, 140.0f, 30.0f, true),
+                                new DialogGUIButton("Close", () => { }, 140.0f, 30.0f, true)
+                                )),
+                        false,
+                        HighLogic.UISkin);
+                }
+                else
+                {
+                    menu.Dismiss();
+                    menu = null;
+                }
             }
 
             if (totalTime.IsRunning && HighLogic.LoadedScene == GameScenes.MAINMENU)
