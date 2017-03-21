@@ -281,7 +281,7 @@ namespace ModuleManager
                 Application.runInBackground = GameSettings.SIMULATE_IN_BACKGROUND;
             }
 
-            float offsetY = Mathf.FloorToInt(0.3f * Screen.height);
+            float offsetY = Mathf.FloorToInt(0.23f * Screen.height);
             float h;
             if (warning)
             {
