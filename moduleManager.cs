@@ -35,9 +35,6 @@ namespace ModuleManager
         private Sprite[] catFrames;
         private Texture2D rainbow;
 
-
-        private int activePos = 0;
-
         private bool nyan = false;
 
         #endregion state
