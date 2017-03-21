@@ -239,7 +239,9 @@ namespace ModuleManager
             {
                 PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f),
                     new Vector2(0.5f, 0.5f),
-                    new MultiOptionDialog("",
+                    new MultiOptionDialog(
+                        "ModuleManagerMenu",
+                        "",
                         "ModuleManager",
                         HighLogic.UISkin,
                         new Rect(0.5f, 0.5f, 150f, 60f),
@@ -423,7 +425,7 @@ namespace ModuleManager
                 string status =
                     "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" +
                     String.Join("\n", badPaths.ToArray());
-                PopupDialog.SpawnPopupDialog(new Vector2(0f, 1f), new Vector2(0f, 1f), "Old versions of Module Manager", status, "OK", false, UISkinManager.defaultSkin);
+                PopupDialog.SpawnPopupDialog(new Vector2(0f, 1f), new Vector2(0f, 1f), "ModuleManagerOldVersions", "Old versions of Module Manager", status, "OK", false, UISkinManager.defaultSkin);
                 log("Old version of Module Manager present. Stopping");
                 return false;
             }
