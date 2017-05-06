@@ -367,6 +367,8 @@ namespace ModuleManager
                 MMPatchLoader.Instance.needsUnsatisfiedCount + " exceptionCount=" + MMPatchLoader.Instance.exceptionCount);
 
             PartResourceLibrary.Instance.LoadDefinitions();
+            
+            PartUpgradeManager.Handler.FillUpgrades();
 
             if (dump)
                 OutputAllConfigs();
@@ -896,6 +898,9 @@ namespace ModuleManager
 
             log("Reloading Trait configs");
             GameDatabase.Instance.ExperienceConfigs.LoadTraitConfigs();
+            
+            log("Reloading Part Upgrades");
+            PartUpgradeManager.Handler.FillUpgrades();
 
             foreach (ModuleManagerPostPatchCallback callback in postPatchCallbacks)
             {
