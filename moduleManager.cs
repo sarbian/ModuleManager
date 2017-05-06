@@ -35,9 +35,10 @@ namespace ModuleManager
         private Sprite[] catFrames;
         private Texture2D rainbow;
 
-        private bool nyan = false;
 
-        private PopupDialog menu;
+        private int activePos = 0;
+
+        private bool nyan = false;
 
         #endregion state
 
@@ -107,9 +108,7 @@ namespace ModuleManager
                 MMPatchLoader loader = aGameObject.AddComponent<MMPatchLoader>();
 
                 log(string.Format("Adding ModuleManager to the loading screen {0}", list.Count));
-
-                int gameDatabaseIndex = list.FindIndex(s => s is GameDatabase);
-                list.Insert(gameDatabaseIndex + 1, loader);
+                list.Insert(1, loader);
             }
             
             nyan = (DateTime.Now.Month == 4 && DateTime.Now.Day == 1)
@@ -238,46 +237,36 @@ namespace ModuleManager
                 && (HighLogic.LoadedScene == GameScenes.SPACECENTER || HighLogic.LoadedScene == GameScenes.MAINMENU)
                 && !inRnDCenter)
             {
-                if (menu == null)
-                {
-                    menu = PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f),
-                        new Vector2(0.5f, 0.5f),
-                        new MultiOptionDialog(
-                            "ModuleManagerMenu",
-                            "",
-                            "ModuleManager",
-                            HighLogic.UISkin,
-                            new Rect(0.5f, 0.5f, 150f, 60f),
+                PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f),
+                    new Vector2(0.5f, 0.5f),
+                    new MultiOptionDialog("",
+                        "ModuleManager",
+                        HighLogic.UISkin,
+                        new Rect(0.5f, 0.5f, 150f, 60f),
+                        new DialogGUIFlexibleSpace(),
+                        new DialogGUIVerticalLayout(
                             new DialogGUIFlexibleSpace(),
-                            new DialogGUIVerticalLayout(
-                                new DialogGUIFlexibleSpace(),
-                                new DialogGUIButton("Reload Database",
-                                    delegate
-                                    {
-                                        MMPatchLoader.keepPartDB = false;
-                                        StartCoroutine(DataBaseReloadWithMM());
-                                    }, 140.0f, 30.0f, true),
-                                new DialogGUIButton("Quick Reload Database",
-                                    delegate
-                                    {
-                                        MMPatchLoader.keepPartDB = true;
-                                        StartCoroutine(DataBaseReloadWithMM());
-                                    }, 140.0f, 30.0f, true),
-                                new DialogGUIButton("Dump Database to Files",
-                                    delegate
-                                    {
-                                        StartCoroutine(DataBaseReloadWithMM(true));
-                                    }, 140.0f, 30.0f, true),
-                                new DialogGUIButton("Close", () => { }, 140.0f, 30.0f, true)
-                                )),
-                        false,
-                        HighLogic.UISkin);
-                }
-                else
-                {
-                    menu.Dismiss();
-                    menu = null;
-                }
+                            new DialogGUIButton("Reload Database",
+                                delegate
+                                {
+                                    MMPatchLoader.keepPartDB = false;
+                                    StartCoroutine(DataBaseReloadWithMM());
+                                }, 140.0f, 30.0f, true), 
+                            new DialogGUIButton("Quick Reload Database",
+                                delegate
+                                {
+                                    MMPatchLoader.keepPartDB = true;
+                                    StartCoroutine(DataBaseReloadWithMM());
+                                }, 140.0f, 30.0f, true),
+                            new DialogGUIButton("Dump Database to Files",
+                                delegate
+                                {
+                                    StartCoroutine(DataBaseReloadWithMM(true));
+                                }, 140.0f, 30.0f, true),
+                            new DialogGUIButton("Close",() => {}, 140.0f, 30.0f, true)
+                            )),
+                    false,
+                    HighLogic.UISkin);
             }
 
             if (totalTime.IsRunning && HighLogic.LoadedScene == GameScenes.MAINMENU)
@@ -288,7 +277,7 @@ namespace ModuleManager
                 Application.runInBackground = GameSettings.SIMULATE_IN_BACKGROUND;
             }
 
-            float offsetY = Mathf.FloorToInt(0.23f * Screen.height);
+            float offsetY = Mathf.FloorToInt(0.3f * Screen.height);
             float h;
             if (warning)
             {
@@ -436,7 +425,7 @@ namespace ModuleManager
                 string status =
                     "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" +
                     String.Join("\n", badPaths.ToArray());
-                PopupDialog.SpawnPopupDialog(new Vector2(0f, 1f), new Vector2(0f, 1f), "ModuleManagerOldVersions", "Old versions of Module Manager", status, "OK", false, UISkinManager.defaultSkin);
+                PopupDialog.SpawnPopupDialog(new Vector2(0f, 1f), new Vector2(0f, 1f), "Old versions of Module Manager", status, "OK", false, UISkinManager.defaultSkin);
                 log("Old version of Module Manager present. Stopping");
                 return false;
             }
