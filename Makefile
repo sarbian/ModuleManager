@@ -7,7 +7,7 @@ INCLUDEFILES := $(wildcard *.cs) \
 	$(wildcard Properties/*.cs)
 
 RESGEN2 := resgen2
-GMCS    := /usr/bin/gmcs
+MCS     := /usr/bin/mcs
 GIT     := /usr/bin/git
 TAR     := /usr/bin/tar
 ZIP     := /usr/bin/zip
@@ -16,7 +16,7 @@ all: build
 
 info:
 	@echo "== ModuleManager Build Information =="
-	@echo "  gmcs:    ${GMCS}"
+	@echo "  mcs:     ${MCS}"
 	@echo "  git:     ${GIT}"
 	@echo "  tar:     ${TAR}"
 	@echo "  zip:     ${ZIP}"
@@ -26,7 +26,7 @@ info:
 build: info
 	mkdir -p build
 	${RESGEN2} -usesourcepath Properties/Resources.resx build/Resources.resources
-	${GMCS} -t:library -lib:${KSPDIR}/${MANAGED} \
+	${MCS} -t:library -lib:${KSPDIR}/${MANAGED} \
 		-r:Assembly-CSharp,Assembly-CSharp-firstpass,UnityEngine \
 		-out:build/ModuleManager.dll \
 		-resource:build/Resources.resources,ModuleManager.Properties.Resources.resources \
