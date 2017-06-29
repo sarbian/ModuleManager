@@ -36,6 +36,7 @@ namespace ModuleManager
         private Texture2D rainbow;
 
         private bool nyan = false;
+        private bool nCats = false;
 
         private PopupDialog menu;
 
@@ -115,6 +116,8 @@ namespace ModuleManager
             nyan = (DateTime.Now.Month == 4 && DateTime.Now.Day == 1)
                 || (DateTime.Now < new DateTime(2016, 11, 1))
                 || Environment.GetCommandLineArgs().Contains("-nyan-nyan");
+
+            nCats = Environment.GetCommandLineArgs().Contains("-ncats") ;
 
             loadedInScene = true;
         }
@@ -197,32 +200,68 @@ namespace ModuleManager
                 catFrames[i].name = "cat" + i;
             }
 
-            GameObject cat = new GameObject("NyanCat");
-            SpriteRenderer sr = cat.AddComponent<SpriteRenderer>();
-            TrailRenderer trail = cat.AddComponent<TrailRenderer>();
-            CatMover catMover = cat.AddComponent<CatMover>();
-
-            sr.sprite = catFrames[0];
-
-            trail.material = new Material(Shader.Find("Particles/Alpha Blended"));
-            Debug.Log("material = " + trail.material);
-            trail.material.mainTexture = rainbow;
-            trail.time = 1.5f;
-            trail.startWidth = rainbow.height;
-            trail.endWidth = rainbow.height * 0.9f;
-
-            cat.layer = LayerMask.NameToLayer("UI");
-
-            catMover.frames = catFrames;
-            int scale = 70;
-
-            scale *= 1;
+            int scale = 1;
             if (Screen.height >= 1080)
                 scale *= 2;
             if (Screen.height > 1440)
                 scale *= 3;
 
-            cat.transform.localScale = scale * Vector3.one;
+            Physics2D.gravity = Vector2.zero;
+
+
+            if (!nCats)
+            {
+                GameObject cat = LaunchCat(scale);
+                CatMover catMover = cat.AddComponent<CatMover>();
+            }
+            else
+            {
+                GameObject catSun = LaunchCat(scale);
+                CatOrbiter catSunOrbiter = catSun.AddComponent<CatOrbiter>();
+                catSunOrbiter.Init(null,0);
+
+                int cats = UnityEngine.Random.Range(6, 10);
+                for (int i = 0; i < cats; i++)
+                {
+                    GameObject cat = LaunchCat(scale);
+                    CatOrbiter catOrbiter = cat.AddComponent<CatOrbiter>();
+                    catOrbiter.Init(catSunOrbiter, Screen.height * 0.5f);
+
+                    int moons = UnityEngine.Random.Range(0, 4);
+
+                    for (int j = 0; j < moons; j++)
+                    {
+                        GameObject catMoon = LaunchCat(scale);
+                        CatOrbiter catMoonOrbiter = catMoon.AddComponent<CatOrbiter>();
+                        catMoonOrbiter.Init(catOrbiter, Screen.height * 0.06f);
+                    }
+                }
+            }
+        }
+
+        private GameObject LaunchCat(int scale)
+        {
+            GameObject cat = new GameObject("NyanCat");
+            SpriteRenderer sr = cat.AddComponent<SpriteRenderer>();
+            TrailRenderer trail = cat.AddComponent<TrailRenderer>();
+            CatAnimator catAnimator = cat.AddComponent<CatAnimator>();
+
+            sr.sprite = catFrames[0];
+
+            trail.material = new Material(Shader.Find("Particles/Alpha Blended"));
+
+            Debug.Log("material = " + trail.material);
+            trail.material.mainTexture = rainbow;
+            trail.time = 1.5f;
+            trail.startWidth = 0.6f * scale  * rainbow.height;
+            trail.endWidth = 0.6f * scale * rainbow.height * 0.9f;
+
+            cat.layer = LayerMask.NameToLayer("UI");
+
+            catAnimator.frames = catFrames;
+
+            cat.transform.localScale = 70 * scale * Vector3.one;
+            return cat;
         }
 
         // Unsubscribe from events when the behavior dies
