@@ -112,12 +112,16 @@ namespace ModuleManager
                 int gameDatabaseIndex = list.FindIndex(s => s is GameDatabase);
                 list.Insert(gameDatabaseIndex + 1, loader);
             }
-            
-            nyan = (DateTime.Now.Month == 4 && DateTime.Now.Day == 1)
+
+            bool foolsDay = (DateTime.Now.Month == 4 && DateTime.Now.Day == 1);
+            bool catDay = (DateTime.Now.Month == 2 && DateTime.Now.Day == 22);
+            nyan = foolsDay
+                || catDay
                 || (DateTime.Now < new DateTime(2016, 11, 1))
                 || Environment.GetCommandLineArgs().Contains("-nyan-nyan");
 
-            nCats = Environment.GetCommandLineArgs().Contains("-ncats") ;
+            nCats = catDay
+                || Environment.GetCommandLineArgs().Contains("-ncats") ;
 
             loadedInScene = true;
         }
