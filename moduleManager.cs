@@ -444,7 +444,19 @@ namespace ModuleManager
             Directory.CreateDirectory(path);
 
             foreach (UrlDir.UrlConfig d in GameDatabase.Instance.root.AllConfigs)
-                File.WriteAllText(path + d.url.Replace('/', '.') + ".cfg", d.config.ToString());
+            {
+                string file = d.url.Replace('/', '.').Replace(':', '.');
+                string filePath = path + file + ".cfg";
+                try
+                {
+                    
+                    File.WriteAllText(filePath, d.config.ToString());
+                }
+                catch (Exception e)
+                {
+                    log("Exception while trying to write the file " + filePath + "\n" + e);
+                }
+            }
         }
 
         #endregion GUI stuff.
@@ -1130,8 +1142,14 @@ namespace ModuleManager
 
                 
                 filesha.ComputeHash(contentBytes);
-                filesSha.Add(files[i].url, BitConverter.ToString(filesha.Hash));
-                
+                if (!filesSha.ContainsKey(files[i].url))
+                {
+                    filesSha.Add(files[i].url, BitConverter.ToString(filesha.Hash));
+                }
+                else
+                {
+                    log("Duplicate fileSha key. This should not append. The key is " + files[i].url);
+                }
             }
 
             // Hash the mods dll path so the checksum change if dlls are moved or removed (impact NEEDS)
