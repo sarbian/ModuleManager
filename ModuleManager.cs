@@ -109,7 +109,6 @@ namespace ModuleManager
             bool foolsDay = (DateTime.Now.Month == 4 && DateTime.Now.Day == 1);
             bool catDay = (DateTime.Now.Month == 2 && DateTime.Now.Day == 22);
             nyan = foolsDay
-                || (DateTime.Now < new DateTime(2016, 11, 1))
                 || Environment.GetCommandLineArgs().Contains("-nyan-nyan");
 
             nCats = catDay
