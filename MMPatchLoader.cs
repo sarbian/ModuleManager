@@ -42,8 +42,6 @@ namespace ModuleManager
 
         #endregion state
 
-        #region Top Level - Update
-
         private static bool loadedInScene;
 
         internal void OnRnDCenterSpawn()
@@ -668,8 +666,6 @@ namespace ModuleManager
             errorCount = 0;
             needsUnsatisfiedCount = 0;
             errorFiles = new Dictionary<string, int>();
-
-        #endregion Top Level - Update
 
             ready = false;
 
