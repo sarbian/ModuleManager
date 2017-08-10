@@ -31,9 +31,9 @@
     <ConsolePause>False</ConsolePause>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="CatAnimator.cs" />
-    <Compile Include="CatMover.cs" />
-    <Compile Include="CatOrbiter.cs" />
+    <Compile Include="Cats\CatAnimator.cs" />
+    <Compile Include="Cats\CatMover.cs" />
+    <Compile Include="Cats\CatOrbiter.cs" />
     <Compile Include="MMPatchLoader.cs" />
     <Compile Include="ModuleManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
