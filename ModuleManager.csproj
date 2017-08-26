@@ -35,6 +35,7 @@
     <Compile Include="Cats\CatManager.cs" />
     <Compile Include="Cats\CatMover.cs" />
     <Compile Include="Cats\CatOrbiter.cs" />
+    <Compile Include="Collections\ImmutableStack.cs" />
     <Compile Include="MMPatchLoader.cs" />
     <Compile Include="ModuleManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
