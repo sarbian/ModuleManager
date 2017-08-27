@@ -35,8 +35,6 @@ namespace ModuleManager
 
         public int needsUnsatisfiedCount = 0;
 
-        private int catEatenCount = 0;
-
         private Dictionary<String, int> errorFiles;
 
         private List<string> mods;
@@ -160,31 +158,8 @@ namespace ModuleManager
             if (!postPatchCallbacks.Contains(callback))
                 postPatchCallbacks.Add(callback);
         }
-        private List<string> PrePatchInit()
+        private void PrePatchInit()
         {
-            #region Excluding directories
-
-            // Build a list of subdirectory that won't be processed
-            List<string> excludePaths = new List<string>();
-
-            //if (ModuleManager.IsABadIdea())
-            //{
-            //    foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
-            //    {
-            //        if (mod.name == "MODULEMANAGER[NOWIN64]")
-            //        {
-            //            string fullpath = mod.url.Substring(0, mod.url.LastIndexOf('/'));
-            //            string excludepath = fullpath.Substring(0, fullpath.LastIndexOf('/'));
-            //            excludePaths.Add(excludepath);
-            //            log("excludepath: " + excludepath);
-            //        }
-            //    }
-            //    if (excludePaths.Any())
-            //        log("will not process patches in these subdirectories since they were disbaled on KSP Win64:\n" + String.Join("\n", excludePaths.ToArray()));
-            //}
-
-            #endregion Excluding directories
-
             #region List of mods
 
             //string envInfo = "ModuleManager env info\n";
@@ -275,8 +250,6 @@ namespace ModuleManager
 
             mods.Sort();
 
-            return excludePaths;
-
             #endregion List of mods
         }
 
@@ -318,7 +291,7 @@ namespace ModuleManager
             log(status);
             yield return null;
 
-            List<string> excludePaths = PrePatchInit();
+            PrePatchInit();
 
 
             if (!useCache)
@@ -339,7 +312,7 @@ namespace ModuleManager
                 status = "Checking NEEDS.";
                 log(status);
                 yield return null;
-                CheckNeeds(excludePaths);
+                CheckNeeds();
 
                 #endregion Check Needs
 
@@ -351,23 +324,23 @@ namespace ModuleManager
                 yield return null;
 
                 // :First node
-                yield return StartCoroutine(ApplyPatch(excludePaths, ":FIRST"), blocking);
+                yield return StartCoroutine(ApplyPatch(":FIRST"), blocking);
 
                 // any node without a :pass
-                yield return StartCoroutine(ApplyPatch(excludePaths, ":LEGACY"), blocking);
+                yield return StartCoroutine(ApplyPatch(":LEGACY"), blocking);
 
                 foreach (string mod in mods)
                 {
                     string upperModName = mod.ToUpper();
-                    yield return StartCoroutine(ApplyPatch(excludePaths, ":BEFORE[" + upperModName + "]"), blocking);
-                    yield return StartCoroutine(ApplyPatch(excludePaths, ":FOR[" + upperModName + "]"), blocking);
-                    yield return StartCoroutine(ApplyPatch(excludePaths, ":AFTER[" + upperModName + "]"), blocking);
+                    yield return StartCoroutine(ApplyPatch(":BEFORE[" + upperModName + "]"), blocking);
+                    yield return StartCoroutine(ApplyPatch(":FOR[" + upperModName + "]"), blocking);
+                    yield return StartCoroutine(ApplyPatch(":AFTER[" + upperModName + "]"), blocking);
                 }
 
                 // :Final node
-                yield return StartCoroutine(ApplyPatch(excludePaths, ":FINAL"), blocking);
+                yield return StartCoroutine(ApplyPatch(":FINAL"), blocking);
 
-                PurgeUnused(excludePaths);
+                PurgeUnused();
 
                 #endregion Applying patches
 
@@ -705,8 +678,6 @@ namespace ModuleManager
 
             cache.AddValue("patchedNodeCount", patchedNodeCount.ToString());
 
-            cache.AddValue("catEatenCount", catEatenCount.ToString());
-
             foreach (UrlDir.UrlConfig config in GameDatabase.Instance.root.AllConfigs)
             {
                 ConfigNode node = cache.AddNode("UrlConfig");
@@ -801,10 +772,6 @@ namespace ModuleManager
             if (cache.HasValue("patchedNodeCount"))
                 int.TryParse(cache.GetValue("patchedNodeCount"), out patchedNodeCount);
 
-            if (cache.HasValue("catEatenCount"))
-                int.TryParse(cache.GetValue("catEatenCount"), out catEatenCount);
-
-
             // Create the fake file where we load the physic config cache
             UrlDir gameDataDir = GameDatabase.Instance.root.AllDirectories.First(d => d.path.EndsWith("GameData") && d.name == "" && d.url == "");
             // need to use a file with a cfg extension to get the right fileType or you can't AddConfig on it
@@ -840,14 +807,11 @@ namespace ModuleManager
 
             if (exceptionCount > 0)
                 status += ", encountered <color=red>" + exceptionCount + " exception" + (exceptionCount != 1 ? "s" : "") + "</color>";
-
-            if (catEatenCount > 0)
-                status += ", " + catEatenCount + " patch" + (catEatenCount != 1 ? "es were" : " was") + " eaten by the Win64 cat";
         }
 
         #region Needs checking
 
-        private void CheckNeeds(List<string> excludePaths)
+        private void CheckNeeds()
         {
             UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
 
@@ -857,16 +821,6 @@ namespace ModuleManager
                 UrlDir.UrlConfig currentMod = mod; 
                 try
                 {
-                    string name;
-                    if (IsPathInList(currentMod.url, excludePaths) && (ParseCommand(currentMod.type, out name) != Command.Insert))
-                    {
-                        mod.parent.configs.Remove(currentMod);
-                        catEatenCount++;
-                        log("Deleting Node in file " + currentMod.parent.url + " subnode: " + currentMod.type +
-                                " as it is set to be disabled on KSP Win64");
-                        continue;
-                    }
-
                     if (mod.config.name == null)
                     {
                         log("Error - Node in file " + currentMod.parent.url + " subnode: " + currentMod.type +
@@ -1026,7 +980,7 @@ namespace ModuleManager
             return true;
         }
 
-        private void PurgeUnused(List<string> excludePaths)
+        private void PurgeUnused()
         {
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
             {
@@ -1042,7 +996,7 @@ namespace ModuleManager
         #region Applying Patches
 
         // Apply patch to all relevent nodes
-        public IEnumerator ApplyPatch(List<string> excludePaths, string Stage)
+        public IEnumerator ApplyPatch(string Stage)
         {
             StatusUpdate();
             log(Stage + (Stage == ":LEGACY" ? " (default) pass" : " pass"));
@@ -1118,7 +1072,7 @@ namespace ModuleManager
                                     do
                                     {
                                         if (url.type == type && WildcardMatch(url.name, pattern)
-                                            && CheckConstraints(url.config, condition) && !IsPathInList(mod.url, excludePaths))
+                                            && CheckConstraints(url.config, condition))
                                         {
                                             switch (cmd)
                                             {
