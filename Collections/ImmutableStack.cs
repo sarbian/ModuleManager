@@ -1,9 +1,48 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 
 namespace ModuleManager.Collections
 {
-    public class ImmutableStack<T>
+    public class ImmutableStack<T> : IEnumerable<T>
     {
+        public struct Enumerator : IEnumerator<T>
+        {
+            private ImmutableStack<T> head;
+            private ImmutableStack<T> currentStack;
+
+            public Enumerator(ImmutableStack<T> stack)
+            {
+                head = stack;
+                currentStack = null;
+            }
+
+            public T Current => currentStack.value;
+            object IEnumerator.Current => Current;
+
+            public void Dispose() { }
+
+            public bool MoveNext()
+            {
+                if (currentStack == null)
+                {
+                    currentStack = head;
+                    return true;
+                }
+                else if (!currentStack.IsRoot)
+                {
+                    currentStack = currentStack.parent;
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+
+            public void Reset() => currentStack = null;
+        }
+
         public readonly T value;
         public readonly ImmutableStack<T> parent;
 
@@ -33,5 +72,9 @@ namespace ModuleManager.Collections
         }
 
         public ImmutableStack<T> ReplaceValue(T newValue) => new ImmutableStack<T>(newValue, parent);
+
+        public Enumerator GetEnumerator() => new Enumerator(this);
+        IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }
