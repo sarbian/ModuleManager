@@ -892,7 +892,7 @@ namespace ModuleManager
                     }
 
                     // Recursively check the contents
-                    CheckNeeds(currentMod.config, currentMod.parent.url, new List<string>());
+                    CheckNeeds(new NodeStack(mod.config), new PatchContext(mod, GameDatabase.Instance.root));
                 }
                 catch (Exception ex)
                 {
@@ -903,91 +903,84 @@ namespace ModuleManager
             }
         }
 
-        private void CheckNeeds(ConfigNode subMod, string url, List<string> path)
+        private void CheckNeeds(NodeStack stack, PatchContext context)
         {
-            try
+            bool needsCopy = false;
+            ConfigNode original = stack.value;
+            ConfigNode copy = new ConfigNode(original.name);
+            for (int i = 0; i < original.values.Count; ++i)
             {
-                path.Add(subMod.name);
-                bool needsCopy = false;
-                ConfigNode copy = new ConfigNode(subMod.name);
-                for (int i = 0; i < subMod.values.Count; ++i)
+                ConfigNode.Value val = original.values[i];
+                string valname = val.name;
+                try
                 {
-                    ConfigNode.Value val = subMod.values[i];
-                    string valname = val.name;
-                    try
+                    if (CheckNeeds(ref valname))
                     {
-                        if (CheckNeeds(ref valname))
-                        {
-                            copy.AddValue(valname, val.value);
-                        }
-                        else
-                        {
-                            needsCopy = true;
-                            log(
-                                "Deleting value in file: " + url + " subnode: " + string.Join("/", path.ToArray()) +
-                                " value: " + val.name + " = " + val.value + " as it can't satisfy its NEEDS");
-                            needsUnsatisfiedCount++;
-                        }
+                        copy.AddValue(valname, val.value);
                     }
-                    catch (ArgumentOutOfRangeException e)
+                    else
                     {
-                        log("ArgumentOutOfRangeException in CheckNeeds for value \"" + val.name + "\"\n" + e);
-                        throw;
-                    }
-                    catch (Exception e)
-                    {
-                        log("General Exception " + e.GetType().Name + " for value \"" + val.name + " = " + val.value + "\"\n" + e.ToString());
-                        throw;
+                        needsCopy = true;
+                        log(
+                            "Deleting value in file: " + context.patchUrl.url + " subnode: " + stack.GetPath() +
+                            " value: " + val.name + " = " + val.value + " as it can't satisfy its NEEDS");
+                        needsUnsatisfiedCount++;
                     }
                 }
-
-                for (int i = 0; i < subMod.nodes.Count; ++i)
+                catch (ArgumentOutOfRangeException e)
                 {
-                    ConfigNode node = subMod.nodes[i];
-                    string nodeName = node.name;
+                    log("ArgumentOutOfRangeException in CheckNeeds for value \"" + val.name + "\"\n" + e);
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    log("General Exception " + e.GetType().Name + " for value \"" + val.name + " = " + val.value + "\"\n" + e.ToString());
+                    throw;
+                }
+            }
 
-                    if (nodeName == null)
-                    {
-                        log("Error - Node in file " + url + " subnode: " + string.Join("/", path.ToArray()) +
-                                " has config.name == null");
-                    }
+            for (int i = 0; i < original.nodes.Count; ++i)
+            {
+                ConfigNode node = original.nodes[i];
+                string nodeName = node.name;
 
-                    try
-                    {
-                        if (CheckNeeds(ref nodeName))
-                        {
-                            node.name = nodeName;
-                            CheckNeeds(node, url, path);
-                            copy.AddNode(node);
-                        }
-                        else
-                        {
-                            needsCopy = true;
-                            log(
-                                "Deleting node in file: " + url + " subnode: " + string.Join("/", path.ToArray()) + "/" +
-                                node.name + " as it can't satisfy its NEEDS");
-                            needsUnsatisfiedCount++;
-                        }
-                    }
-                    catch (ArgumentOutOfRangeException e)
-                    {
-                        log("ArgumentOutOfRangeException in CheckNeeds for node \"" + node.name + "\"\n" + e);
-                        throw;
-                    }
-                    catch (Exception e)
-                    {
-                        log("General Exception " + e.GetType().Name + " for node \"" + node.name + "\"\n " + e.ToString());
-                        throw;
-                    }
+                if (nodeName == null)
+                {
+                    log("Error - Node in file " + context.patchUrl.url + " subnode: " + stack.GetPath() +
+                            " has config.name == null");
                 }
 
-                if (needsCopy)
-                    ShallowCopy(copy, subMod);
+                try
+                {
+                    if (CheckNeeds(ref nodeName))
+                    {
+                        node.name = nodeName;
+                        CheckNeeds(stack.Push(node), context);
+                        copy.AddNode(node);
+                    }
+                    else
+                    {
+                        needsCopy = true;
+                        log(
+                            "Deleting node in file: " + context.patchUrl.url + " subnode: " + stack.GetPath() + "/" +
+                            node.name + " as it can't satisfy its NEEDS");
+                        needsUnsatisfiedCount++;
+                    }
+                }
+                catch (ArgumentOutOfRangeException e)
+                {
+                    log("ArgumentOutOfRangeException in CheckNeeds for node \"" + node.name + "\"\n" + e);
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    log("General Exception " + e.GetType().Name + " for node \"" + node.name + "\"\n " + e.ToString());
+                    throw;
+                }
             }
-            finally
-            {
-                path.RemoveAt(path.Count - 1);
-            }
+
+            if (needsCopy)
+                ShallowCopy(copy, original);
         }
 
         /// <summary>
