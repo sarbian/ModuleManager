@@ -60,6 +60,8 @@ namespace ModuleManager.Collections
         public bool IsRoot => parent == null;
         public ImmutableStack<T> Root => IsRoot? this : parent.Root;
 
+        public int Depth => IsRoot ? 1 : parent.Depth + 1;
+
         public ImmutableStack<T> Push(T newValue)
         {
             return new ImmutableStack<T>(newValue, this);
