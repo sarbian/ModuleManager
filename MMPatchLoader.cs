@@ -12,6 +12,7 @@ using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 using ModuleManager.Collections;
+using ModuleManager.Extensions;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManager
