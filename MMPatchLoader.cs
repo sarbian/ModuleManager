@@ -535,37 +535,6 @@ namespace ModuleManager
             configs[0].config.Save(physicsPath);
         }
 
-
-        // DB check used to track the now fixed TextureReplacer corruption
-        public static void checkValues()
-        {
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs)
-            {
-                if (checkValues(mod.config))
-                {
-                    log("Found bad value");
-                    return;
-                }
-            }
-            log("Found no bad value");
-        }
-
-        static bool checkValues(ConfigNode node)
-        {
-            foreach (ConfigNode.Value value in node.values)
-            {
-                if (value.name.Length == -1)
-                    return true;
-            }
-
-            foreach (ConfigNode subNode in node.nodes)
-            {
-                if (checkValues(subNode))
-                    return true;
-            }
-            return false;
-        }
-
         private string FileSHA(string filename)
         {
             try
