@@ -297,9 +297,9 @@ namespace ModuleManager
             while (!MMPatchLoader.Instance.IsReady())
                 yield return null;
 
-            log("DB Reload OK with patchCount=" + MMPatchLoader.Instance.patchedNodeCount + " errorCount=" +
-                MMPatchLoader.Instance.errorCount + " needsUnsatisfiedCount=" +
-                MMPatchLoader.Instance.needsUnsatisfiedCount + " exceptionCount=" + MMPatchLoader.Instance.exceptionCount);
+            log("DB Reload OK with patchCount=" + MMPatchLoader.Instance.progress.PatchedNodeCount + " errorCount=" +
+                MMPatchLoader.Instance.progress.ErrorCount + " needsUnsatisfiedCount=" +
+                MMPatchLoader.Instance.progress.NeedsUnsatisfiedCount + " exceptionCount=" + MMPatchLoader.Instance.progress.ExceptionCount);
 
             PartResourceLibrary.Instance.LoadDefinitions();
 
