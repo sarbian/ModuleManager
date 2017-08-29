@@ -732,10 +732,8 @@ namespace ModuleManager
 
             // And then load all the cached configs
             ConfigNode cache = ConfigNode.Load(cachePath);
-
-            int patchedNodeCount;
-
-            if (cache.HasValue("patchedNodeCount") && int.TryParse(cache.GetValue("patchedNodeCount"), out patchedNodeCount))
+            
+            if (cache.HasValue("patchedNodeCount") && int.TryParse(cache.GetValue("patchedNodeCount"), out int patchedNodeCount))
                 progress.PatchedNodeCount = patchedNodeCount;
 
             // Create the fake file where we load the physic config cache
