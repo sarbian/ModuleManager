@@ -1,0 +1,28 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace ModuleManager
+{
+    public interface IPatchProgress
+    {
+        int AppliedPatchCount { get; }
+        int ErrorCount { get; }
+        int ExceptionCount { get; }
+        int NeedsUnsatisfiedCount { get; }
+        int PatchedNodeCount { get; set; }
+        float ProgressFraction { get; }
+        int TotalPatchCount { get; }
+        Dictionary<String, int> ErrorFiles { get; }
+
+        void Error(UrlDir.UrlConfig url, string message);
+        void Exception(string message, Exception exception);
+        void Exception(UrlDir.UrlConfig url, string message, Exception exception);
+        void NeedsUnsatisfiedNode(string url, string path);
+        void NeedsUnsatisfiedValue(string url, string path, string valName);
+        void NodeCopied(string url, string patchUrl);
+        void NodeDeleted(string url, string patchUrl);
+        void NodePatched(string url, string patchUrl);
+        void PatchAdded();
+        void PatchApplied();
+    }
+}
