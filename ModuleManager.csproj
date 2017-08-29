@@ -36,6 +36,7 @@
     <Compile Include="Cats\CatMover.cs" />
     <Compile Include="Cats\CatOrbiter.cs" />
     <Compile Include="Collections\ImmutableStack.cs" />
+    <Compile Include="Extensions\NodeStackExtensions.cs" />
     <Compile Include="MMPatchLoader.cs" />
     <Compile Include="ModuleManager.cs" />
     <Compile Include="PatchContext.cs" />
