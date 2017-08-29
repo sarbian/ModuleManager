@@ -113,17 +113,6 @@ namespace ModuleManager
 
         public override void StartLoad()
         {
-            StartLoad(false);
-        }
-
-        public void Update()
-        {
-            if (progress.AppliedPatchCount > 0 && HighLogic.LoadedScene == GameScenes.LOADING)
-                StatusUpdate();
-        }
-
-        public void StartLoad(bool blocking)
-        {
             patchSw.Reset();
             patchSw.Start();
 
@@ -134,7 +123,13 @@ namespace ModuleManager
             // DB check used to track the now fixed TextureReplacer corruption
             //checkValues();
 
-            StartCoroutine(ProcessPatch(blocking), blocking);
+            StartCoroutine(ProcessPatch());
+        }
+
+        public void Update()
+        {
+            if (progress.AppliedPatchCount > 0 && HighLogic.LoadedScene == GameScenes.LOADING)
+                StatusUpdate();
         }
 
         public static void addPostPatchCallback(ModuleManagerPostPatchCallback callback)
@@ -236,21 +231,7 @@ namespace ModuleManager
             #endregion List of mods
         }
 
-
-        Coroutine StartCoroutine(IEnumerator enumerator, bool blocking)
-        {
-            if (blocking)
-            {
-                while (enumerator.MoveNext()) { }
-                return null;
-            }
-            else
-            {
-                return StartCoroutine(enumerator);
-            }
-        }
-
-        private IEnumerator ProcessPatch(bool blocking)
+        private IEnumerator ProcessPatch()
         {
             status = "Checking Cache";
             logger.Info(status);
@@ -307,21 +288,21 @@ namespace ModuleManager
                 yield return null;
 
                 // :First node
-                yield return StartCoroutine(ApplyPatch(":FIRST"), blocking);
+                yield return StartCoroutine(ApplyPatch(":FIRST"));
 
                 // any node without a :pass
-                yield return StartCoroutine(ApplyPatch(":LEGACY"), blocking);
+                yield return StartCoroutine(ApplyPatch(":LEGACY"));
 
                 foreach (string mod in mods)
                 {
                     string upperModName = mod.ToUpper();
-                    yield return StartCoroutine(ApplyPatch(":BEFORE[" + upperModName + "]"), blocking);
-                    yield return StartCoroutine(ApplyPatch(":FOR[" + upperModName + "]"), blocking);
-                    yield return StartCoroutine(ApplyPatch(":AFTER[" + upperModName + "]"), blocking);
+                    yield return StartCoroutine(ApplyPatch(":BEFORE[" + upperModName + "]"));
+                    yield return StartCoroutine(ApplyPatch(":FOR[" + upperModName + "]"));
+                    yield return StartCoroutine(ApplyPatch(":AFTER[" + upperModName + "]"));
                 }
 
                 // :Final node
-                yield return StartCoroutine(ApplyPatch(":FINAL"), blocking);
+                yield return StartCoroutine(ApplyPatch(":FINAL"));
 
                 PurgeUnused();
 
