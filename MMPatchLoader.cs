@@ -586,7 +586,7 @@ namespace ModuleManager
             for (int i = 0; i < files.Length; i++)
             {
                 ConfigNode fileNode = getFileNode(shaConfigNode, files[i].url);
-                string fileSha = fileNode != null ? fileNode.GetValue("SHA") : null;
+                string fileSha = fileNode?.GetValue("SHA");
 
                 if (fileNode == null)
                     continue;
