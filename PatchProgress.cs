@@ -51,11 +51,13 @@ namespace ModuleManager
         public void NodeCopied(string url, string patchUrl)
         {
             logger.Info($"Applying copy {patchUrl} to {url}");
+            PatchedNodeCount += 1;
         }
 
         public void NodeDeleted(string url, string patchUrl)
         {
             logger.Info($"Applying delete {patchUrl} to {url}");
+            PatchedNodeCount += 1;
         }
 
         public void PatchApplied()
