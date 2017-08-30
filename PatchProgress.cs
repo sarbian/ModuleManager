@@ -44,18 +44,18 @@ namespace ModuleManager
 
         public void NodePatched(string url, string patchUrl)
         {
-            logger.Info($"Applying node {patchUrl} to {url}");
+            logger.Info($"Applying update {patchUrl} to {url}");
             PatchedNodeCount += 1;
         }
 
         public void NodeCopied(string url, string patchUrl)
         {
-            logger.Info($"Copying Node {url} using {patchUrl}");
+            logger.Info($"Applying copy {patchUrl} to {url}");
         }
 
         public void NodeDeleted(string url, string patchUrl)
         {
-            logger.Info($"Deleting Node {url} using {patchUrl}");
+            logger.Info($"Applying delete {patchUrl} to {url}");
         }
 
         public void PatchApplied()
