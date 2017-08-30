@@ -42,19 +42,19 @@ namespace ModuleManager
             TotalPatchCount += 1;
         }
 
-        public void NodePatched(string url, string patchUrl)
+        public void ApplyingUpdate(string url, string patchUrl)
         {
             logger.Info($"Applying update {patchUrl} to {url}");
             PatchedNodeCount += 1;
         }
 
-        public void NodeCopied(string url, string patchUrl)
+        public void ApplyingCopy(string url, string patchUrl)
         {
             logger.Info($"Applying copy {patchUrl} to {url}");
             PatchedNodeCount += 1;
         }
 
-        public void NodeDeleted(string url, string patchUrl)
+        public void ApplyingDelete(string url, string patchUrl)
         {
             logger.Info($"Applying delete {patchUrl} to {url}");
             PatchedNodeCount += 1;
