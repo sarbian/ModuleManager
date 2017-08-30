@@ -20,7 +20,7 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <ConsolePause>False</ConsolePause>
-    <LangVersion>5</LangVersion>
+    <LangVersion>default</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>none</DebugType>
@@ -35,8 +35,15 @@
     <Compile Include="Cats\CatManager.cs" />
     <Compile Include="Cats\CatMover.cs" />
     <Compile Include="Cats\CatOrbiter.cs" />
+    <Compile Include="Collections\ImmutableStack.cs" />
+    <Compile Include="Extensions\NodeStackExtensions.cs" />
+    <Compile Include="IPatchProgress.cs" />
+    <Compile Include="Logging\IBasicLogger.cs" />
+    <Compile Include="Logging\ModLogger.cs" />
     <Compile Include="MMPatchLoader.cs" />
     <Compile Include="ModuleManager.cs" />
+    <Compile Include="PatchContext.cs" />
+    <Compile Include="PatchProgress.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs" />
     <Compile Include="CustomConfigsManager.cs" />
