@@ -60,6 +60,10 @@
       <Project>{02c8e3af-69f9-4102-ab60-dd6de60662d3}</Project>
       <Name>ModuleManager</Name>
     </ProjectReference>
+    <ProjectReference Include="..\TestUtils\TestUtils.csproj">
+      <Project>{20eaafe6-510d-4374-8d2f-6b52d0178e85}</Project>
+      <Name>TestUtils</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
