@@ -1,7 +1,11 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.26730.12
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModuleManager", "ModuleManager\ModuleManager.csproj", "{02C8E3AF-69F9-4102-AB60-DD6DE60662D3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModuleManagerTests", "ModuleManagerTests\ModuleManagerTests.csproj", "{BC2A08C8-64EF-4823-A40B-8889C1CCFD75}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +17,16 @@ Global
 		{02C8E3AF-69F9-4102-AB60-DD6DE60662D3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{02C8E3AF-69F9-4102-AB60-DD6DE60662D3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{02C8E3AF-69F9-4102-AB60-DD6DE60662D3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BC2A08C8-64EF-4823-A40B-8889C1CCFD75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BC2A08C8-64EF-4823-A40B-8889C1CCFD75}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BC2A08C8-64EF-4823-A40B-8889C1CCFD75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BC2A08C8-64EF-4823-A40B-8889C1CCFD75}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {4DCC10BA-6036-4DCF-A78B-086DF4487922}
 	EndGlobalSection
 	GlobalSection(MonoDevelopProperties) = preSolution
 		StartupItem = ModuleManager.csproj
