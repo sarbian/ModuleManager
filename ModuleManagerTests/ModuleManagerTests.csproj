@@ -52,6 +52,7 @@
     <Compile Include="Collections\ImmutableStackTest.cs" />
     <Compile Include="DummyTest.cs" />
     <Compile Include="Extensions\NodeStackExtensionsTest.cs" />
+    <Compile Include="Logging\ModLoggerTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
