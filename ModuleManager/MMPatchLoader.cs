@@ -874,7 +874,7 @@ namespace ModuleManager
                     else
                     {
                         needsCopy = true;
-                        progress.NeedsUnsatisfiedNode(context.patchUrl.url, stack.Push(node).GetPath());
+                        progress.NeedsUnsatisfiedNode(context.patchUrl.parent.url, stack.Push(node).GetPath());
                     }
                 }
                 catch (ArgumentOutOfRangeException e)
