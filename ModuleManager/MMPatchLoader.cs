@@ -798,7 +798,7 @@ namespace ModuleManager
 
                         if (!CheckNeeds(ref type))
                         {
-                            progress.NeedsUnsatisfiedRoot(currentMod.parent.url, currentMod.type);
+                            progress.NeedsUnsatisfiedRoot(currentMod);
                             continue;
                         }
 
@@ -837,7 +837,7 @@ namespace ModuleManager
                     else
                     {
                         needsCopy = true;
-                        context.progress.NeedsUnsatisfiedValue(context.patchUrl.url, stack.GetPath(), val.name);
+                        context.progress.NeedsUnsatisfiedValue(context.patchUrl, stack, val.name);
                     }
                 }
                 catch (ArgumentOutOfRangeException e)
@@ -874,7 +874,7 @@ namespace ModuleManager
                     else
                     {
                         needsCopy = true;
-                        progress.NeedsUnsatisfiedNode(context.patchUrl.parent.url, stack.Push(node).GetPath());
+                        progress.NeedsUnsatisfiedNode(context.patchUrl, stack.Push(node));
                     }
                 }
                 catch (ArgumentOutOfRangeException e)

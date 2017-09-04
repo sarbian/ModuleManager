@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using ModuleManager.Extensions;
 using ModuleManager.Logging;
+using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManager
 {
@@ -67,22 +69,22 @@ namespace ModuleManager
             AppliedPatchCount += 1;
         }
 
-        public void NeedsUnsatisfiedRoot(string url, string name)
+        public void NeedsUnsatisfiedRoot(UrlDir.UrlConfig url)
         {
-            logger.Info($"Deleting root node in {url} subnode: {name} as it can't satisfy its NEEDS");
+            logger.Info($"Deleting root node in {url.parent.url} subnode: {url.type} as it can't satisfy its NEEDS");
             NeedsUnsatisfiedCount += 1;
             NeedsUnsatisfiedRootCount += 1;
         }
 
-        public void NeedsUnsatisfiedNode(string url, string path)
+        public void NeedsUnsatisfiedNode(UrlDir.UrlConfig url, NodeStack path)
         {
-            logger.Info($"Deleting node in file {url} subnode: {path} as it can't satisfy its NEEDS");
+            logger.Info($"Deleting node in file {url.parent.url} subnode: {path.GetPath()} as it can't satisfy its NEEDS");
             NeedsUnsatisfiedCount += 1;
         }
 
-        public void NeedsUnsatisfiedValue(string url, string path, string valName)
+        public void NeedsUnsatisfiedValue(UrlDir.UrlConfig url, NodeStack path, string valName)
         {
-            logger.Info($"Deleting value in file {url} subnode: {path} value: {valName} as it can't satisfy its NEEDS");
+            logger.Info($"Deleting value in file {url.parent.url} subnode: {path.GetPath()} value: {valName} as it can't satisfy its NEEDS");
             NeedsUnsatisfiedCount += 1;
         }
 
