@@ -49,6 +49,7 @@
     <Compile Include="DummyTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="TestConfigNodeTest.cs" />
+    <Compile Include="UrlBuilderTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
