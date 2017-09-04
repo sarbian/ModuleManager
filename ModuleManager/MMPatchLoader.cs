@@ -798,7 +798,7 @@ namespace ModuleManager
 
                         if (!CheckNeeds(ref type))
                         {
-                            progress.NeedsUnsatisfiedNode(currentMod.parent.url, currentMod.type);
+                            progress.NeedsUnsatisfiedRoot(currentMod.parent.url, currentMod.type);
                             continue;
                         }
 

@@ -17,6 +17,7 @@ namespace ModuleManager
         void Error(UrlDir.UrlConfig url, string message);
         void Exception(string message, Exception exception);
         void Exception(UrlDir.UrlConfig url, string message, Exception exception);
+        void NeedsUnsatisfiedRoot(string url, string name);
         void NeedsUnsatisfiedNode(string url, string path);
         void NeedsUnsatisfiedValue(string url, string path, string valName);
         void ApplyingCopy(string url, string patchUrl);

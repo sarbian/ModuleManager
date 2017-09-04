@@ -16,6 +16,8 @@ namespace ModuleManager
 
         public int ExceptionCount { get; private set; } = 0;
 
+        public int NeedsUnsatisfiedRootCount { get; private set; } = 0;
+
         public int NeedsUnsatisfiedCount { get; private set; } = 0;
 
         public Dictionary<String, int> ErrorFiles { get; } = new Dictionary<string, int>();
@@ -27,7 +29,7 @@ namespace ModuleManager
             get
             {
                 if (TotalPatchCount > 0)
-                    return (AppliedPatchCount + NeedsUnsatisfiedCount) / (float)TotalPatchCount;
+                    return (AppliedPatchCount + NeedsUnsatisfiedRootCount) / (float)TotalPatchCount;
                 return 0;
             }
         }
@@ -65,9 +67,16 @@ namespace ModuleManager
             AppliedPatchCount += 1;
         }
 
+        public void NeedsUnsatisfiedRoot(string url, string name)
+        {
+            logger.Info($"Deleting root node in {url} subnode: {name} as it can't satisfy its NEEDS");
+            NeedsUnsatisfiedCount += 1;
+            NeedsUnsatisfiedRootCount += 1;
+        }
+
         public void NeedsUnsatisfiedNode(string url, string path)
         {
-            logger.Info($"Deleting Node in file {url} subnode: {path} as it can't satisfy its NEEDS");
+            logger.Info($"Deleting node in file {url} subnode: {path} as it can't satisfy its NEEDS");
             NeedsUnsatisfiedCount += 1;
         }
 
