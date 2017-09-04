@@ -1029,7 +1029,7 @@ namespace ModuleManager
                                             switch (cmd)
                                             {
                                                 case Command.Edit:
-                                                    progress.ApplyingUpdate(url.url, mod.url);
+                                                    progress.ApplyingUpdate(url, mod);
                                                     url.config = ModifyNode(new NodeStack(url.config), mod.config, context);
                                                     break;
 
@@ -1037,7 +1037,7 @@ namespace ModuleManager
                                                     ConfigNode clone = ModifyNode(new NodeStack(url.config), mod.config, context);
                                                     if (url.config.name != mod.name)
                                                     {
-                                                        progress.ApplyingCopy(url.url, mod.url);
+                                                        progress.ApplyingCopy(url, mod);
                                                         url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
                                                     }
                                                     else
@@ -1048,7 +1048,7 @@ namespace ModuleManager
                                                     break;
 
                                                 case Command.Delete:
-                                                    progress.ApplyingDelete(url.url, mod.url);
+                                                    progress.ApplyingDelete(url, mod);
                                                     url.parent.configs.Remove(url);
                                                     break;
 

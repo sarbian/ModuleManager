@@ -44,21 +44,21 @@ namespace ModuleManager
             TotalPatchCount += 1;
         }
 
-        public void ApplyingUpdate(string url, string patchUrl)
+        public void ApplyingUpdate(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying update {patchUrl} to {url}");
+            logger.Info($"Applying update {patch.url} to {original.url}");
             PatchedNodeCount += 1;
         }
 
-        public void ApplyingCopy(string url, string patchUrl)
+        public void ApplyingCopy(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying copy {patchUrl} to {url}");
+            logger.Info($"Applying copy {patch.url} to {original.url}");
             PatchedNodeCount += 1;
         }
 
-        public void ApplyingDelete(string url, string patchUrl)
+        public void ApplyingDelete(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying delete {patchUrl} to {url}");
+            logger.Info($"Applying delete {patch.url} to {original.url}");
             PatchedNodeCount += 1;
         }
 
