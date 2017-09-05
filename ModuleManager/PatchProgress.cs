@@ -71,7 +71,7 @@ namespace ModuleManager
 
         public void NeedsUnsatisfiedRoot(UrlDir.UrlConfig url)
         {
-            logger.Info($"Deleting root node in {url.parent.url} subnode: {url.type} as it can't satisfy its NEEDS");
+            logger.Info($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its NEEDS");
             NeedsUnsatisfiedCount += 1;
             NeedsUnsatisfiedRootCount += 1;
         }
