@@ -132,7 +132,7 @@ namespace ModuleManager
                 StatusUpdate();
         }
 
-        public static void addPostPatchCallback(ModuleManagerPostPatchCallback callback)
+        public static void AddPostPatchCallback(ModuleManagerPostPatchCallback callback)
         {
             if (!postPatchCallbacks.Contains(callback))
                 postPatchCallbacks.Add(callback);
@@ -584,7 +584,7 @@ namespace ModuleManager
             
             for (int i = 0; i < files.Length; i++)
             {
-                ConfigNode fileNode = getFileNode(shaConfigNode, files[i].url);
+                ConfigNode fileNode = GetFileNode(shaConfigNode, files[i].url);
                 string fileSha = fileNode?.GetValue("SHA");
 
                 if (fileNode == null)
@@ -598,7 +598,7 @@ namespace ModuleManager
             }
             for (int i = 0; i < files.Length; i++)
             {
-                ConfigNode fileNode = getFileNode(shaConfigNode, files[i].url);
+                ConfigNode fileNode = GetFileNode(shaConfigNode, files[i].url);
 
                 if (fileNode == null)
                 {
@@ -617,7 +617,7 @@ namespace ModuleManager
             return noChange;
         }
 
-        private ConfigNode getFileNode(ConfigNode shaConfigNode, string filename)
+        private ConfigNode GetFileNode(ConfigNode shaConfigNode, string filename)
         {
             for (int i = 0; i < shaConfigNode.nodes.Count; i++)
             {
@@ -2333,8 +2333,7 @@ namespace ModuleManager
                 return true;
             string pattern = "^" + Regex.Escape(wildcard).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
 
-            Regex regex;
-            if (!regexCache.TryGetValue(pattern, out regex))
+            if (!regexCache.TryGetValue(pattern, out Regex regex))
             {
                 regex = new Regex(pattern);
                 regexCache.Add(pattern, regex);

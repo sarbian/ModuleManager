@@ -49,7 +49,7 @@ namespace ModuleManager
             inRnDCenter = false;
         }
 
-        public static void log(String s)
+        public static void Log(String s)
         {
             print("[ModuleManager] " + s);
         }
@@ -67,7 +67,7 @@ namespace ModuleManager
             if (loadedInScene || !ElectionAndCheck())
             {
                 Assembly currentAssembly = Assembly.GetExecutingAssembly();
-                log("Multiple copies of current version. Using the first copy. Version: " +
+                Log("Multiple copies of current version. Using the first copy. Version: " +
                     currentAssembly.GetName().Version);
                 Destroy(gameObject);
                 return;
@@ -85,7 +85,7 @@ namespace ModuleManager
             LoadingScreen screen = FindObjectOfType<LoadingScreen>();
             if (screen == null)
             {
-                log("Can't find LoadingScreen type. Aborting ModuleManager execution");
+                Log("Can't find LoadingScreen type. Aborting ModuleManager execution");
                 return;
             }
             List<LoadingSystem> list = LoadingScreen.Instance.loaders;
@@ -100,7 +100,7 @@ namespace ModuleManager
                 GameObject aGameObject = new GameObject("ModuleManager");
                 MMPatchLoader loader = aGameObject.AddComponent<MMPatchLoader>();
 
-                log(string.Format("Adding ModuleManager to the loading screen {0}", list.Count));
+                Log(string.Format("Adding ModuleManager to the loading screen {0}", list.Count));
 
                 int gameDatabaseIndex = list.FindIndex(s => s is GameDatabase);
                 list.Insert(gameDatabaseIndex + 1, loader);
@@ -218,7 +218,7 @@ namespace ModuleManager
             if (totalTime.IsRunning && HighLogic.LoadedScene == GameScenes.MAINMENU)
             {
                 totalTime.Stop();
-                log("Total loading Time = " + ((float)totalTime.ElapsedMilliseconds / 1000).ToString("F3") + "s");
+                Log("Total loading Time = " + ((float)totalTime.ElapsedMilliseconds / 1000).ToString("F3") + "s");
 
                 Application.runInBackground = GameSettings.SIMULATE_IN_BACKGROUND;
             }
@@ -297,7 +297,7 @@ namespace ModuleManager
             while (!MMPatchLoader.Instance.IsReady())
                 yield return null;
 
-            log("DB Reload OK with patchCount=" + MMPatchLoader.Instance.progress.PatchedNodeCount + " errorCount=" +
+            Log("DB Reload OK with patchCount=" + MMPatchLoader.Instance.progress.PatchedNodeCount + " errorCount=" +
                 MMPatchLoader.Instance.progress.ErrorCount + " needsUnsatisfiedCount=" +
                 MMPatchLoader.Instance.progress.NeedsUnsatisfiedCount + " exceptionCount=" + MMPatchLoader.Instance.progress.ExceptionCount);
 
@@ -350,7 +350,7 @@ namespace ModuleManager
                 }
                 catch (Exception e)
                 {
-                    log("Exception while trying to write the file " + filePath + "\n" + e);
+                    Log("Exception while trying to write the file " + filePath + "\n" + e);
                 }
             }
         }
@@ -384,7 +384,7 @@ namespace ModuleManager
                     "You have old versions of Module Manager (older than 1.5) or MMSarbianExt.\nYou will need to remove them for Module Manager and the mods using it to work\nExit KSP and delete those files :\n" +
                     String.Join("\n", badPaths.ToArray());
                 PopupDialog.SpawnPopupDialog(new Vector2(0f, 1f), new Vector2(0f, 1f), "ModuleManagerOldVersions", "Old versions of Module Manager", status, "OK", false, UISkinManager.defaultSkin);
-                log("Old version of Module Manager present. Stopping");
+                Log("Old version of Module Manager present. Stopping");
                 return false;
             }
 
@@ -404,7 +404,7 @@ namespace ModuleManager
             if (eligible.First().assembly != currentAssembly)
             {
                 //loaded = true;
-                log("version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location +
+                Log("version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location +
                     " lost the election");
                 Destroy(gameObject);
                 return false;
@@ -417,7 +417,7 @@ namespace ModuleManager
             }
             if (candidates.Length > 0)
             {
-                log("version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location +
+                Log("version " + currentAssembly.GetName().Version + " at " + currentAssembly.Location +
                     " won the election against\n" + candidates);
             }
 
