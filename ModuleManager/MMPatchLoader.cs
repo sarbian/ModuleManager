@@ -1112,7 +1112,7 @@ namespace ModuleManager
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
         public static ConfigNode ModifyNode(NodeStack original, ConfigNode mod, PatchContext context)
         {
-            ConfigNode newNode = DeepCopy(original.value);
+            ConfigNode newNode = original.value.CreateCopy();
             NodeStack nodeStack = original.ReplaceValue(newNode);
 
             #region Values
@@ -2388,19 +2388,6 @@ namespace ModuleManager
                 to.values.Add(value);
             foreach (ConfigNode node in from.nodes)
                 to.nodes.Add(node);
-        }
-
-        private static ConfigNode DeepCopy(ConfigNode from)
-        {
-            ConfigNode to = new ConfigNode(from.name);
-            foreach (ConfigNode.Value value in from.values)
-                to.AddValue(value.name, value.value);
-            foreach (ConfigNode node in from.nodes)
-            {
-                ConfigNode newNode = DeepCopy(node);
-                to.nodes.Add(newNode);
-            }
-            return to;
         }
 
         private string PrettyConfig(UrlDir.UrlConfig config)
