@@ -132,7 +132,7 @@ namespace ModuleManager
                 StatusUpdate();
         }
 
-        public static void addPostPatchCallback(ModuleManagerPostPatchCallback callback)
+        public static void AddPostPatchCallback(ModuleManagerPostPatchCallback callback)
         {
             if (!postPatchCallbacks.Contains(callback))
                 postPatchCallbacks.Add(callback);
@@ -184,8 +184,7 @@ namespace ModuleManager
             modlist += "Non-DLL mods added (:FOR[xxx]):\n";
             foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
             {
-                string name;
-                if (ParseCommand(cfgmod.type, out name) != Command.Insert)
+                if (ParseCommand(cfgmod.type, out string name) != Command.Insert)
                 {
                     progress.PatchAdded();
                     if (name.Contains(":FOR["))
@@ -585,7 +584,7 @@ namespace ModuleManager
             
             for (int i = 0; i < files.Length; i++)
             {
-                ConfigNode fileNode = getFileNode(shaConfigNode, files[i].url);
+                ConfigNode fileNode = GetFileNode(shaConfigNode, files[i].url);
                 string fileSha = fileNode?.GetValue("SHA");
 
                 if (fileNode == null)
@@ -599,7 +598,7 @@ namespace ModuleManager
             }
             for (int i = 0; i < files.Length; i++)
             {
-                ConfigNode fileNode = getFileNode(shaConfigNode, files[i].url);
+                ConfigNode fileNode = GetFileNode(shaConfigNode, files[i].url);
 
                 if (fileNode == null)
                 {
@@ -618,7 +617,7 @@ namespace ModuleManager
             return noChange;
         }
 
-        private ConfigNode getFileNode(ConfigNode shaConfigNode, string filename)
+        private ConfigNode GetFileNode(ConfigNode shaConfigNode, string filename)
         {
             for (int i = 0; i < shaConfigNode.nodes.Count; i++)
             {
@@ -798,7 +797,7 @@ namespace ModuleManager
 
                         if (!CheckNeeds(ref type))
                         {
-                            progress.NeedsUnsatisfiedNode(currentMod.parent.url, currentMod.type);
+                            progress.NeedsUnsatisfiedRoot(currentMod);
                             continue;
                         }
 
@@ -837,7 +836,7 @@ namespace ModuleManager
                     else
                     {
                         needsCopy = true;
-                        context.progress.NeedsUnsatisfiedValue(context.patchUrl.url, stack.GetPath(), val.name);
+                        context.progress.NeedsUnsatisfiedValue(context.patchUrl, stack, val.name);
                     }
                 }
                 catch (ArgumentOutOfRangeException e)
@@ -874,7 +873,7 @@ namespace ModuleManager
                     else
                     {
                         needsCopy = true;
-                        progress.NeedsUnsatisfiedNode(context.patchUrl.url, stack.Push(node).GetPath());
+                        progress.NeedsUnsatisfiedNode(context.patchUrl, stack.Push(node));
                     }
                 }
                 catch (ArgumentOutOfRangeException e)
@@ -969,8 +968,7 @@ namespace ModuleManager
                 try
                 {
                     string name = RemoveWS(mod.type);
-                    string tmp;
-                    Command cmd = ParseCommand(name, out tmp);
+                    Command cmd = ParseCommand(name, out string tmp);
 
                     if (cmd != Command.Insert)
                     {
@@ -1029,7 +1027,7 @@ namespace ModuleManager
                                             switch (cmd)
                                             {
                                                 case Command.Edit:
-                                                    progress.ApplyingUpdate(url.url, mod.url);
+                                                    progress.ApplyingUpdate(url, mod);
                                                     url.config = ModifyNode(new NodeStack(url.config), mod.config, context);
                                                     break;
 
@@ -1037,7 +1035,7 @@ namespace ModuleManager
                                                     ConfigNode clone = ModifyNode(new NodeStack(url.config), mod.config, context);
                                                     if (url.config.name != mod.name)
                                                     {
-                                                        progress.ApplyingCopy(url.url, mod.url);
+                                                        progress.ApplyingCopy(url, mod);
                                                         url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
                                                     }
                                                     else
@@ -1048,7 +1046,7 @@ namespace ModuleManager
                                                     break;
 
                                                 case Command.Delete:
-                                                    progress.ApplyingDelete(url.url, mod.url);
+                                                    progress.ApplyingDelete(url, mod);
                                                     url.parent.configs.Remove(url);
                                                     break;
 
@@ -1112,7 +1110,7 @@ namespace ModuleManager
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
         public static ConfigNode ModifyNode(NodeStack original, ConfigNode mod, PatchContext context)
         {
-            ConfigNode newNode = DeepCopy(original.value);
+            ConfigNode newNode = original.value.CreateCopy();
             NodeStack nodeStack = original.ReplaceValue(newNode);
 
             #region Values
@@ -1125,8 +1123,8 @@ namespace ModuleManager
                 #if LOGSPAM
                 vals += "\n   " + modVal.name + "= " + modVal.value;
                 #endif
-                string valName;
-                Command cmd = ParseCommand(modVal.name, out valName);
+
+                Command cmd = ParseCommand(modVal.name, out string valName);
 
                 if (cmd == Command.Special)
                 {
@@ -1149,8 +1147,7 @@ namespace ModuleManager
                     
                     if (assignMatch.Groups[2].Success)
                     {
-                        double os, s;
-                        if (double.TryParse(modVal.value, out s) && double.TryParse(val.value, out os))
+                        if (double.TryParse(modVal.value, out double s) && double.TryParse(val.value, out double os))
                         {
                             switch (assignMatch.Groups[2].Value[0])
                             {
@@ -1295,9 +1292,19 @@ namespace ModuleManager
 
                             if (varValue != null)
                             {
-                                ConfigNode.Value origVal;
-                                string value = FindAndReplaceValue(mod, ref valName, varValue, newNode, op, index,
-                                    out origVal, context, match.Groups[3].Success, position, isPosStar, seperator);
+                                string value = FindAndReplaceValue(
+                                    mod,
+                                    ref valName,
+                                    varValue, newNode,
+                                    op,
+                                    index,
+                                    out ConfigNode.Value origVal,
+                                    context,
+                                    match.Groups[3].Success,
+                                    position,
+                                    isPosStar,
+                                    seperator
+                                );
 
                                 if (value != null)
                                 {
@@ -1417,16 +1424,14 @@ namespace ModuleManager
                 }
 
                 string subName = subMod.name;
-                string tmp;
-                Command command = ParseCommand(subName, out tmp);
+                Command command = ParseCommand(subName, out string tmp);
 
                 if (command == Command.Insert)
                 {
                     ConfigNode newSubMod = new ConfigNode(subMod.name);
                     newSubMod = ModifyNode(nodeStack.Push(newSubMod), subMod, context);
                     subName = newSubMod.name;
-                    int index;
-                    if (subName.Contains(",") && int.TryParse(subName.Split(',')[1], out index))
+                    if (subName.Contains(",") && int.TryParse(subName.Split(',')[1], out int index))
                     {
                         // In this case insert the node at position index (with the same node names)
                         newSubMod.name = subName.Split(',')[0];
@@ -1461,8 +1466,7 @@ namespace ModuleManager
 
                     ConfigNode newSubMod = new ConfigNode(toPaste.name);
                     newSubMod = ModifyNode(nodeStack.Push(newSubMod), toPaste, context);
-                    int index;
-                    if (subName.LastIndexOf(",") > 0 && int.TryParse(subName.Substring(subName.LastIndexOf(",") + 1), out index))
+                    if (subName.LastIndexOf(",") > 0 && int.TryParse(subName.Substring(subName.LastIndexOf(",") + 1), out int index))
                     {
                         // In this case insert the node at position index
                         InsertNode(newNode, newSubMod, index);
@@ -1917,8 +1921,7 @@ namespace ModuleManager
             if (match.Groups[3].Success)
             {
                 ConfigNode.Value newVal = new ConfigNode.Value(cVal.name, cVal.value);
-                int splitIdx = 0;
-                int.TryParse(match.Groups[3].Value, out splitIdx);
+                int.TryParse(match.Groups[3].Value, out int splitIdx);
 
                 char sep = ',';
                 if (match.Groups[4].Success)
@@ -1998,7 +2001,6 @@ namespace ModuleManager
                 oValue = strArray[posIndex];
                 if (op != ' ')
                 {
-                    double s, os;
                     if (op == '^')
                     {
                         try
@@ -2024,7 +2026,7 @@ namespace ModuleManager
                             return null;
                         }
                     }
-                    else if (double.TryParse(value, out s) && double.TryParse(oValue, out os))
+                    else if (double.TryParse(value, out double s) && double.TryParse(oValue, out double os))
                     {
                         switch (op)
                         {
@@ -2316,8 +2318,7 @@ namespace ModuleManager
                 if (!compare && WildcardMatch(values[i], value))
                     return true;
 
-                double val2;
-                if (compare && Double.TryParse(values[i], out val2)
+                if (compare && Double.TryParse(values[i], out double val2)
                     && ((value[0] == '<' && val2 < val) || (value[0] == '>' && val2 > val)))
                 {
                     return true;
@@ -2332,8 +2333,7 @@ namespace ModuleManager
                 return true;
             string pattern = "^" + Regex.Escape(wildcard).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
 
-            Regex regex;
-            if (!regexCache.TryGetValue(pattern, out regex))
+            if (!regexCache.TryGetValue(pattern, out Regex regex))
             {
                 regex = new Regex(pattern);
                 regexCache.Add(pattern, regex);
@@ -2388,19 +2388,6 @@ namespace ModuleManager
                 to.values.Add(value);
             foreach (ConfigNode node in from.nodes)
                 to.nodes.Add(node);
-        }
-
-        private static ConfigNode DeepCopy(ConfigNode from)
-        {
-            ConfigNode to = new ConfigNode(from.name);
-            foreach (ConfigNode.Value value in from.values)
-                to.AddValue(value.name, value.value);
-            foreach (ConfigNode node in from.nodes)
-            {
-                ConfigNode newNode = DeepCopy(node);
-                to.nodes.Add(newNode);
-            }
-            return to;
         }
 
         private string PrettyConfig(UrlDir.UrlConfig config)

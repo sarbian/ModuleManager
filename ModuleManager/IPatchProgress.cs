@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManager
 {
@@ -17,11 +18,12 @@ namespace ModuleManager
         void Error(UrlDir.UrlConfig url, string message);
         void Exception(string message, Exception exception);
         void Exception(UrlDir.UrlConfig url, string message, Exception exception);
-        void NeedsUnsatisfiedNode(string url, string path);
-        void NeedsUnsatisfiedValue(string url, string path, string valName);
-        void ApplyingCopy(string url, string patchUrl);
-        void ApplyingDelete(string url, string patchUrl);
-        void ApplyingUpdate(string url, string patchUrl);
+        void NeedsUnsatisfiedRoot(UrlDir.UrlConfig url);
+        void NeedsUnsatisfiedNode(UrlDir.UrlConfig url, NodeStack path);
+        void NeedsUnsatisfiedValue(UrlDir.UrlConfig url, NodeStack path, string valName);
+        void ApplyingCopy(UrlDir.UrlConfig original, UrlDir.UrlConfig patch);
+        void ApplyingDelete(UrlDir.UrlConfig original, UrlDir.UrlConfig patch);
+        void ApplyingUpdate(UrlDir.UrlConfig original, UrlDir.UrlConfig patch);
         void PatchAdded();
         void PatchApplied();
     }

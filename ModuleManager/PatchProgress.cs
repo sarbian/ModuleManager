@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using ModuleManager.Extensions;
 using ModuleManager.Logging;
+using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManager
 {
@@ -16,6 +18,8 @@ namespace ModuleManager
 
         public int ExceptionCount { get; private set; } = 0;
 
+        public int NeedsUnsatisfiedRootCount { get; private set; } = 0;
+
         public int NeedsUnsatisfiedCount { get; private set; } = 0;
 
         public Dictionary<String, int> ErrorFiles { get; } = new Dictionary<string, int>();
@@ -27,7 +31,7 @@ namespace ModuleManager
             get
             {
                 if (TotalPatchCount > 0)
-                    return (AppliedPatchCount + NeedsUnsatisfiedCount) / (float)TotalPatchCount;
+                    return (AppliedPatchCount + NeedsUnsatisfiedRootCount) / (float)TotalPatchCount;
                 return 0;
             }
         }
@@ -42,21 +46,21 @@ namespace ModuleManager
             TotalPatchCount += 1;
         }
 
-        public void ApplyingUpdate(string url, string patchUrl)
+        public void ApplyingUpdate(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying update {patchUrl} to {url}");
+            logger.Info($"Applying update {patch.url} to {original.url}");
             PatchedNodeCount += 1;
         }
 
-        public void ApplyingCopy(string url, string patchUrl)
+        public void ApplyingCopy(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying copy {patchUrl} to {url}");
+            logger.Info($"Applying copy {patch.url} to {original.url}");
             PatchedNodeCount += 1;
         }
 
-        public void ApplyingDelete(string url, string patchUrl)
+        public void ApplyingDelete(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying delete {patchUrl} to {url}");
+            logger.Info($"Applying delete {patch.url} to {original.url}");
             PatchedNodeCount += 1;
         }
 
@@ -65,15 +69,22 @@ namespace ModuleManager
             AppliedPatchCount += 1;
         }
 
-        public void NeedsUnsatisfiedNode(string url, string path)
+        public void NeedsUnsatisfiedRoot(UrlDir.UrlConfig url)
         {
-            logger.Info($"Deleting Node in file {url} subnode: {path} as it can't satisfy its NEEDS");
+            logger.Info($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its NEEDS");
+            NeedsUnsatisfiedCount += 1;
+            NeedsUnsatisfiedRootCount += 1;
+        }
+
+        public void NeedsUnsatisfiedNode(UrlDir.UrlConfig url, NodeStack path)
+        {
+            logger.Info($"Deleting node in file {url.parent.url} subnode: {path.GetPath()} as it can't satisfy its NEEDS");
             NeedsUnsatisfiedCount += 1;
         }
 
-        public void NeedsUnsatisfiedValue(string url, string path, string valName)
+        public void NeedsUnsatisfiedValue(UrlDir.UrlConfig url, NodeStack path, string valName)
         {
-            logger.Info($"Deleting value in file {url} subnode: {path} value: {valName} as it can't satisfy its NEEDS");
+            logger.Info($"Deleting value in file {url.parent.url} subnode: {path.GetPath()} value: {valName} as it can't satisfy its NEEDS");
             NeedsUnsatisfiedCount += 1;
         }
 
