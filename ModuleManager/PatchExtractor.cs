@@ -49,12 +49,12 @@ namespace ModuleManager
 
                     if (command == Command.Insert && matchCount > 0)
                     {
-                        progress.Error(url, $"Error - pass specifier detected on an insert node (not a patch): {url.parent.url}/{url.type}");
+                        progress.Error(url, $"Error - pass specifier detected on an insert node (not a patch): {url.SafeUrl()}");
                         error = true;
                     }
                     if (matchCount > 1)
                     {
-                        progress.Error(url, $"Error - more than one pass specifier on a node: {url.parent.url}/{url.type}");
+                        progress.Error(url, $"Error - more than one pass specifier on a node: {url.SafeUrl()}");
                         error = true;
                     }
                     if (error)
@@ -137,7 +137,7 @@ namespace ModuleManager
                 }
                 catch(Exception e)
                 {
-                    progress.Exception(url, $"Exception while parsing pass for config: {url.parent.url}/{url.type}", e);
+                    progress.Exception(url, $"Exception while parsing pass for config: {url.SafeUrl()}", e);
                 }
             }
 

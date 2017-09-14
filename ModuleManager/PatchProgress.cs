@@ -48,19 +48,19 @@ namespace ModuleManager
 
         public void ApplyingUpdate(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying update {patch.url} to {original.url}");
+            logger.Info($"Applying update {patch.SafeUrl()} to {original.SafeUrl()}");
             PatchedNodeCount += 1;
         }
 
         public void ApplyingCopy(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying copy {patch.url} to {original.url}");
+            logger.Info($"Applying copy {patch.SafeUrl()} to {original.SafeUrl()}");
             PatchedNodeCount += 1;
         }
 
         public void ApplyingDelete(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying delete {patch.url} to {original.url}");
+            logger.Info($"Applying delete {patch.SafeUrl()} to {original.SafeUrl()}");
             PatchedNodeCount += 1;
         }
 

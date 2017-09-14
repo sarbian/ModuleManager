@@ -812,7 +812,7 @@ namespace ModuleManager
                 }
                 catch (Exception ex)
                 {
-                    progress.Exception(currentMod, "Exception while checking needs : " + currentMod.url + " with a type of " + currentMod.type, ex);
+                    progress.Exception(currentMod, "Exception while checking needs : " + currentMod.SafeUrl() + " with a type of " + currentMod.type, ex);
                     logger.Error("Node is : " + PrettyConfig(currentMod));
                 }
             }
@@ -858,7 +858,7 @@ namespace ModuleManager
 
                 if (nodeName == null)
                 {
-                    progress.Error(context.patchUrl, "Error - Node in file " + context.patchUrl.url + " subnode: " + stack.GetPath() +
+                    progress.Error(context.patchUrl, "Error - Node in file " + context.patchUrl.SafeUrl() + " subnode: " + stack.GetPath() +
                             " has config.name == null");
                 }
 
@@ -1063,7 +1063,7 @@ namespace ModuleManager
                                             // When this special node is found then try to apply the patch once more on the same NODE
                                             if (mod.config.HasNode("MM_PATCH_LOOP"))
                                             {
-                                                logger.Info("Looping on " + mod.url + " to " + url.url);
+                                                logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
                                                 loop = true;
                                             }
                                         }
@@ -1085,7 +1085,7 @@ namespace ModuleManager
                 }
                 catch (Exception e)
                 {
-                    progress.Exception(mod, "Exception while processing node : " + mod.url, e);
+                    progress.Exception(mod, "Exception while processing node : " + mod.SafeUrl(), e);
                     logger.Error("Processed node was\n" + PrettyConfig(mod));
                     mod.parent.configs.Remove(mod);
                 }
