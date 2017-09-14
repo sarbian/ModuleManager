@@ -2074,11 +2074,6 @@ namespace ModuleManager
             return new string(withWhite.ToCharArray().Where(c => !Char.IsWhiteSpace(c)).ToArray());
         }
 
-        public bool IsPathInList(string modPath, List<string> pathList)
-        {
-            return pathList.Any(modPath.StartsWith);
-        }
-
         #endregion Sanity checking & Utility functions
 
         #region Condition checking
