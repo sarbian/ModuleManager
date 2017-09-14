@@ -307,7 +307,7 @@ namespace ModuleManager
 
                 #endregion Applying patches
 
-                #region Logging
+                #region Saving Cache
 
                 if (progress.ErrorCount > 0 || progress.ExceptionCount > 0)
                 {
@@ -337,7 +337,9 @@ namespace ModuleManager
                     yield return null;
                     CreateCache();
                 }
-                
+
+                #endregion Saving Cache
+
                 SaveModdedTechTree();
                 SaveModdedPhysics();
             }
@@ -352,8 +354,6 @@ namespace ModuleManager
             StatusUpdate();
 
             logger.Info(status + "\n" + errors);
-
-                #endregion Logging
 
 #if DEBUG
             RunTestCases();
