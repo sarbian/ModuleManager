@@ -49,6 +49,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions\UrlConfigExtensionsTest.cs" />
     <Compile Include="PatchListTest.cs" />
     <Compile Include="Collections\ArrayEnumeratorTest.cs" />
     <Compile Include="Collections\ImmutableStackTest.cs" />

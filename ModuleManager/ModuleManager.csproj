@@ -41,6 +41,7 @@
     <Compile Include="CommandParser.cs" />
     <Compile Include="Extensions\ConfigNodeExtensions.cs" />
     <Compile Include="Extensions\NodeStackExtensions.cs" />
+    <Compile Include="Extensions\UrlConfigExtensions.cs" />
     <Compile Include="IPatchProgress.cs" />
     <Compile Include="Logging\IBasicLogger.cs" />
     <Compile Include="Logging\ModLogger.cs" />
