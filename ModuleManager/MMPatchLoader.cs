@@ -647,7 +647,6 @@ namespace ModuleManager
                 node.AddValue("name", config.name);
                 node.AddValue("type", config.type);
                 node.AddValue("parentUrl", config.parent.url);
-                node.AddValue("url", config.url);
                 node.AddNode(config.config);
             }
 
@@ -746,7 +745,6 @@ namespace ModuleManager
                 string name = node.GetValue("name");
                 string type = node.GetValue("type");
                 string parentUrl = node.GetValue("parentUrl");
-                string url = node.GetValue("url");
 
                 UrlDir.UrlFile parent = GameDatabase.Instance.root.AllConfigFiles.FirstOrDefault(f => f.url == parentUrl);
                 if (parent != null)
