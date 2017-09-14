@@ -802,7 +802,7 @@ namespace ModuleManager
                         }
 
                         ConfigNode copy = new ConfigNode(type);
-                        ShallowCopy(currentMod.config, copy);
+                        copy.ShallowCopyFrom(currentMod.config);
                         currentMod = new UrlDir.UrlConfig(currentMod.parent, copy);
                         mod.parent.configs.Add(currentMod);
                     }
@@ -889,7 +889,7 @@ namespace ModuleManager
             }
 
             if (needsCopy)
-                ShallowCopy(copy, original);
+                original.ShallowCopyFrom(copy);
         }
 
         /// <summary>
@@ -2302,15 +2302,6 @@ namespace ModuleManager
                 return;
             }
             newNode.AddValue(name, value);
-        }
-
-        private static void ShallowCopy(ConfigNode from, ConfigNode to)
-        {
-            to.ClearData();
-            foreach (ConfigNode.Value value in from.values)
-                to.values.Add(value);
-            foreach (ConfigNode node in from.nodes)
-                to.nodes.Add(node);
         }
 
         private string PrettyConfig(UrlDir.UrlConfig config)
