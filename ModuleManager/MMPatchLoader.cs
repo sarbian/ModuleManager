@@ -970,7 +970,7 @@ namespace ModuleManager
 
                     if (cmd != Command.Insert)
                     {
-                        if (!IsBracketBalanced(mod.type))
+                        if (!mod.type.IsBracketBalanced())
                         {
                             progress.Error(mod,
                                 "Error - Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" +
@@ -1413,7 +1413,7 @@ namespace ModuleManager
             {
                 subMod.name = RemoveWS(subMod.name);
 
-                if (!IsBracketBalanced(subMod.name))
+                if (!subMod.name.IsBracketBalanced())
                 {
                     context.progress.Error(context.patchUrl,
                         "Error - Skipping a patch subnode with unbalanced square brackets or a space (replace them with a '?') in "
@@ -2067,29 +2067,6 @@ namespace ModuleManager
         #endregion Applying Patches
 
         #region Sanity checking & Utility functions
-
-        public static bool IsBracketBalanced(string str)
-        {
-            Stack<char> stack = new Stack<char>();
-
-            char c;
-            for (int i = 0; i < str.Length; i++)
-            {
-                c = str[i];
-                if (c == '[')
-                    stack.Push(c);
-                else if (c == ']')
-                {
-                    if (stack.Count == 0)
-                        return false;
-                    if (stack.Peek() == '[')
-                        stack.Pop();
-                    else
-                        return false;
-                }
-            }
-            return stack.Count == 0;
-        }
 
         public static string RemoveWS(string withWhite)
         {
