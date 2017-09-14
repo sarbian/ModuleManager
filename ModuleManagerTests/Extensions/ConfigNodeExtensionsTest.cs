@@ -83,5 +83,67 @@ namespace ModuleManagerTests.Extensions
             Assert.Equal(0, innerNode2.nodes[0].values.Count);
             Assert.Equal(0, innerNode2.nodes[0].nodes.Count);
         }
+
+        [Fact]
+        public void TestDeepCopy()
+        {
+            ConfigNode fromNode = new TestConfigNode("SOME_NODE")
+            {
+                { "abc", "def" },
+                { "ghi", "jkl" },
+                new TestConfigNode("INNER_NODE_1")
+                {
+                    { "mno", "pqr" },
+                    new TestConfigNode("INNER_INNER_NODE_1"),
+                },
+                new TestConfigNode("INNER_NODE_2")
+                {
+                    { "stu", "vwx" },
+                    new TestConfigNode("INNER_INNER_NODE_2"),
+                },
+            };
+            
+            ConfigNode toNode = fromNode.DeepCopy();
+            
+            Assert.Equal("SOME_NODE", toNode.name);
+            
+            Assert.Equal(2, toNode.values.Count);
+            
+            Assert.NotSame(fromNode.values[0], toNode.values[0]);
+            Assert.Equal("abc", toNode.values[0].name);
+            Assert.Equal("def", toNode.values[0].value);
+            
+            Assert.NotSame(fromNode.values[1], toNode.values[1]);
+            Assert.Equal("ghi", toNode.values[1].name);
+            Assert.Equal("jkl", toNode.values[1].value);
+            
+            Assert.Equal(2, toNode.nodes.Count);
+
+            ConfigNode innerNode1 = toNode.nodes[0];
+            Assert.NotSame(fromNode.nodes[0], innerNode1);
+            Assert.Equal("INNER_NODE_1", innerNode1.name);
+            Assert.Equal(1, innerNode1.values.Count);
+            Assert.NotSame(fromNode.nodes[0].values[0], innerNode1.values[0]);
+            Assert.Equal("mno", innerNode1.values[0].name);
+            Assert.Equal("pqr", innerNode1.values[0].value);
+            Assert.Equal(1, toNode.nodes[0].nodes.Count);
+            Assert.NotSame(fromNode.nodes[0].nodes[0], innerNode1.nodes[0]);
+            Assert.Equal("INNER_INNER_NODE_1", innerNode1.nodes[0].name);
+            Assert.Equal(0, innerNode1.nodes[0].values.Count);
+            Assert.Equal(0, innerNode1.nodes[0].nodes.Count);
+
+            ConfigNode innerNode2 = toNode.nodes[1];
+            Assert.NotSame(fromNode.nodes[1], innerNode2);
+            Assert.Equal("INNER_NODE_2", innerNode2.name);
+            Assert.Equal(1, innerNode2.values.Count);
+            Assert.NotSame(fromNode.nodes[1].values[0], innerNode2.values[0]);
+            Assert.Equal("stu", innerNode2.values[0].name);
+            Assert.Equal("vwx", innerNode2.values[0].value);
+            Assert.Equal(1, innerNode2.nodes.Count);
+            Assert.NotSame(fromNode.nodes[1].nodes[0], innerNode2.nodes[0]);
+            Assert.Equal("INNER_INNER_NODE_2", innerNode2.nodes[0].name);
+            Assert.Equal(0, innerNode2.nodes[0].values.Count);
+            Assert.Equal(0, innerNode2.nodes[0].nodes.Count);
+        }
     }
 }

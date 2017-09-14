@@ -1108,7 +1108,7 @@ namespace ModuleManager
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
         public static ConfigNode ModifyNode(NodeStack original, ConfigNode mod, PatchContext context)
         {
-            ConfigNode newNode = original.value.CreateCopy();
+            ConfigNode newNode = original.value.DeepCopy();
             NodeStack nodeStack = original.ReplaceValue(newNode);
 
             #region Values

@@ -15,5 +15,18 @@ namespace ModuleManager.Extensions
             foreach (ConfigNode node in fromeNode.nodes)
                 toNode.nodes.Add(node);
         }
+
+        public static ConfigNode DeepCopy(this ConfigNode from)
+        {
+            ConfigNode to = new ConfigNode(from.name);
+            foreach (ConfigNode.Value value in from.values)
+                to.AddValue(value.name, value.value);
+            foreach (ConfigNode node in from.nodes)
+            {
+                ConfigNode newNode = DeepCopy(node);
+                to.nodes.Add(newNode);
+            }
+            return to;
+        }
     }
 }
