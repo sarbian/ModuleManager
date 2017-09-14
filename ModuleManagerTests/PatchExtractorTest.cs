@@ -283,6 +283,30 @@ namespace ModuleManagerTests
             AssertUrlCorrect("@NADE", config3, list.firstPatches[0]);
         }
 
+        [Fact]
+        public void TestSortAndExtractPatches__NotBracketBalanced()
+        {
+            UrlDir.UrlConfig config1 = CreateConfig("@NODE:FOR[mod1]");
+            UrlDir.UrlConfig config2 = CreateConfig("@NODE:FOR[");
+            UrlDir.UrlConfig config3 = CreateConfig("NODE:HAS[#foo[]");
+
+            string[] modList = { "mod1" };
+            PatchList list = PatchExtractor.SortAndExtractPatches(root, modList, progress);
+
+            Assert.Empty(root.AllConfigs);
+
+            progress.Received().Error(config2, "Error - node name does not have balanced brackets (or a space - if so replace with ?):\nabc/def/@NODE:FOR[");
+            progress.Received().Error(config3, "Error - node name does not have balanced brackets (or a space - if so replace with ?):\nabc/def/NODE:HAS[#foo[]");
+            
+            Assert.Empty(list.firstPatches);
+            Assert.Empty(list.legacyPatches);
+            Assert.Empty(list.finalPatches);
+            Assert.Empty(list.modPasses["mod1"].beforePatches);
+            Assert.Equal(1, list.modPasses["mod1"].forPatches.Count);
+            AssertUrlCorrect("@NODE", config1, list.modPasses["mod1"].forPatches[0]);
+            Assert.Empty(list.modPasses["mod1"].afterPatches);
+        }
+
         private UrlDir.UrlConfig CreateConfig(string name)
         {
             ConfigNode node = new TestConfigNode(name)

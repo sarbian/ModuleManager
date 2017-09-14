@@ -23,6 +23,13 @@ namespace ModuleManager
             {
                 try
                 {
+                    if (!url.type.IsBracketBalanced())
+                    {
+                        progress.Error(url, "Error - node name does not have balanced brackets (or a space - if so replace with ?):\n" + url.SafeUrl());
+                        url.parent.configs.Remove(url);
+                        continue;
+                    }
+
                     Command command = CommandParser.Parse(url.type, out _);;
 
                     Match firstMatch = firstRegex.Match(url.type);
