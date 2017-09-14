@@ -82,6 +82,8 @@ namespace TestUtilsTests
             Assert.Same(root, root.root);
             Assert.Same(root, parent.root);
             Assert.Same(root, dir.root);
+
+            Assert.Contains(dir, root.AllDirectories);
         }
 
         [Fact]
@@ -105,6 +107,32 @@ namespace TestUtilsTests
 
             Assert.Same(root, dir.root);
             Assert.Same(root, parent2.root);
+
+            Assert.Contains(dir, root.AllDirectories);
+            Assert.Contains(dir, parent1.AllDirectories);
+        }
+
+        [Fact]
+        public void TestCreateDir__Url__AlreadyExists()
+        {
+            UrlDir root = UrlBuilder.CreateRoot();
+
+            UrlDir dir1 = UrlBuilder.CreateDir("abc/def", root);
+            UrlDir dir2 = UrlBuilder.CreateDir("abc/def", root);
+
+            Assert.Same(dir1, dir2);
+
+            Assert.Equal("def", dir1.name);
+
+            UrlDir parent = dir1.parent;
+
+            Assert.NotNull(parent);
+            Assert.Equal("abc", parent.name);
+            Assert.Contains(dir1, parent.children);
+
+            Assert.Same(root, dir1.root);
+            Assert.Same(root, parent.root);
+            Assert.Contains(dir1, root.AllDirectories);
         }
 
         [Fact]
@@ -197,6 +225,31 @@ namespace TestUtilsTests
         }
 
         [Fact]
+        public void TestCreateFile__Url__AlreadyExists()
+        {
+            UrlDir root = UrlBuilder.CreateRoot();
+            UrlDir.UrlFile file1 = UrlBuilder.CreateFile("abc/def.txt", root);
+            UrlDir.UrlFile file2 = UrlBuilder.CreateFile("abc/def.txt", root);
+
+            Assert.Same(file1, file2);
+
+            Assert.Equal("def", file1.name);
+            Assert.Equal("txt", file1.fileExtension);
+            Assert.Equal(UrlDir.FileType.Unknown, file1.fileType);
+            Assert.Equal("abc/def", file1.url);
+
+            UrlDir parent1 = file1.parent;
+            Assert.NotNull(parent1);
+            Assert.Equal("abc", parent1.name);
+            Assert.Contains(file1, parent1.files);
+
+            Assert.Same(root, file1.root);
+            Assert.Same(root, parent1.root);
+
+            Assert.Contains(file1, root.AllFiles);
+        }
+
+        [Fact]
         public void TestCreateConfig()
         {
             ConfigNode node = new TestConfigNode("SOME_NODE")
@@ -254,6 +307,55 @@ namespace TestUtilsTests
 
             Assert.Contains(config, root.AllConfigs);
             Assert.Contains(config, root.GetConfigs("SOME_NODE"));
+        }
+
+        [Fact]
+        public void TestCreateConfig__Url__FileAlreadyExists()
+        {
+            UrlDir root = UrlBuilder.CreateRoot();
+
+            ConfigNode node1 = new TestConfigNode("SOME_NODE")
+            {
+                { "name", "blah" },
+                { "foo", "bar" },
+            };
+
+            ConfigNode node2 = new TestConfigNode("SOME_OTHER_NODE")
+            {
+                { "name", "bleh" },
+                { "jazz", "hands" },
+            };
+
+            UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig("abc/def", node1, root);
+            UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig("abc/def", node2, root);
+
+            UrlDir.UrlFile file = config1.parent;
+            Assert.NotNull(file);
+
+            Assert.Same(file, config2.parent);
+            
+            Assert.Equal("def", file.name);
+            Assert.Equal("cfg", file.fileExtension);
+            Assert.Equal(UrlDir.FileType.Config, file.fileType);
+            Assert.Contains(config1, file.configs);
+            Assert.Contains(config2, file.configs);
+
+            UrlDir parent = file.parent;
+            Assert.NotNull(parent);
+            Assert.Equal("abc", parent.name);
+            Assert.Contains(file, parent.files);
+
+            Assert.Contains(parent, root.children);
+
+            Assert.Same(root, file.root);
+            Assert.Same(root, parent.root);
+            Assert.Same(root, root.root);
+
+            Assert.Contains(config1, root.AllConfigs);
+            Assert.Contains(config1, root.GetConfigs("SOME_NODE"));
+
+            Assert.Contains(config2, root.AllConfigs);
+            Assert.Contains(config2, root.GetConfigs("SOME_OTHER_NODE"));
         }
     }
 }

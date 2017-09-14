@@ -41,7 +41,15 @@ namespace TestUtils
 
         public static UrlDir CreateDir(string url, UrlDir parent = null)
         {
-            if (parent == null) parent = CreateRoot();
+            if (parent == null)
+            {
+                parent = CreateRoot();
+            }
+            else
+            {
+                UrlDir existingDir = parent.GetDirectory(url);
+                if (existingDir != null) return existingDir;
+            }
 
             UrlDir current = parent;
 
@@ -74,10 +82,17 @@ namespace TestUtils
                 parent = CreateRoot();
             }
 
+            string nameWithoutExtension = Path.GetFileNameWithoutExtension(name);
+            string extension = Path.GetExtension(name);
+            if (!string.IsNullOrEmpty(extension)) extension = extension.Substring(1);
+
+            UrlDir.UrlFile existingFile = parent.files.FirstOrDefault(f => f.name == nameWithoutExtension && f.fileExtension == extension);
+            if (existingFile != null) return existingFile;
+
             bool cfg = false;
             string newName = name;
 
-            if (Path.GetExtension(name) == ".cfg")
+            if (extension == "cfg")
             {
                 cfg = true;
                 newName = name + ".not_cfg";
@@ -87,7 +102,7 @@ namespace TestUtils
 
             if (cfg)
             {
-                UrlFile__field__name.SetValue(file, Path.GetFileNameWithoutExtension(name));
+                UrlFile__field__name.SetValue(file, nameWithoutExtension);
                 UrlFile__field__fileExtension.SetValue(file, "cfg");
                 UrlFile__field__fileType.SetValue(file, UrlDir.FileType.Config);
             }
