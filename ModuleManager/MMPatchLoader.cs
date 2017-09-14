@@ -184,7 +184,7 @@ namespace ModuleManager
             modlist += "Non-DLL mods added (:FOR[xxx]):\n";
             foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
             {
-                if (ParseCommand(cfgmod.type, out string name) != Command.Insert)
+                if (CommandParser.Parse(cfgmod.type, out string name) != Command.Insert)
                 {
                     progress.PatchAdded();
                     if (name.Contains(":FOR["))
@@ -940,7 +940,7 @@ namespace ModuleManager
             {
                 string name = RemoveWS(mod.type);
 
-                if (ParseCommand(name, out name) != Command.Insert)
+                if (CommandParser.Parse(name, out name) != Command.Insert)
                     mod.parent.configs.Remove(mod);
             }
         }
@@ -968,7 +968,7 @@ namespace ModuleManager
                 try
                 {
                     string name = RemoveWS(mod.type);
-                    Command cmd = ParseCommand(name, out string tmp);
+                    Command cmd = CommandParser.Parse(name, out string tmp);
 
                     if (cmd != Command.Insert)
                     {
@@ -1124,7 +1124,7 @@ namespace ModuleManager
                 vals += "\n   " + modVal.name + "= " + modVal.value;
                 #endif
 
-                Command cmd = ParseCommand(modVal.name, out string valName);
+                Command cmd = CommandParser.Parse(modVal.name, out string valName);
 
                 if (cmd == Command.Special)
                 {
@@ -1424,7 +1424,7 @@ namespace ModuleManager
                 }
 
                 string subName = subMod.name;
-                Command command = ParseCommand(subName, out string tmp);
+                Command command = CommandParser.Parse(subName, out string tmp);
 
                 if (command == Command.Insert)
                 {
@@ -2067,83 +2067,6 @@ namespace ModuleManager
         }
 
         #endregion Applying Patches
-
-        #region Command Parsing
-
-        private enum Command
-        {
-            Insert,
-
-            Delete,
-
-            Edit,
-
-            Replace,
-
-            Copy,
-
-            Rename,
-
-            Paste,
-
-            Special,
-
-            Create
-        }
-
-        private static Command ParseCommand(string name, out string valueName)
-        {
-            if (name.Length == 0)
-            {
-                valueName = string.Empty;
-                return Command.Insert;
-            }
-            Command ret;
-            switch (name[0])
-            {
-                case '@':
-                    ret = Command.Edit;
-                    break;
-
-                case '%':
-                    ret = Command.Replace;
-                    break;
-
-                case '-':
-                case '!':
-                    ret = Command.Delete;
-                    break;
-
-                case '+':
-                case '$':
-                    ret = Command.Copy;
-                    break;
-
-                case '|':
-                    ret = Command.Rename;
-                    break;
-
-                case '#':
-                    ret = Command.Paste;
-                    break;
-
-                case '*':
-                    ret = Command.Special;
-                    break;
-
-                case '&':
-                    ret = Command.Create;
-                    break;
-
-                default:
-                    valueName = name;
-                    return Command.Insert;
-            }
-            valueName = name.Substring(1);
-            return ret;
-        }
-
-        #endregion Command Parsing
 
         #region Sanity checking & Utility functions
 

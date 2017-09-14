@@ -36,6 +36,8 @@
     <Compile Include="Cats\CatMover.cs" />
     <Compile Include="Cats\CatOrbiter.cs" />
     <Compile Include="Collections\ImmutableStack.cs" />
+    <Compile Include="Command.cs" />
+    <Compile Include="CommandParser.cs" />
     <Compile Include="Extensions\NodeStackExtensions.cs" />
     <Compile Include="IPatchProgress.cs" />
     <Compile Include="Logging\IBasicLogger.cs" />
