@@ -21,13 +21,25 @@ namespace ModuleManagerTests
         [Fact]
         public void TestModPasses__HasMod()
         {
-            PatchList list = new PatchList(new[] { "mod1", "mod2" });
+            PatchList list = new PatchList(new[] { "mod1", "Mod2", "MOD3" });
 
             PatchList.ModPassCollection collection = list.modPasses;
 
             Assert.True(collection.HasMod("mod1"));
+            Assert.True(collection.HasMod("Mod1"));
+            Assert.True(collection.HasMod("MOD1"));
+
             Assert.True(collection.HasMod("mod2"));
-            Assert.False(collection.HasMod("mod3"));
+            Assert.True(collection.HasMod("Mod2"));
+            Assert.True(collection.HasMod("MOD2"));
+
+            Assert.True(collection.HasMod("mod3"));
+            Assert.True(collection.HasMod("Mod3"));
+            Assert.True(collection.HasMod("MOD3"));
+
+            Assert.False(collection.HasMod("mod4"));
+            Assert.False(collection.HasMod("Mod4"));
+            Assert.False(collection.HasMod("MOD4"));
         }
 
         [Fact]

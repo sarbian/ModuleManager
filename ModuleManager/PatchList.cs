@@ -38,14 +38,14 @@ namespace ModuleManager
                 {
                     ModPass pass = new ModPass(mod);
                     passesArray[i] = pass;
-                    passesDict.Add(mod, pass);
+                    passesDict.Add(mod.ToLowerInvariant(), pass);
                     i++;
                 }
             }
 
-            public ModPass this[string name] => passesDict[name];
+            public ModPass this[string name] => passesDict[name.ToLowerInvariant()];
 
-            public bool HasMod(string name) => passesDict.ContainsKey(name);
+            public bool HasMod(string name) => passesDict.ContainsKey(name.ToLowerInvariant());
 
             public ArrayEnumerator<ModPass> GetEnumerator() => new ArrayEnumerator<ModPass>(passesArray);
             IEnumerator<ModPass> IEnumerable<ModPass>.GetEnumerator() => GetEnumerator();
