@@ -197,6 +197,21 @@ namespace ModuleManagerTests
             AssertUrlCorrect("@NODE[foo]:HAS[#bar]", afterMod2Configs[1], currentPatches[1]);
             AssertUrlCorrect("@NADE",                afterMod2Configs[2], currentPatches[2]);
             AssertUrlCorrect("@NADE",                afterMod2Configs[3], currentPatches[3]);
+
+            progress.Received().NeedsUnsatisfiedBefore(beforeMod3Configs[0]);
+            progress.Received().NeedsUnsatisfiedBefore(beforeMod3Configs[1]);
+            progress.Received().NeedsUnsatisfiedBefore(beforeMod3Configs[2]);
+            progress.Received().NeedsUnsatisfiedBefore(beforeMod3Configs[3]);
+
+            progress.Received().NeedsUnsatisfiedFor(forMod3Configs[0]);
+            progress.Received().NeedsUnsatisfiedFor(forMod3Configs[1]);
+            progress.Received().NeedsUnsatisfiedFor(forMod3Configs[2]);
+            progress.Received().NeedsUnsatisfiedFor(forMod3Configs[3]);
+
+            progress.Received().NeedsUnsatisfiedAfter(afterMod3Configs[0]);
+            progress.Received().NeedsUnsatisfiedAfter(afterMod3Configs[1]);
+            progress.Received().NeedsUnsatisfiedAfter(afterMod3Configs[2]);
+            progress.Received().NeedsUnsatisfiedAfter(afterMod3Configs[3]);
         }
 
         [Fact]

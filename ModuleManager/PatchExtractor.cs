@@ -91,6 +91,7 @@ namespace ModuleManager
                         else
                         {
                             modNotFound = true;
+                            progress.NeedsUnsatisfiedBefore(url);
                         }
                     }
                     else if (forMatch.Success)
@@ -103,6 +104,7 @@ namespace ModuleManager
                         else
                         {
                             modNotFound = true;
+                            progress.NeedsUnsatisfiedFor(url);
                         }
                     }
                     else if (afterMatch.Success)
@@ -115,6 +117,7 @@ namespace ModuleManager
                         else
                         {
                             modNotFound = true;
+                            progress.NeedsUnsatisfiedAfter(url);
                         }
                     }
                     else

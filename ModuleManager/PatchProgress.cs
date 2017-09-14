@@ -88,6 +88,27 @@ namespace ModuleManager
             NeedsUnsatisfiedCount += 1;
         }
 
+        public void NeedsUnsatisfiedBefore(UrlDir.UrlConfig url)
+        {
+            logger.Info($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its BEFORE");
+            NeedsUnsatisfiedCount += 1;
+            NeedsUnsatisfiedRootCount += 1;
+        }
+
+        public void NeedsUnsatisfiedFor(UrlDir.UrlConfig url)
+        {
+            logger.Warning($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its FOR (this shouldn't happen)");
+            NeedsUnsatisfiedCount += 1;
+            NeedsUnsatisfiedRootCount += 1;
+        }
+
+        public void NeedsUnsatisfiedAfter(UrlDir.UrlConfig url)
+        {
+            logger.Info($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its AFTER");
+            NeedsUnsatisfiedCount += 1;
+            NeedsUnsatisfiedRootCount += 1;
+        }
+
         public void Error(UrlDir.UrlConfig url, string message)
         {
             ErrorCount += 1;
