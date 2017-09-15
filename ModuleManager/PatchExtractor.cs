@@ -11,9 +11,9 @@ namespace ModuleManager
     {
         private static readonly Regex firstRegex = new Regex(@":FIRST", RegexOptions.IgnoreCase);
         private static readonly Regex finalRegex = new Regex(@":FINAL", RegexOptions.IgnoreCase);
-        private static readonly Regex beforeRegex = new Regex(@":BEFORE\[([^\[\]]+)\]", RegexOptions.IgnoreCase);
-        private static readonly Regex forRegex = new Regex(@":FOR\[([^\[\]]+)\]", RegexOptions.IgnoreCase);
-        private static readonly Regex afterRegex = new Regex(@":AFTER\[([^\[\]]+)\]", RegexOptions.IgnoreCase);
+        private static readonly Regex beforeRegex = new Regex(@":BEFORE(?:\[([^\[\]]+)\])?", RegexOptions.IgnoreCase);
+        private static readonly Regex forRegex = new Regex(@":FOR(?:\[([^\[\]]+)\])?", RegexOptions.IgnoreCase);
+        private static readonly Regex afterRegex = new Regex(@":AFTER(?:\[([^\[\]]+)\])?", RegexOptions.IgnoreCase);
 
         public static PatchList SortAndExtractPatches(UrlDir databaseRoot, IEnumerable<string> modList, IPatchProgress progress)
         {
@@ -62,6 +62,21 @@ namespace ModuleManager
                     if (matchCount > 1)
                     {
                         progress.Error(url, $"Error - more than one pass specifier on a node: {url.SafeUrl()}");
+                        error = true;
+                    }
+                    if (beforeMatch.Success && !beforeMatch.Groups[1].Success)
+                    {
+                        progress.Error(url, "Error - malformed :BEFORE patch specifier detected: " + url.SafeUrl());
+                        error = true;
+                    }
+                    if (forMatch.Success && !forMatch.Groups[1].Success)
+                    {
+                        progress.Error(url, "Error - malformed :FOR patch specifier detected: " + url.SafeUrl());
+                        error = true;
+                    }
+                    if (afterMatch.Success && !afterMatch.Groups[1].Success)
+                    {
+                        progress.Error(url, "Error - malformed :AFTER patch specifier detected: " + url.SafeUrl());
                         error = true;
                     }
                     if (error)

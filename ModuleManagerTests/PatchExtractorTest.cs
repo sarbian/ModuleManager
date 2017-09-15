@@ -307,6 +307,33 @@ namespace ModuleManagerTests
             Assert.Empty(list.modPasses["mod1"].afterPatches);
         }
 
+        [Fact]
+        public void TestSortAndExtractPatches__BadlyFormed()
+        {
+            UrlDir.UrlConfig config1 = CreateConfig("@NODE:FOR[mod1]");
+            UrlDir.UrlConfig config2 = CreateConfig("@NODE:FOR[]");
+            UrlDir.UrlConfig config3 = CreateConfig("@NADE:FIRST:BEFORE");
+            UrlDir.UrlConfig config4 = CreateConfig("@NADE:AFTER");
+
+            string[] modList = { "mod1" };
+            PatchList list = PatchExtractor.SortAndExtractPatches(root, modList, progress);
+
+            Assert.Empty(root.AllConfigs);
+
+            progress.Received().Error(config2, "Error - malformed :FOR patch specifier detected: abc/def/@NODE:FOR[]");
+            progress.Received().Error(config3, "Error - more than one pass specifier on a node: abc/def/@NADE:FIRST:BEFORE");
+            progress.Received().Error(config3, "Error - malformed :BEFORE patch specifier detected: abc/def/@NADE:FIRST:BEFORE");
+            progress.Received().Error(config4, "Error - malformed :AFTER patch specifier detected: abc/def/@NADE:AFTER");
+
+            Assert.Empty(list.firstPatches);
+            Assert.Empty(list.legacyPatches);
+            Assert.Empty(list.finalPatches);
+            Assert.Empty(list.modPasses["mod1"].beforePatches);
+            Assert.Equal(1, list.modPasses["mod1"].forPatches.Count);
+            AssertUrlCorrect("@NODE", config1, list.modPasses["mod1"].forPatches[0]);
+            Assert.Empty(list.modPasses["mod1"].afterPatches);
+        }
+
         private UrlDir.UrlConfig CreateConfig(string name)
         {
             ConfigNode node = new TestConfigNode(name)
