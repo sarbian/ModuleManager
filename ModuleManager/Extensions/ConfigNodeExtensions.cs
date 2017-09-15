@@ -16,6 +16,7 @@ namespace ModuleManager.Extensions
                 toNode.nodes.Add(node);
         }
 
+        // KSP implementation of ConfigNode.CreateCopy breaks with badly formed nodes (nodes with a blank name)
         public static ConfigNode DeepCopy(this ConfigNode from)
         {
             ConfigNode to = new ConfigNode(from.name);

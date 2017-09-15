@@ -19,6 +19,7 @@ namespace ModuleManager
         {
             PatchList list = new PatchList(modList);
 
+            // Have to convert to an array because we will be removing patches
             foreach (UrlDir.UrlConfig url in databaseRoot.AllConfigs.ToArray())
             {
                 try
