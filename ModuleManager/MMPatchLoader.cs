@@ -184,7 +184,7 @@ namespace ModuleManager
             modlist += "Non-DLL mods added (:FOR[xxx]):\n";
             foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
             {
-                if (ParseCommand(cfgmod.type, out string name) != Command.Insert)
+                if (CommandParser.Parse(cfgmod.type, out string name) != Command.Insert)
                 {
                     progress.PatchAdded();
                     if (name.Contains(":FOR["))
@@ -279,6 +279,17 @@ namespace ModuleManager
 
                 #endregion Check Needs
 
+                #region Sorting Patches
+
+                status = "Sorting patches";
+                logger.Info(status);
+
+                yield return null;
+
+                PatchList patchList = PatchExtractor.SortAndExtractPatches(GameDatabase.Instance.root, mods, progress);
+
+                #endregion
+
                 #region Applying patches
 
                 status = "Applying patches";
@@ -287,27 +298,27 @@ namespace ModuleManager
                 yield return null;
 
                 // :First node
-                yield return StartCoroutine(ApplyPatch(":FIRST"));
+                yield return StartCoroutine(ApplyPatch(":FIRST", patchList.firstPatches));
 
                 // any node without a :pass
-                yield return StartCoroutine(ApplyPatch(":LEGACY"));
+                yield return StartCoroutine(ApplyPatch(":LEGACY (default)", patchList.legacyPatches));
 
-                foreach (string mod in mods)
+                foreach (PatchList.ModPass pass in patchList.modPasses)
                 {
-                    string upperModName = mod.ToUpper();
-                    yield return StartCoroutine(ApplyPatch(":BEFORE[" + upperModName + "]"));
-                    yield return StartCoroutine(ApplyPatch(":FOR[" + upperModName + "]"));
-                    yield return StartCoroutine(ApplyPatch(":AFTER[" + upperModName + "]"));
+                    string upperModName = pass.name.ToUpper();
+                    yield return StartCoroutine(ApplyPatch(":BEFORE[" + upperModName + "]", pass.beforePatches));
+                    yield return StartCoroutine(ApplyPatch(":FOR[" + upperModName + "]", pass.forPatches));
+                    yield return StartCoroutine(ApplyPatch(":AFTER[" + upperModName + "]", pass.afterPatches));
                 }
 
                 // :Final node
-                yield return StartCoroutine(ApplyPatch(":FINAL"));
+                yield return StartCoroutine(ApplyPatch(":FINAL", patchList.finalPatches));
 
                 PurgeUnused();
 
                 #endregion Applying patches
 
-                #region Logging
+                #region Saving Cache
 
                 if (progress.ErrorCount > 0 || progress.ExceptionCount > 0)
                 {
@@ -337,7 +348,9 @@ namespace ModuleManager
                     yield return null;
                     CreateCache();
                 }
-                
+
+                #endregion Saving Cache
+
                 SaveModdedTechTree();
                 SaveModdedPhysics();
             }
@@ -352,8 +365,6 @@ namespace ModuleManager
             StatusUpdate();
 
             logger.Info(status + "\n" + errors);
-
-                #endregion Logging
 
 #if DEBUG
             RunTestCases();
@@ -647,7 +658,6 @@ namespace ModuleManager
                 node.AddValue("name", config.name);
                 node.AddValue("type", config.type);
                 node.AddValue("parentUrl", config.parent.url);
-                node.AddValue("url", config.url);
                 node.AddNode(config.config);
             }
 
@@ -746,7 +756,6 @@ namespace ModuleManager
                 string name = node.GetValue("name");
                 string type = node.GetValue("type");
                 string parentUrl = node.GetValue("parentUrl");
-                string url = node.GetValue("url");
 
                 UrlDir.UrlFile parent = GameDatabase.Instance.root.AllConfigFiles.FirstOrDefault(f => f.url == parentUrl);
                 if (parent != null)
@@ -802,7 +811,7 @@ namespace ModuleManager
                         }
 
                         ConfigNode copy = new ConfigNode(type);
-                        ShallowCopy(currentMod.config, copy);
+                        copy.ShallowCopyFrom(currentMod.config);
                         currentMod = new UrlDir.UrlConfig(currentMod.parent, copy);
                         mod.parent.configs.Add(currentMod);
                     }
@@ -812,7 +821,7 @@ namespace ModuleManager
                 }
                 catch (Exception ex)
                 {
-                    progress.Exception(currentMod, "Exception while checking needs : " + currentMod.url + " with a type of " + currentMod.type, ex);
+                    progress.Exception(currentMod, "Exception while checking needs : " + currentMod.SafeUrl() + " with a type of " + currentMod.type, ex);
                     logger.Error("Node is : " + PrettyConfig(currentMod));
                 }
             }
@@ -858,7 +867,7 @@ namespace ModuleManager
 
                 if (nodeName == null)
                 {
-                    progress.Error(context.patchUrl, "Error - Node in file " + context.patchUrl.url + " subnode: " + stack.GetPath() +
+                    progress.Error(context.patchUrl, "Error - Node in file " + context.patchUrl.SafeUrl() + " subnode: " + stack.GetPath() +
                             " has config.name == null");
                 }
 
@@ -889,7 +898,7 @@ namespace ModuleManager
             }
 
             if (needsCopy)
-                ShallowCopy(copy, original);
+                original.ShallowCopyFrom(copy);
         }
 
         /// <summary>
@@ -940,7 +949,7 @@ namespace ModuleManager
             {
                 string name = RemoveWS(mod.type);
 
-                if (ParseCommand(name, out name) != Command.Insert)
+                if (CommandParser.Parse(name, out name) != Command.Insert)
                     mod.parent.configs.Remove(mod);
             }
         }
@@ -950,10 +959,10 @@ namespace ModuleManager
         #region Applying Patches
 
         // Apply patch to all relevent nodes
-        public IEnumerator ApplyPatch(string Stage)
+        public IEnumerator ApplyPatch(string Stage, IEnumerable<UrlDir.UrlConfig> patches)
         {
             StatusUpdate();
-            logger.Info(Stage + (Stage == ":LEGACY" ? " (default) pass" : " pass"));
+            logger.Info(Stage +  " pass");
             yield return null;
 
             activity = "ModuleManager " + Stage;
@@ -962,130 +971,94 @@ namespace ModuleManager
             
             float nextYield = Time.realtimeSinceStartup + yieldInterval;
 
-            for (int modsIndex = 0; modsIndex < allConfigs.Length; modsIndex++)
+            foreach (UrlDir.UrlConfig mod in patches)
             {
-                UrlDir.UrlConfig mod = allConfigs[modsIndex];
                 try
                 {
                     string name = RemoveWS(mod.type);
-                    Command cmd = ParseCommand(name, out string tmp);
+                    Command cmd = CommandParser.Parse(name, out string tmp);
 
-                    if (cmd != Command.Insert)
+                    if (cmd == Command.Insert)
                     {
-                        if (!IsBracketBalanced(mod.type))
+                        Debug.LogWarning("Warning - Encountered insert node that should not exist at this stage: " + mod.SafeUrl());
+                        continue;
+                    }
+
+                    string upperName = name.ToUpper();
+                    PatchContext context = new PatchContext(mod, GameDatabase.Instance.root, logger, progress);
+                    char[] sep = { '[', ']' };
+                    string condition = "";
+
+                    if (upperName.Contains(":HAS["))
+                    {
+                        int start = upperName.IndexOf(":HAS[");
+                        condition = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
+                        name = name.Substring(0, start);
+                    }
+
+                    string[] splits = name.Split(sep, 3);
+                    string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] { null };
+                    string type = splits[0].Substring(1);
+
+                    foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
+                    {
+                        foreach (string pattern in patterns)
                         {
-                            progress.Error(mod,
-                                "Error - Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" +
-                                mod.name + "\n");
-
-                            // And remove it so it's not tried anymore
-                            mod.parent.configs.Remove(mod);
-                            continue;
-                        }
-
-                        // Ensure the stage is correct
-                        string upperName = name.ToUpper();
-
-                        int stageIdx = upperName.IndexOf(Stage);
-                        if (stageIdx >= 0)
-                            name = name.Substring(0, stageIdx) + name.Substring(stageIdx + Stage.Length);
-                        else if (
-                            !((upperName.Contains(":FIRST") || Stage == ":LEGACY")
-                              && !upperName.Contains(":BEFORE[") && !upperName.Contains(":FOR[")
-                              && !upperName.Contains(":AFTER[") && !upperName.Contains(":FINAL")))
-                            continue;
-
-                        // TODO: do we want to ensure there's only one phase specifier?
-
-                        try
-                        {
-                            PatchContext context = new PatchContext(mod, GameDatabase.Instance.root, logger, progress);
-                            char[] sep = { '[', ']' };
-                            string condition = "";
-
-                            if (upperName.Contains(":HAS["))
+                            bool loop = false;
+                            do
                             {
-                                int start = upperName.IndexOf(":HAS[");
-                                condition = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
-                                name = name.Substring(0, start);
-                            }
-
-                            string[] splits = name.Split(sep, 3);
-                            string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] { null };
-                            string type = splits[0].Substring(1);
-
-                            foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
-                            {
-                                foreach (string pattern in patterns)
+                                if (url.type == type && WildcardMatch(url.name, pattern)
+                                    && CheckConstraints(url.config, condition))
                                 {
-                                    bool loop = false;
-                                    do
+                                    switch (cmd)
                                     {
-                                        if (url.type == type && WildcardMatch(url.name, pattern)
-                                            && CheckConstraints(url.config, condition))
-                                        {
-                                            switch (cmd)
+                                        case Command.Edit:
+                                            progress.ApplyingUpdate(url, mod);
+                                            url.config = ModifyNode(new NodeStack(url.config), mod.config, context);
+                                            break;
+
+                                        case Command.Copy:
+                                            ConfigNode clone = ModifyNode(new NodeStack(url.config), mod.config, context);
+                                            if (url.config.name != mod.name)
                                             {
-                                                case Command.Edit:
-                                                    progress.ApplyingUpdate(url, mod);
-                                                    url.config = ModifyNode(new NodeStack(url.config), mod.config, context);
-                                                    break;
-
-                                                case Command.Copy:
-                                                    ConfigNode clone = ModifyNode(new NodeStack(url.config), mod.config, context);
-                                                    if (url.config.name != mod.name)
-                                                    {
-                                                        progress.ApplyingCopy(url, mod);
-                                                        url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                                    }
-                                                    else
-                                                    {
-                                                        progress.Error(mod, "Error - Error while processing " + mod.config.name +
-                                                            " the copy needs to have a different name than the parent (use @name = xxx)");
-                                                    }
-                                                    break;
-
-                                                case Command.Delete:
-                                                    progress.ApplyingDelete(url, mod);
-                                                    url.parent.configs.Remove(url);
-                                                    break;
-
-                                                case Command.Replace:
-
-                                                    // TODO: do something sensible here.
-                                                    break;
-
-                                                case Command.Create:
-
-                                                    // TODO: something similar to above
-                                                    break;
+                                                progress.ApplyingCopy(url, mod);
+                                                url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
                                             }
-                                            // When this special node is found then try to apply the patch once more on the same NODE
-                                            if (mod.config.HasNode("MM_PATCH_LOOP"))
+                                            else
                                             {
-                                                logger.Info("Looping on " + mod.url + " to " + url.url);
-                                                loop = true;
+                                                progress.Error(mod, "Error - Error while processing " + mod.config.name +
+                                                    " the copy needs to have a different name than the parent (use @name = xxx)");
                                             }
-                                        }
-                                        else
-                                        {
-                                            loop = false;
-                                        }
-                                    } while (loop);
+                                            break;
 
+                                        case Command.Delete:
+                                            progress.ApplyingDelete(url, mod);
+                                            url.parent.configs.Remove(url);
+                                            break;
+
+                                        default:
+                                            logger.Warning("Invalid command encountered on a root node: " + mod.SafeUrl());
+                                            break;
+                                    }
+                                    // When this special node is found then try to apply the patch once more on the same NODE
+                                    if (mod.config.HasNode("MM_PATCH_LOOP"))
+                                    {
+                                        logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
+                                        loop = true;
+                                    }
                                 }
-                            }
-                        }
-                        finally
-                        {
-                            // The patch was either run or has failed, in any case let's remove it from the database
-                            mod.parent.configs.Remove(mod);
+                                else
+                                {
+                                    loop = false;
+                                }
+                            } while (loop);
+
                         }
                     }
                 }
                 catch (Exception e)
                 {
-                    progress.Exception(mod, "Exception while processing node : " + mod.url, e);
+                    progress.Exception(mod, "Exception while processing node : " + mod.SafeUrl(), e);
                     logger.Error("Processed node was\n" + PrettyConfig(mod));
                     mod.parent.configs.Remove(mod);
                 }
@@ -1110,7 +1083,7 @@ namespace ModuleManager
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
         public static ConfigNode ModifyNode(NodeStack original, ConfigNode mod, PatchContext context)
         {
-            ConfigNode newNode = original.value.CreateCopy();
+            ConfigNode newNode = original.value.DeepCopy();
             NodeStack nodeStack = original.ReplaceValue(newNode);
 
             #region Values
@@ -1124,7 +1097,7 @@ namespace ModuleManager
                 vals += "\n   " + modVal.name + "= " + modVal.value;
                 #endif
 
-                Command cmd = ParseCommand(modVal.name, out string valName);
+                Command cmd = CommandParser.Parse(modVal.name, out string valName);
 
                 if (cmd == Command.Special)
                 {
@@ -1415,7 +1388,7 @@ namespace ModuleManager
             {
                 subMod.name = RemoveWS(subMod.name);
 
-                if (!IsBracketBalanced(subMod.name))
+                if (!subMod.name.IsBracketBalanced())
                 {
                     context.progress.Error(context.patchUrl,
                         "Error - Skipping a patch subnode with unbalanced square brackets or a space (replace them with a '?') in "
@@ -1424,7 +1397,7 @@ namespace ModuleManager
                 }
 
                 string subName = subMod.name;
-                Command command = ParseCommand(subName, out string tmp);
+                Command command = CommandParser.Parse(subName, out string tmp);
 
                 if (command == Command.Insert)
                 {
@@ -1456,7 +1429,7 @@ namespace ModuleManager
                     //string newName = subName.Substring(0, start);
                     //string path = subName.Substring(start + 1, end - start - 1);
 
-                    ConfigNode toPaste = RecurseNodeSearch(subName.Substring(1), nodeStack.Pop(), context);
+                    ConfigNode toPaste = RecurseNodeSearch(subName.Substring(1), nodeStack, context);
 
                     if (toPaste == null)
                     {
@@ -2068,117 +2041,12 @@ namespace ModuleManager
 
         #endregion Applying Patches
 
-        #region Command Parsing
-
-        private enum Command
-        {
-            Insert,
-
-            Delete,
-
-            Edit,
-
-            Replace,
-
-            Copy,
-
-            Rename,
-
-            Paste,
-
-            Special,
-
-            Create
-        }
-
-        private static Command ParseCommand(string name, out string valueName)
-        {
-            if (name.Length == 0)
-            {
-                valueName = string.Empty;
-                return Command.Insert;
-            }
-            Command ret;
-            switch (name[0])
-            {
-                case '@':
-                    ret = Command.Edit;
-                    break;
-
-                case '%':
-                    ret = Command.Replace;
-                    break;
-
-                case '-':
-                case '!':
-                    ret = Command.Delete;
-                    break;
-
-                case '+':
-                case '$':
-                    ret = Command.Copy;
-                    break;
-
-                case '|':
-                    ret = Command.Rename;
-                    break;
-
-                case '#':
-                    ret = Command.Paste;
-                    break;
-
-                case '*':
-                    ret = Command.Special;
-                    break;
-
-                case '&':
-                    ret = Command.Create;
-                    break;
-
-                default:
-                    valueName = name;
-                    return Command.Insert;
-            }
-            valueName = name.Substring(1);
-            return ret;
-        }
-
-        #endregion Command Parsing
-
         #region Sanity checking & Utility functions
-
-        public static bool IsBracketBalanced(string str)
-        {
-            Stack<char> stack = new Stack<char>();
-
-            char c;
-            for (int i = 0; i < str.Length; i++)
-            {
-                c = str[i];
-                if (c == '[')
-                    stack.Push(c);
-                else if (c == ']')
-                {
-                    if (stack.Count == 0)
-                        return false;
-                    if (stack.Peek() == '[')
-                        stack.Pop();
-                    else
-                        return false;
-                }
-            }
-            return stack.Count == 0;
-        }
 
         public static string RemoveWS(string withWhite)
         {
             // Removes ALL whitespace of a string.
             return new string(withWhite.ToCharArray().Where(c => !Char.IsWhiteSpace(c)).ToArray());
-        }
-
-        public bool IsPathInList(string modPath, List<string> pathList)
-        {
-            return pathList.Any(modPath.StartsWith);
         }
 
         #endregion Sanity checking & Utility functions
@@ -2379,15 +2247,6 @@ namespace ModuleManager
                 return;
             }
             newNode.AddValue(name, value);
-        }
-
-        private static void ShallowCopy(ConfigNode from, ConfigNode to)
-        {
-            to.ClearData();
-            foreach (ConfigNode.Value value in from.values)
-                to.values.Add(value);
-            foreach (ConfigNode node in from.nodes)
-                to.nodes.Add(node);
         }
 
         private string PrettyConfig(UrlDir.UrlConfig config)

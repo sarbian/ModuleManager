@@ -48,19 +48,19 @@ namespace ModuleManager
 
         public void ApplyingUpdate(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying update {patch.url} to {original.url}");
+            logger.Info($"Applying update {patch.SafeUrl()} to {original.SafeUrl()}");
             PatchedNodeCount += 1;
         }
 
         public void ApplyingCopy(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying copy {patch.url} to {original.url}");
+            logger.Info($"Applying copy {patch.SafeUrl()} to {original.SafeUrl()}");
             PatchedNodeCount += 1;
         }
 
         public void ApplyingDelete(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying delete {patch.url} to {original.url}");
+            logger.Info($"Applying delete {patch.SafeUrl()} to {original.SafeUrl()}");
             PatchedNodeCount += 1;
         }
 
@@ -86,6 +86,27 @@ namespace ModuleManager
         {
             logger.Info($"Deleting value in file {url.parent.url} subnode: {path.GetPath()} value: {valName} as it can't satisfy its NEEDS");
             NeedsUnsatisfiedCount += 1;
+        }
+
+        public void NeedsUnsatisfiedBefore(UrlDir.UrlConfig url)
+        {
+            logger.Info($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its BEFORE");
+            NeedsUnsatisfiedCount += 1;
+            NeedsUnsatisfiedRootCount += 1;
+        }
+
+        public void NeedsUnsatisfiedFor(UrlDir.UrlConfig url)
+        {
+            logger.Warning($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its FOR (this shouldn't happen)");
+            NeedsUnsatisfiedCount += 1;
+            NeedsUnsatisfiedRootCount += 1;
+        }
+
+        public void NeedsUnsatisfiedAfter(UrlDir.UrlConfig url)
+        {
+            logger.Info($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its AFTER");
+            NeedsUnsatisfiedCount += 1;
+            NeedsUnsatisfiedRootCount += 1;
         }
 
         public void Error(UrlDir.UrlConfig url, string message)

@@ -21,6 +21,9 @@ namespace ModuleManager
         void NeedsUnsatisfiedRoot(UrlDir.UrlConfig url);
         void NeedsUnsatisfiedNode(UrlDir.UrlConfig url, NodeStack path);
         void NeedsUnsatisfiedValue(UrlDir.UrlConfig url, NodeStack path, string valName);
+        void NeedsUnsatisfiedBefore(UrlDir.UrlConfig url);
+        void NeedsUnsatisfiedFor(UrlDir.UrlConfig url);
+        void NeedsUnsatisfiedAfter(UrlDir.UrlConfig url);
         void ApplyingCopy(UrlDir.UrlConfig original, UrlDir.UrlConfig patch);
         void ApplyingDelete(UrlDir.UrlConfig original, UrlDir.UrlConfig patch);
         void ApplyingUpdate(UrlDir.UrlConfig original, UrlDir.UrlConfig patch);

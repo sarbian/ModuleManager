@@ -49,10 +49,17 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions\StringExtensionsTest.cs" />
+    <Compile Include="Extensions\UrlConfigExtensionsTest.cs" />
+    <Compile Include="PatchListTest.cs" />
+    <Compile Include="Collections\ArrayEnumeratorTest.cs" />
     <Compile Include="Collections\ImmutableStackTest.cs" />
+    <Compile Include="CommandParserTest.cs" />
     <Compile Include="DummyTest.cs" />
+    <Compile Include="Extensions\ConfigNodeExtensionsTest.cs" />
     <Compile Include="Extensions\NodeStackExtensionsTest.cs" />
     <Compile Include="Logging\ModLoggerTest.cs" />
+    <Compile Include="PatchExtractorTest.cs" />
     <Compile Include="PatchProgressTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
