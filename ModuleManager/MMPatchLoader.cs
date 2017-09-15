@@ -279,6 +279,17 @@ namespace ModuleManager
 
                 #endregion Check Needs
 
+                #region Sorting Patches
+
+                status = "Sorting patches";
+                logger.Info(status);
+
+                yield return null;
+
+                PatchList patchList = PatchExtractor.SortAndExtractPatches(GameDatabase.Instance.root, mods, progress);
+
+                #endregion
+
                 #region Applying patches
 
                 status = "Applying patches";
@@ -287,21 +298,21 @@ namespace ModuleManager
                 yield return null;
 
                 // :First node
-                yield return StartCoroutine(ApplyPatch(":FIRST"));
+                yield return StartCoroutine(ApplyPatch(":FIRST", patchList.firstPatches));
 
                 // any node without a :pass
-                yield return StartCoroutine(ApplyPatch(":LEGACY"));
+                yield return StartCoroutine(ApplyPatch(":LEGACY", patchList.legacyPatches));
 
-                foreach (string mod in mods)
+                foreach (PatchList.ModPass pass in patchList.modPasses)
                 {
-                    string upperModName = mod.ToUpper();
-                    yield return StartCoroutine(ApplyPatch(":BEFORE[" + upperModName + "]"));
-                    yield return StartCoroutine(ApplyPatch(":FOR[" + upperModName + "]"));
-                    yield return StartCoroutine(ApplyPatch(":AFTER[" + upperModName + "]"));
+                    string upperModName = pass.name.ToUpper();
+                    yield return StartCoroutine(ApplyPatch(":BEFORE[" + upperModName + "]", pass.beforePatches));
+                    yield return StartCoroutine(ApplyPatch(":FOR[" + upperModName + "]", pass.forPatches));
+                    yield return StartCoroutine(ApplyPatch(":AFTER[" + upperModName + "]", pass.afterPatches));
                 }
 
                 // :Final node
-                yield return StartCoroutine(ApplyPatch(":FINAL"));
+                yield return StartCoroutine(ApplyPatch(":FINAL", patchList.finalPatches));
 
                 PurgeUnused();
 
@@ -948,7 +959,7 @@ namespace ModuleManager
         #region Applying Patches
 
         // Apply patch to all relevent nodes
-        public IEnumerator ApplyPatch(string Stage)
+        public IEnumerator ApplyPatch(string Stage, IEnumerable<UrlDir.UrlConfig> patches)
         {
             StatusUpdate();
             logger.Info(Stage + (Stage == ":LEGACY" ? " (default) pass" : " pass"));
@@ -960,9 +971,8 @@ namespace ModuleManager
             
             float nextYield = Time.realtimeSinceStartup + yieldInterval;
 
-            for (int modsIndex = 0; modsIndex < allConfigs.Length; modsIndex++)
+            foreach (UrlDir.UrlConfig mod in patches)
             {
-                UrlDir.UrlConfig mod = allConfigs[modsIndex];
                 try
                 {
                     string name = RemoveWS(mod.type);
@@ -970,30 +980,7 @@ namespace ModuleManager
 
                     if (cmd != Command.Insert)
                     {
-                        if (!mod.type.IsBracketBalanced())
-                        {
-                            progress.Error(mod,
-                                "Error - Skipping a patch with unbalanced square brackets or a space (replace them with a '?') :\n" +
-                                mod.name + "\n");
-
-                            // And remove it so it's not tried anymore
-                            mod.parent.configs.Remove(mod);
-                            continue;
-                        }
-
-                        // Ensure the stage is correct
                         string upperName = name.ToUpper();
-
-                        int stageIdx = upperName.IndexOf(Stage);
-                        if (stageIdx >= 0)
-                            name = name.Substring(0, stageIdx) + name.Substring(stageIdx + Stage.Length);
-                        else if (
-                            !((upperName.Contains(":FIRST") || Stage == ":LEGACY")
-                              && !upperName.Contains(":BEFORE[") && !upperName.Contains(":FOR[")
-                              && !upperName.Contains(":AFTER[") && !upperName.Contains(":FINAL")))
-                            continue;
-
-                        // TODO: do we want to ensure there's only one phase specifier?
 
                         try
                         {
@@ -1076,8 +1063,6 @@ namespace ModuleManager
                         }
                         finally
                         {
-                            // The patch was either run or has failed, in any case let's remove it from the database
-                            mod.parent.configs.Remove(mod);
                         }
                     }
                 }
