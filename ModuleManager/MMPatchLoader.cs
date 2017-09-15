@@ -978,84 +978,87 @@ namespace ModuleManager
                     string name = RemoveWS(mod.type);
                     Command cmd = CommandParser.Parse(name, out string tmp);
 
-                    if (cmd != Command.Insert)
+                    if (cmd == Command.Insert)
                     {
-                        string upperName = name.ToUpper();
-                        PatchContext context = new PatchContext(mod, GameDatabase.Instance.root, logger, progress);
-                        char[] sep = { '[', ']' };
-                        string condition = "";
+                        Debug.LogWarning("Warning - Encountered insert node that should not exist at this stage: " + mod.SafeUrl());
+                        continue;
+                    }
 
-                        if (upperName.Contains(":HAS["))
+                    string upperName = name.ToUpper();
+                    PatchContext context = new PatchContext(mod, GameDatabase.Instance.root, logger, progress);
+                    char[] sep = { '[', ']' };
+                    string condition = "";
+
+                    if (upperName.Contains(":HAS["))
+                    {
+                        int start = upperName.IndexOf(":HAS[");
+                        condition = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
+                        name = name.Substring(0, start);
+                    }
+
+                    string[] splits = name.Split(sep, 3);
+                    string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] { null };
+                    string type = splits[0].Substring(1);
+
+                    foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
+                    {
+                        foreach (string pattern in patterns)
                         {
-                            int start = upperName.IndexOf(":HAS[");
-                            condition = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
-                            name = name.Substring(0, start);
-                        }
-
-                        string[] splits = name.Split(sep, 3);
-                        string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] { null };
-                        string type = splits[0].Substring(1);
-
-                        foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
-                        {
-                            foreach (string pattern in patterns)
+                            bool loop = false;
+                            do
                             {
-                                bool loop = false;
-                                do
+                                if (url.type == type && WildcardMatch(url.name, pattern)
+                                    && CheckConstraints(url.config, condition))
                                 {
-                                    if (url.type == type && WildcardMatch(url.name, pattern)
-                                        && CheckConstraints(url.config, condition))
+                                    switch (cmd)
                                     {
-                                        switch (cmd)
-                                        {
-                                            case Command.Edit:
-                                                progress.ApplyingUpdate(url, mod);
-                                                url.config = ModifyNode(new NodeStack(url.config), mod.config, context);
-                                                break;
+                                        case Command.Edit:
+                                            progress.ApplyingUpdate(url, mod);
+                                            url.config = ModifyNode(new NodeStack(url.config), mod.config, context);
+                                            break;
 
-                                            case Command.Copy:
-                                                ConfigNode clone = ModifyNode(new NodeStack(url.config), mod.config, context);
-                                                if (url.config.name != mod.name)
-                                                {
-                                                    progress.ApplyingCopy(url, mod);
-                                                    url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                                }
-                                                else
-                                                {
-                                                    progress.Error(mod, "Error - Error while processing " + mod.config.name +
-                                                        " the copy needs to have a different name than the parent (use @name = xxx)");
-                                                }
-                                                break;
+                                        case Command.Copy:
+                                            ConfigNode clone = ModifyNode(new NodeStack(url.config), mod.config, context);
+                                            if (url.config.name != mod.name)
+                                            {
+                                                progress.ApplyingCopy(url, mod);
+                                                url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
+                                            }
+                                            else
+                                            {
+                                                progress.Error(mod, "Error - Error while processing " + mod.config.name +
+                                                    " the copy needs to have a different name than the parent (use @name = xxx)");
+                                            }
+                                            break;
 
-                                            case Command.Delete:
-                                                progress.ApplyingDelete(url, mod);
-                                                url.parent.configs.Remove(url);
-                                                break;
+                                        case Command.Delete:
+                                            progress.ApplyingDelete(url, mod);
+                                            url.parent.configs.Remove(url);
+                                            break;
 
-                                            case Command.Replace:
+                                        case Command.Replace:
 
-                                                // TODO: do something sensible here.
-                                                break;
+                                            // TODO: do something sensible here.
+                                            break;
 
-                                            case Command.Create:
+                                        case Command.Create:
 
-                                                // TODO: something similar to above
-                                                break;
-                                        }
-                                        // When this special node is found then try to apply the patch once more on the same NODE
-                                        if (mod.config.HasNode("MM_PATCH_LOOP"))
-                                        {
-                                            logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
-                                            loop = true;
-                                        }
+                                            // TODO: something similar to above
+                                            break;
                                     }
-                                    else
+                                    // When this special node is found then try to apply the patch once more on the same NODE
+                                    if (mod.config.HasNode("MM_PATCH_LOOP"))
                                     {
-                                        loop = false;
+                                        logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
+                                        loop = true;
                                     }
-                                } while (loop);
+                                }
+                                else
+                                {
+                                    loop = false;
+                                }
+                            } while (loop);
 
-                            }
                         }
                     }
                 }
