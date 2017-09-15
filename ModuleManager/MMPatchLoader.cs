@@ -301,7 +301,7 @@ namespace ModuleManager
                 yield return StartCoroutine(ApplyPatch(":FIRST", patchList.firstPatches));
 
                 // any node without a :pass
-                yield return StartCoroutine(ApplyPatch(":LEGACY", patchList.legacyPatches));
+                yield return StartCoroutine(ApplyPatch(":LEGACY (default)", patchList.legacyPatches));
 
                 foreach (PatchList.ModPass pass in patchList.modPasses)
                 {
@@ -962,7 +962,7 @@ namespace ModuleManager
         public IEnumerator ApplyPatch(string Stage, IEnumerable<UrlDir.UrlConfig> patches)
         {
             StatusUpdate();
-            logger.Info(Stage + (Stage == ":LEGACY" ? " (default) pass" : " pass"));
+            logger.Info(Stage +  " pass");
             yield return null;
 
             activity = "ModuleManager " + Stage;
