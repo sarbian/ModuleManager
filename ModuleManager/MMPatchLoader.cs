@@ -1454,7 +1454,7 @@ namespace ModuleManager
                     //string newName = subName.Substring(0, start);
                     //string path = subName.Substring(start + 1, end - start - 1);
 
-                    ConfigNode toPaste = RecurseNodeSearch(subName.Substring(1), nodeStack.Pop(), context);
+                    ConfigNode toPaste = RecurseNodeSearch(subName.Substring(1), nodeStack, context);
 
                     if (toPaste == null)
                     {
