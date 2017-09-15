@@ -59,6 +59,32 @@ namespace ModuleManager
                         progress.Error(url, $"Error - pass specifier detected on an insert node (not a patch): {url.SafeUrl()}");
                         error = true;
                     }
+                    else if (command == Command.Replace)
+                    {
+                        progress.Error(url, $"Error - replace command (%) is not valid on a root node: {url.SafeUrl()}");
+                        error = true;
+                    }
+                    else if (command == Command.Create)
+                    {
+                        progress.Error(url, $"Error - create command (&) is not valid on a root node: {url.SafeUrl()}");
+                        error = true;
+                    }
+                    else if (command == Command.Rename)
+                    {
+                        progress.Error(url, $"Error - rename command (|) is not valid on a root node: {url.SafeUrl()}");
+                        error = true;
+                    }
+                    else if (command == Command.Paste)
+                    {
+                        progress.Error(url, $"Error - paste command (#) is not valid on a root node: {url.SafeUrl()}");
+                        error = true;
+                    }
+                    else if (command == Command.Special)
+                    {
+                        progress.Error(url, $"Error - special command (*) is not valid on a root node: {url.SafeUrl()}");
+                        error = true;
+                    }
+
                     if (matchCount > 1)
                     {
                         progress.Error(url, $"Error - more than one pass specifier on a node: {url.SafeUrl()}");

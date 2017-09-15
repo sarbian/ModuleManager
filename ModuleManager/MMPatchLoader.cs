@@ -1036,14 +1036,8 @@ namespace ModuleManager
                                             url.parent.configs.Remove(url);
                                             break;
 
-                                        case Command.Replace:
-
-                                            // TODO: do something sensible here.
-                                            break;
-
-                                        case Command.Create:
-
-                                            // TODO: something similar to above
+                                        default:
+                                            logger.Warning("Invalid command encountered on a root node: " + mod.SafeUrl());
                                             break;
                                     }
                                     // When this special node is found then try to apply the patch once more on the same NODE

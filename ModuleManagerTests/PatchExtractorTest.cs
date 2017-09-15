@@ -334,6 +334,36 @@ namespace ModuleManagerTests
             Assert.Empty(list.modPasses["mod1"].afterPatches);
         }
 
+        [Fact]
+        public void TestSortAndExtractPatches__InvalidCommand()
+        {
+            UrlDir.UrlConfig config1 = CreateConfig("@NODE:FOR[mod1]");
+            UrlDir.UrlConfig config2 = CreateConfig("%NODE:FOR[mod1]");
+            UrlDir.UrlConfig config3 = CreateConfig("&NODE:FOR[mod1]");
+            UrlDir.UrlConfig config4 = CreateConfig("|NODE:FOR[mod1]");
+            UrlDir.UrlConfig config5 = CreateConfig("#NODE:FOR[mod1]");
+            UrlDir.UrlConfig config6 = CreateConfig("*NODE:FOR[mod1]");
+
+            string[] modList = { "mod1" };
+            PatchList list = PatchExtractor.SortAndExtractPatches(root, modList, progress);
+
+            Assert.Empty(root.AllConfigs);
+
+            progress.Received().Error(config2, "Error - replace command (%) is not valid on a root node: abc/def/%NODE:FOR[mod1]");
+            progress.Received().Error(config3, "Error - create command (&) is not valid on a root node: abc/def/&NODE:FOR[mod1]");
+            progress.Received().Error(config4, "Error - rename command (|) is not valid on a root node: abc/def/|NODE:FOR[mod1]");
+            progress.Received().Error(config5, "Error - paste command (#) is not valid on a root node: abc/def/#NODE:FOR[mod1]");
+            progress.Received().Error(config6, "Error - special command (*) is not valid on a root node: abc/def/*NODE:FOR[mod1]");
+
+            Assert.Empty(list.firstPatches);
+            Assert.Empty(list.legacyPatches);
+            Assert.Empty(list.finalPatches);
+            Assert.Empty(list.modPasses["mod1"].beforePatches);
+            Assert.Equal(1, list.modPasses["mod1"].forPatches.Count);
+            AssertUrlCorrect("@NODE", config1, list.modPasses["mod1"].forPatches[0]);
+            Assert.Empty(list.modPasses["mod1"].afterPatches);
+        }
+
         private UrlDir.UrlConfig CreateConfig(string name)
         {
             ConfigNode node = new TestConfigNode(name)
