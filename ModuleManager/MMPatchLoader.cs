@@ -980,7 +980,7 @@ namespace ModuleManager
 
                     if (cmd == Command.Insert)
                     {
-                        Debug.LogWarning("Warning - Encountered insert node that should not exist at this stage: " + mod.SafeUrl());
+                        logger.Warning("Warning - Encountered insert node that should not exist at this stage: " + mod.SafeUrl());
                         continue;
                     }
 
