@@ -189,7 +189,7 @@ namespace ModuleManager
                     progress.PatchAdded();
                     if (name.Contains(":FOR["))
                     {
-                        name = RemoveWS(name);
+                        name = name.RemoveWS();
 
                         // check for FOR[] blocks that don't match loaded DLLs and add them to the pass list
                         try
@@ -216,7 +216,7 @@ namespace ModuleManager
             foreach (string subdir in Directory.GetDirectories(gameData))
             {
                 string name = Path.GetFileName(subdir);
-                string cleanName = RemoveWS(name);
+                string cleanName = name.RemoveWS();
                 if (!mods.Contains(cleanName, StringComparer.OrdinalIgnoreCase))
                 {
                     mods.Add(cleanName);
@@ -947,7 +947,7 @@ namespace ModuleManager
         {
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
             {
-                string name = RemoveWS(mod.type);
+                string name = mod.type.RemoveWS();
 
                 if (CommandParser.Parse(name, out name) != Command.Insert)
                     mod.parent.configs.Remove(mod);
@@ -975,7 +975,7 @@ namespace ModuleManager
             {
                 try
                 {
-                    string name = RemoveWS(mod.type);
+                    string name = mod.type.RemoveWS();
                     Command cmd = CommandParser.Parse(name, out string tmp);
 
                     if (cmd == Command.Insert)
@@ -1386,7 +1386,7 @@ namespace ModuleManager
 
             foreach (ConfigNode subMod in mod.nodes)
             {
-                subMod.name = RemoveWS(subMod.name);
+                subMod.name = subMod.name.RemoveWS();
 
                 if (!subMod.name.IsBracketBalanced())
                 {
@@ -2041,22 +2041,12 @@ namespace ModuleManager
 
         #endregion Applying Patches
 
-        #region Sanity checking & Utility functions
-
-        public static string RemoveWS(string withWhite)
-        {
-            // Removes ALL whitespace of a string.
-            return new string(withWhite.ToCharArray().Where(c => !Char.IsWhiteSpace(c)).ToArray());
-        }
-
-        #endregion Sanity checking & Utility functions
-
         #region Condition checking
 
         // Split condiction while not getting lost in embeded brackets
         public static List<string> SplitConstraints(string condition)
         {
-            condition = RemoveWS(condition) + ",";
+            condition = condition.RemoveWS() + ",";
             List<string> conditions = new List<string>();
             int start = 0;
             int level = 0;
@@ -2079,7 +2069,7 @@ namespace ModuleManager
 
         public static bool CheckConstraints(ConfigNode node, string constraints)
         {
-            constraints = RemoveWS(constraints);
+            constraints = constraints.RemoveWS();
             
             if (constraints.Length == 0)
                 return true;

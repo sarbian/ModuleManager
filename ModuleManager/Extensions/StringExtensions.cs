@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using System.Text.RegularExpressions;
 
 namespace ModuleManager.Extensions
 {
@@ -18,6 +16,13 @@ namespace ModuleManager.Extensions
                 if (level < 0) return false;
             }
             return level == 0;
+        }
+
+        private static Regex whitespaceRegex = new Regex(@"\s+");
+
+        public static string RemoveWS(this string withWhite)
+        {
+            return whitespaceRegex.Replace(withWhite, "");
         }
     }
 }
