@@ -62,6 +62,7 @@ namespace ModuleManager
         private IBasicLogger logger;
 
         public IPatchProgress progress;
+        private float progressFraction = 0;
 
         public static MMPatchLoader Instance { get; private set; }
 
@@ -101,7 +102,7 @@ namespace ModuleManager
             return ready;
         }
 
-        public override float ProgressFraction() => progress.ProgressFraction;
+        public override float ProgressFraction() => progressFraction;
 
         public override string ProgressTitle()
         {
@@ -758,12 +759,15 @@ namespace ModuleManager
                     logger.Warning("Parent null for " + parentUrl);
                 }
             }
+            progressFraction = 1;
             logger.Info("Cache Loaded");
         }
 
         private void StatusUpdate()
         {
             status = "ModuleManager: " + progress.PatchedNodeCount + " patch" + (progress.PatchedNodeCount != 1 ? "es" : "") + (useCache ? " loaded from cache" : " applied");
+            progressFraction = progress.ProgressFraction;
+
 
             if (progress.ErrorCount > 0)
                 status += ", found <color=orange>" + progress.ErrorCount + " error" + (progress.ErrorCount != 1 ? "s" : "") + "</color>";
