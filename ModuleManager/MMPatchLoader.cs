@@ -123,12 +123,6 @@ namespace ModuleManager
             StartCoroutine(ProcessPatch());
         }
 
-        public void Update()
-        {
-            if (progress.AppliedPatchCount > 0 && HighLogic.LoadedScene == GameScenes.LOADING)
-                StatusUpdate();
-        }
-
         public static void AddPostPatchCallback(ModuleManagerPostPatchCallback callback)
         {
             if (!postPatchCallbacks.Contains(callback))
