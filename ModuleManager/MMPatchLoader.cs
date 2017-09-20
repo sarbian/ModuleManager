@@ -23,9 +23,6 @@ namespace ModuleManager
     [SuppressMessage("ReSharper", "StringIndexOfIsCultureSpecific.1")]
     public class MMPatchLoader : LoadingSystem
     {
-
-        private List<string> mods;
-
         public string status = "";
 
         public string errors = "";
@@ -137,7 +134,7 @@ namespace ModuleManager
             if (!postPatchCallbacks.Contains(callback))
                 postPatchCallbacks.Add(callback);
         }
-        private void PrePatchInit()
+        private IEnumerable<string> GenerateModList()
         {
             #region List of mods
 
@@ -150,7 +147,7 @@ namespace ModuleManager
             //
             //log(envInfo);
 
-            mods = new List<string>();
+            List<string> mods = new List<string>();
 
             string modlist = "compiling list of loaded mods...\nMod DLLs found:\n";
 
@@ -228,6 +225,8 @@ namespace ModuleManager
             mods.Sort();
 
             #endregion List of mods
+
+            return mods;
         }
 
         private IEnumerator ProcessPatch()
@@ -255,7 +254,7 @@ namespace ModuleManager
             {
                 status = "Pre patch init";
                 logger.Info(status);
-                PrePatchInit();
+                IEnumerable<string> mods = GenerateModList();
 
                 yield return null;
 
@@ -273,7 +272,7 @@ namespace ModuleManager
                 status = "Checking NEEDS.";
                 logger.Info(status);
                 yield return null;
-                CheckNeeds();
+                CheckNeeds(mods);
 
                 #endregion Check Needs
 
@@ -781,7 +780,7 @@ namespace ModuleManager
 
         #region Needs checking
 
-        private void CheckNeeds()
+        private void CheckNeeds(IEnumerable<string> mods)
         {
             UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
 
@@ -802,7 +801,7 @@ namespace ModuleManager
                         mod.parent.configs.Remove(currentMod);
                         string type = currentMod.type;
 
-                        if (!CheckNeeds(ref type))
+                        if (!CheckNeeds(ref type, mods))
                         {
                             progress.NeedsUnsatisfiedRoot(currentMod);
                             continue;
@@ -815,7 +814,8 @@ namespace ModuleManager
                     }
 
                     // Recursively check the contents
-                    CheckNeeds(new NodeStack(mod.config), new PatchContext(mod, GameDatabase.Instance.root, logger, progress));
+                    PatchContext context = new PatchContext(mod, GameDatabase.Instance.root, logger, progress);
+                    CheckNeeds(new NodeStack(mod.config), context, mods);
                 }
                 catch (Exception ex)
                 {
@@ -825,7 +825,7 @@ namespace ModuleManager
             }
         }
 
-        private void CheckNeeds(NodeStack stack, PatchContext context)
+        private void CheckNeeds(NodeStack stack, PatchContext context, IEnumerable<string> mods)
         {
             bool needsCopy = false;
             ConfigNode original = stack.value;
@@ -836,7 +836,7 @@ namespace ModuleManager
                 string valname = val.name;
                 try
                 {
-                    if (CheckNeeds(ref valname))
+                    if (CheckNeeds(ref valname, mods))
                     {
                         copy.AddValue(valname, val.value);
                     }
@@ -871,10 +871,10 @@ namespace ModuleManager
 
                 try
                 {
-                    if (CheckNeeds(ref nodeName))
+                    if (CheckNeeds(ref nodeName, mods))
                     {
                         node.name = nodeName;
-                        CheckNeeds(stack.Push(node), context);
+                        CheckNeeds(stack.Push(node), context, mods);
                         copy.AddNode(node);
                     }
                     else
@@ -902,7 +902,7 @@ namespace ModuleManager
         /// <summary>
         /// Returns true if needs are satisfied.
         /// </summary>
-        private bool CheckNeeds(ref string name)
+        private bool CheckNeeds(ref string name, IEnumerable<string> mods)
         {
             if (name == null)
                 return true;
