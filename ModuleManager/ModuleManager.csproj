@@ -46,6 +46,7 @@
     <Compile Include="IPatchProgress.cs" />
     <Compile Include="Logging\IBasicLogger.cs" />
     <Compile Include="Logging\ModLogger.cs" />
+    <Compile Include="Collections\MessageQueue.cs" />
     <Compile Include="MMPatchLoader.cs" />
     <Compile Include="ModuleManager.cs" />
     <Compile Include="ModListGenerator.cs" />
