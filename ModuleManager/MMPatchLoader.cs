@@ -848,12 +848,12 @@ namespace ModuleManager
                 }
                 catch (ArgumentOutOfRangeException e)
                 {
-                    progress.Exception("ArgumentOutOfRangeException in CheckNeeds for value \"" + val.name + "\"", e);
+                    context.progress.Exception("ArgumentOutOfRangeException in CheckNeeds for value \"" + val.name + "\"", e);
                     throw;
                 }
                 catch (Exception e)
                 {
-                    progress.Exception("General Exception in CheckNeeds for value \"" + val.name + "\"", e);
+                    context.progress.Exception("General Exception in CheckNeeds for value \"" + val.name + "\"", e);
                     throw;
                 }
             }
@@ -865,7 +865,7 @@ namespace ModuleManager
 
                 if (nodeName == null)
                 {
-                    progress.Error(context.patchUrl, "Error - Node in file " + context.patchUrl.SafeUrl() + " subnode: " + stack.GetPath() +
+                    context.progress.Error(context.patchUrl, "Error - Node in file " + context.patchUrl.SafeUrl() + " subnode: " + stack.GetPath() +
                             " has config.name == null");
                 }
 
@@ -880,17 +880,17 @@ namespace ModuleManager
                     else
                     {
                         needsCopy = true;
-                        progress.NeedsUnsatisfiedNode(context.patchUrl, stack.Push(node));
+                        context.progress.NeedsUnsatisfiedNode(context.patchUrl, stack.Push(node));
                     }
                 }
                 catch (ArgumentOutOfRangeException e)
                 {
-                    progress.Exception("ArgumentOutOfRangeException in CheckNeeds for node \"" + node.name + "\"", e);
+                    context.progress.Exception("ArgumentOutOfRangeException in CheckNeeds for node \"" + node.name + "\"", e);
                     throw;
                 }
                 catch (Exception e)
                 {
-                    progress.Exception("General Exception " + e.GetType().Name + " for node \"" + node.name + "\"", e);
+                    context.progress.Exception("General Exception " + e.GetType().Name + " for node \"" + node.name + "\"", e);
                     throw;
                 }
             }
