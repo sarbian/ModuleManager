@@ -354,8 +354,6 @@ namespace ModuleManager
                 LoadCache();
             }
 
-            StatusUpdate();
-
             logger.Info(status + "\n" + errors);
 
 #if DEBUG
@@ -735,7 +733,7 @@ namespace ModuleManager
             ConfigNode cache = ConfigNode.Load(cachePath);
             
             if (cache.HasValue("patchedNodeCount") && int.TryParse(cache.GetValue("patchedNodeCount"), out int patchedNodeCount))
-                progress.PatchedNodeCount = patchedNodeCount;
+                status = "ModuleManager: " + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") +  " loaded from cache";
 
             // Create the fake file where we load the physic config cache
             UrlDir gameDataDir = GameDatabase.Instance.root.AllDirectories.First(d => d.path.EndsWith("GameData") && d.name == "" && d.url == "");
@@ -765,7 +763,7 @@ namespace ModuleManager
 
         private void StatusUpdate()
         {
-            status = "ModuleManager: " + progress.PatchedNodeCount + " patch" + (progress.PatchedNodeCount != 1 ? "es" : "") + (useCache ? " loaded from cache" : " applied");
+            status = "ModuleManager: " + progress.PatchedNodeCount + " patch" + (progress.PatchedNodeCount != 1 ? "es" : "") + " applied";
             progressFraction = progress.ProgressFraction;
 
 
