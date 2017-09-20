@@ -61,7 +61,6 @@ namespace ModuleManager
 
         private IBasicLogger logger;
 
-        public IPatchProgress progress;
         private float progressFraction = 0;
 
         public static MMPatchLoader Instance { get; private set; }
@@ -86,7 +85,6 @@ namespace ModuleManager
             shaPath = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "GameData" + Path.DirectorySeparatorChar + "ModuleManager.ConfigSHA";
 
             logger = new ModLogger("ModuleManager", Debug.logger);
-            progress = new PatchProgress(logger);
         }
 
         private bool ready;
@@ -114,8 +112,6 @@ namespace ModuleManager
             patchSw.Reset();
             patchSw.Start();
 
-            progress = new PatchProgress(logger);
-
             ready = false;
 
             // DB check used to track the now fixed TextureReplacer corruption
@@ -129,7 +125,7 @@ namespace ModuleManager
             if (!postPatchCallbacks.Contains(callback))
                 postPatchCallbacks.Add(callback);
         }
-        private IEnumerable<string> GenerateModList()
+        private IEnumerable<string> GenerateModList(IPatchProgress progress)
         {
             #region List of mods
 
@@ -247,9 +243,10 @@ namespace ModuleManager
 
             if (!useCache)
             {
+                IPatchProgress progress = new PatchProgress(logger);
                 status = "Pre patch init";
                 logger.Info(status);
-                IEnumerable<string> mods = GenerateModList();
+                IEnumerable<string> mods = GenerateModList(progress);
 
                 yield return null;
 
@@ -267,7 +264,7 @@ namespace ModuleManager
                 status = "Checking NEEDS.";
                 logger.Info(status);
                 yield return null;
-                CheckNeeds(mods);
+                CheckNeeds(mods, progress);
 
                 #endregion Check Needs
 
@@ -290,21 +287,21 @@ namespace ModuleManager
                 yield return null;
 
                 // :First node
-                yield return StartCoroutine(ApplyPatch(":FIRST", patchList.firstPatches));
+                yield return StartCoroutine(ApplyPatch(":FIRST", patchList.firstPatches, progress));
 
                 // any node without a :pass
-                yield return StartCoroutine(ApplyPatch(":LEGACY (default)", patchList.legacyPatches));
+                yield return StartCoroutine(ApplyPatch(":LEGACY (default)", patchList.legacyPatches, progress));
 
                 foreach (PatchList.ModPass pass in patchList.modPasses)
                 {
                     string upperModName = pass.name.ToUpper();
-                    yield return StartCoroutine(ApplyPatch(":BEFORE[" + upperModName + "]", pass.beforePatches));
-                    yield return StartCoroutine(ApplyPatch(":FOR[" + upperModName + "]", pass.forPatches));
-                    yield return StartCoroutine(ApplyPatch(":AFTER[" + upperModName + "]", pass.afterPatches));
+                    yield return StartCoroutine(ApplyPatch(":BEFORE[" + upperModName + "]", pass.beforePatches, progress));
+                    yield return StartCoroutine(ApplyPatch(":FOR[" + upperModName + "]", pass.forPatches, progress));
+                    yield return StartCoroutine(ApplyPatch(":AFTER[" + upperModName + "]", pass.afterPatches, progress));
                 }
 
                 // :Final node
-                yield return StartCoroutine(ApplyPatch(":FINAL", patchList.finalPatches));
+                yield return StartCoroutine(ApplyPatch(":FINAL", patchList.finalPatches, progress));
 
                 PurgeUnused();
 
@@ -338,7 +335,7 @@ namespace ModuleManager
                     status = "Saving Cache";
                     logger.Info(status);
                     yield return null;
-                    CreateCache();
+                    CreateCache(progress.PatchedNodeCount);
                 }
 
                 #endregion Saving Cache
@@ -630,7 +627,7 @@ namespace ModuleManager
         }
         
 
-        private void CreateCache()
+        private void CreateCache(int patchedNodeCount)
         {
             ConfigNode shaConfigNode = new ConfigNode();
             shaConfigNode.AddValue("SHA", configSha);
@@ -640,7 +637,7 @@ namespace ModuleManager
 
             ConfigNode cache = new ConfigNode();
 
-            cache.AddValue("patchedNodeCount", progress.PatchedNodeCount.ToString());
+            cache.AddValue("patchedNodeCount", patchedNodeCount.ToString());
 
             foreach (UrlDir.UrlConfig config in GameDatabase.Instance.root.AllConfigs)
             {
@@ -761,7 +758,7 @@ namespace ModuleManager
             logger.Info("Cache Loaded");
         }
 
-        private void StatusUpdate()
+        private void StatusUpdate(IPatchProgress progress)
         {
             progressFraction = progress.ProgressFraction;
 
@@ -776,7 +773,7 @@ namespace ModuleManager
 
         #region Needs checking
 
-        private void CheckNeeds(IEnumerable<string> mods)
+        private void CheckNeeds(IEnumerable<string> mods, IPatchProgress progress)
         {
             UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
 
@@ -953,9 +950,9 @@ namespace ModuleManager
         #region Applying Patches
 
         // Apply patch to all relevent nodes
-        public IEnumerator ApplyPatch(string Stage, IEnumerable<UrlDir.UrlConfig> patches)
+        public IEnumerator ApplyPatch(string Stage, IEnumerable<UrlDir.UrlConfig> patches, IPatchProgress progress)
         {
-            StatusUpdate();
+            StatusUpdate(progress);
             logger.Info(Stage +  " pass");
             yield return null;
 
@@ -1059,11 +1056,11 @@ namespace ModuleManager
                 if (nextYield < Time.realtimeSinceStartup)
                 {
                     nextYield = Time.realtimeSinceStartup + yieldInterval;
-                    StatusUpdate();
+                    StatusUpdate(progress);
                     yield return null;
                 }
             }
-            StatusUpdate();
+            StatusUpdate(progress);
             yield return null;
         }
 
