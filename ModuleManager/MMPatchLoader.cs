@@ -763,9 +763,9 @@ namespace ModuleManager
 
         private void StatusUpdate()
         {
-            status = "ModuleManager: " + progress.PatchedNodeCount + " patch" + (progress.PatchedNodeCount != 1 ? "es" : "") + " applied";
             progressFraction = progress.ProgressFraction;
 
+            status = "ModuleManager: " + progress.PatchedNodeCount + " patch" + (progress.PatchedNodeCount != 1 ? "es" : "") + " applied";
 
             if (progress.ErrorCount > 0)
                 status += ", found <color=orange>" + progress.ErrorCount + " error" + (progress.ErrorCount != 1 ? "s" : "") + "</color>";
