@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using Xunit;
 using TestUtils;
 using ModuleManager.Extensions;
@@ -141,6 +142,137 @@ namespace ModuleManagerTests.Extensions
             Assert.Equal("INNER_INNER_NODE_2", innerNode2.nodes[0].name);
             Assert.Equal(0, innerNode2.nodes[0].values.Count);
             Assert.Equal(0, innerNode2.nodes[0].nodes.Count);
+        }
+
+        [Fact]
+        public void TestPrettyPrint()
+        {
+            ConfigNode node = new TestConfigNode("SOME_NODE")
+            {
+                { "abc", "def" },
+                { "ghi", "jkl" },
+                new TestConfigNode("INNER_NODE_1")
+                {
+                    { "mno", "pqr" },
+                    new TestConfigNode("INNER_INNER_NODE_1"),
+                },
+                new TestConfigNode("INNER_NODE_2")
+                {
+                    { "stu", "vwx" },
+                    new TestConfigNode("INNER_INNER_NODE_2"),
+                },
+            };
+
+            string expected = @"
+XXSOME_NODE
+XX{
+XX  abc = def
+XX  ghi = jkl
+XX  INNER_NODE_1
+XX  {
+XX    mno = pqr
+XX    INNER_INNER_NODE_1
+XX    {
+XX    }
+XX  }
+XX  INNER_NODE_2
+XX  {
+XX    stu = vwx
+XX    INNER_INNER_NODE_2
+XX    {
+XX    }
+XX  }
+XX}
+".TrimStart().Replace("\r", null);
+
+            StringBuilder sb = new StringBuilder();
+            node.PrettyPrint(ref sb, "XX");
+
+            Assert.Equal(expected, sb.ToString());
+        }
+
+        [Fact]
+        public void TestPrettyPrint__NullNode()
+        {
+            ConfigNode node = null;
+            StringBuilder sb = new StringBuilder();
+            node.PrettyPrint(ref sb, "XX");
+            Assert.Equal("XX<null node>", sb.ToString());
+        }
+
+        [Fact]
+        public void TestPrettyPrint__NullStringBuilder()
+        {
+            ConfigNode node = new ConfigNode("NODE");
+            StringBuilder sb = null;
+            Assert.Throws<ArgumentNullException>(delegate
+            {
+                node.PrettyPrint(ref sb, "XX");
+            });
+        }
+
+        [Fact]
+        public void TestPrettyPrint__NullIndent()
+        {
+            ConfigNode node = new TestConfigNode()
+            {
+                { "abc", "def" },
+                { "ghi", "jkl" },
+                new TestConfigNode("INNER_NODE")
+                {
+                    { "mno", "pqr" },
+                },
+            };
+
+            node.name = null;
+
+            string expected = @"
+<null>
+{
+  abc = def
+  ghi = jkl
+  INNER_NODE
+  {
+    mno = pqr
+  }
+}
+".TrimStart().Replace("\r", null);
+
+            StringBuilder sb = new StringBuilder();
+            node.PrettyPrint(ref sb, null);
+            Assert.Equal(expected, sb.ToString());
+        }
+
+        [Fact]
+        public void TestPrettyPrint__NullName()
+        {
+            ConfigNode node = new TestConfigNode()
+            {
+                { "abc", "def" },
+                { "ghi", "jkl" },
+                new TestConfigNode("INNER_NODE")
+                {
+                    { "mno", "pqr" },
+                },
+            };
+
+            node.name = null;
+
+            string expected = @"
+XX<null>
+XX{
+XX  abc = def
+XX  ghi = jkl
+XX  INNER_NODE
+XX  {
+XX    mno = pqr
+XX  }
+XX}
+".TrimStart().Replace("\r", null);
+
+            StringBuilder sb = new StringBuilder();
+            node.PrettyPrint(ref sb, "XX");
+            Assert.Equal(expected, sb.ToString());
         }
     }
 }

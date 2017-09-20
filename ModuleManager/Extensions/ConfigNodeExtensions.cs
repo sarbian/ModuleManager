@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 
 namespace ModuleManager.Extensions
 {
@@ -25,6 +26,47 @@ namespace ModuleManager.Extensions
                 to.nodes.Add(newNode);
             }
             return to;
+        }
+
+        public static void PrettyPrint(this ConfigNode node, ref StringBuilder sb, string indent)
+        {
+            if (sb == null) throw new ArgumentNullException(nameof(sb));
+            if (indent == null) indent = string.Empty;
+            if (node == null)
+            {
+                sb.Append(indent + "<null node>");
+                return;
+            }
+            sb.AppendFormat("{0}{1}\n{2}{{\n", indent, node.name ?? "<null>", indent);
+            string newindent = indent + "  ";
+            if (node.values == null)
+            {
+                sb.AppendFormat("{0}<null value list>\n", newindent);
+            }
+            else
+            {
+                foreach (ConfigNode.Value value in node.values)
+                {
+                    if (value == null)
+                        sb.AppendFormat("{0}<null value>\n", newindent);
+                    else
+                        sb.AppendFormat("{0}{1} = {2}\n", newindent, value.name ?? "<null>", value.value ?? "<null>");
+                }
+            }
+
+            if (node.nodes == null)
+            {
+                sb.AppendFormat("{0}<null node list>\n", newindent);
+            }
+            else
+            {
+                foreach (ConfigNode subnode in node.nodes)
+                {
+                    subnode.PrettyPrint(ref sb, newindent);
+                }
+            }
+
+            sb.AppendFormat("{0}}}\n", indent);
         }
     }
 }

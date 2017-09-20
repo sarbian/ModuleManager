@@ -2247,7 +2247,7 @@ namespace ModuleManager
             {
                 if (config.config != null)
                 {
-                    PrettyConfig(config.config, ref sb, "  ");
+                    config.config.PrettyPrint(ref sb, "  ");
                 }
                 else
                 {
@@ -2260,60 +2260,6 @@ namespace ModuleManager
                 logger.Exception("PrettyConfig Exception", e);
             }
             return sb.ToString();
-        }
-
-        private void PrettyConfig(ConfigNode node, ref StringBuilder sb, string indent)
-        {
-            sb.AppendFormat("{0}{1}\n{2}{{\n", indent, node.name ?? "NULL", indent);
-            string newindent = indent + "  ";
-            if (node.values != null)
-            {
-                foreach (ConfigNode.Value value in node.values)
-                {
-                    if (value != null)
-                    {
-                        try
-                        {
-                            sb.AppendFormat("{0}{1} = {2}\n", newindent, value.name ?? "null", value.value ?? "null");
-                        }
-                        catch (Exception)
-                        {
-                            logger.Error("value.name.Length=" + value.name.Length);
-                            logger.Error("value.name.IsNullOrEmpty=" + string.IsNullOrEmpty(value.name));
-                            logger.Error("n " + value.name);
-                            logger.Error("v " + value.value);
-                            throw;
-                        }
-                    }
-                    else
-                    {
-                        sb.AppendFormat("{0} Null value\n", newindent);
-                    }
-                }
-            }
-            else
-            {
-                sb.AppendFormat("{0} Null values\n", newindent);
-            }
-            if (node.nodes != null)
-            {
-                foreach (ConfigNode subnode in node.nodes)
-                {
-                    if (subnode != null)
-                    {
-                        PrettyConfig(subnode, ref sb, newindent);
-                    }
-                    else
-                    {
-                        sb.AppendFormat("{0} Null Subnode\n", newindent);
-                    }
-                }
-            }
-            else
-            {
-                sb.AppendFormat("{0} Null nodes\n", newindent);
-            }
-            sb.AppendFormat("{0}}}\n", indent);
         }
 
         //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType.
