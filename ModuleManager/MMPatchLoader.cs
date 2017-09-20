@@ -249,16 +249,14 @@ namespace ModuleManager
 #if DEBUG
             //useCache = false;
 #endif
-
-            status = "Pre patch init";
-            logger.Info(status);
             yield return null;
-
-            PrePatchInit();
-
 
             if (!useCache)
             {
+                status = "Pre patch init";
+                logger.Info(status);
+                PrePatchInit();
+
                 yield return null;
 
                 // If we don't use the cache then it is best to clean the PartDatabase.cfg
