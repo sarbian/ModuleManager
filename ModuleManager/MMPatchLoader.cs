@@ -818,7 +818,7 @@ namespace ModuleManager
             }
         }
 
-        private void CheckNeeds(NodeStack stack, PatchContext context, IEnumerable<string> mods)
+        private static void CheckNeeds(NodeStack stack, PatchContext context, IEnumerable<string> mods)
         {
             bool needsCopy = false;
             ConfigNode original = stack.value;
@@ -895,7 +895,7 @@ namespace ModuleManager
         /// <summary>
         /// Returns true if needs are satisfied.
         /// </summary>
-        private bool CheckNeeds(ref string name, IEnumerable<string> mods)
+        private static bool CheckNeeds(ref string name, IEnumerable<string> mods)
         {
             if (name == null)
                 return true;
