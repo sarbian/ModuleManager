@@ -44,8 +44,12 @@
     <Compile Include="Extensions\StringExtensions.cs" />
     <Compile Include="Extensions\UrlConfigExtensions.cs" />
     <Compile Include="IPatchProgress.cs" />
+    <Compile Include="Logging\ExceptionMessage.cs" />
     <Compile Include="Logging\IBasicLogger.cs" />
+    <Compile Include="Logging\ILogMessage.cs" />
     <Compile Include="Logging\ModLogger.cs" />
+    <Compile Include="Logging\NormalMessage.cs" />
+    <Compile Include="Logging\QueueLogger.cs" />
     <Compile Include="Collections\MessageQueue.cs" />
     <Compile Include="MMPatchLoader.cs" />
     <Compile Include="ModuleManager.cs" />
