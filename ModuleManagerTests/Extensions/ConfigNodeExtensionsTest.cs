@@ -214,7 +214,7 @@ XX}
         [Fact]
         public void TestPrettyPrint__NullIndent()
         {
-            ConfigNode node = new TestConfigNode()
+            ConfigNode node = new TestConfigNode("SOME_NODE")
             {
                 { "abc", "def" },
                 { "ghi", "jkl" },
@@ -224,10 +224,8 @@ XX}
                 },
             };
 
-            node.name = null;
-
             string expected = @"
-<null>
+SOME_NODE
 {
   abc = def
   ghi = jkl
