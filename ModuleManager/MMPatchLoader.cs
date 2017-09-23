@@ -1051,7 +1051,6 @@ namespace ModuleManager
                 {
                     progress.Exception(mod, "Exception while processing node : " + mod.SafeUrl(), e);
                     logger.Error("Processed node was\n" + PrettyConfig(mod));
-                    mod.parent.configs.Remove(mod);
                 }
                 if (nextYield < Time.realtimeSinceStartup)
                 {
