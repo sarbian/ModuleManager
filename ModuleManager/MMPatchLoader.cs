@@ -813,7 +813,15 @@ namespace ModuleManager
                 catch (Exception ex)
                 {
                     progress.Exception(currentMod, "Exception while checking needs : " + currentMod.SafeUrl() + " with a type of " + currentMod.type, ex);
-                    logger.Error("Node is : " + PrettyConfig(currentMod));
+
+                    try
+                    {
+                        logger.Error("Node is : " + PrettyConfig(currentMod));
+                    }
+                    catch(Exception ex2)
+                    {
+                        logger.Exception("Exception while attempting to print a node", ex2);
+                    }
                 }
             }
         }
@@ -1050,7 +1058,15 @@ namespace ModuleManager
                 catch (Exception e)
                 {
                     progress.Exception(mod, "Exception while processing node : " + mod.SafeUrl(), e);
-                    logger.Error("Processed node was\n" + PrettyConfig(mod));
+
+                    try
+                    {
+                        logger.Error("Processed node was\n" + PrettyConfig(mod));
+                    }
+                    catch (Exception ex2)
+                    {
+                        logger.Exception("Exception while attempting to print a node", ex2);
+                    }
                 }
                 if (nextYield < Time.realtimeSinceStartup)
                 {
@@ -2229,26 +2245,19 @@ namespace ModuleManager
             newNode.AddValue(name, value);
         }
 
-        private string PrettyConfig(UrlDir.UrlConfig config)
+        private static string PrettyConfig(UrlDir.UrlConfig config)
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendFormat("{0}[{1}]\n", config.type ?? "NULL", config.name ?? "NULL");
-            try
+            if (config.config != null)
             {
-                if (config.config != null)
-                {
-                    config.config.PrettyPrint(ref sb, "  ");
-                }
-                else
-                {
-                    sb.Append("NULL\n");
-                }
-                sb.Append("\n");
+                config.config.PrettyPrint(ref sb, "  ");
             }
-            catch (Exception e)
+            else
             {
-                logger.Exception("PrettyConfig Exception", e);
+                sb.Append("NULL\n");
             }
+            sb.Append("\n");
             return sb.ToString();
         }
 
