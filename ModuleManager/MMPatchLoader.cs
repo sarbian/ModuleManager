@@ -942,7 +942,7 @@ namespace ModuleManager
             return true;
         }
 
-        private void PurgeUnused()
+        private static void PurgeUnused()
         {
             foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
             {
