@@ -218,5 +218,12 @@ SOME_NODE
 
             Assert.Equal(expected, url.PrettyPrint());
         }
+
+        [Fact]
+        public void TestPrettyPrint__Null()
+        {
+            UrlDir.UrlConfig url = null;
+            Assert.Equal("<null UrlConfig>", url.PrettyPrint());
+        }
     }
 }
