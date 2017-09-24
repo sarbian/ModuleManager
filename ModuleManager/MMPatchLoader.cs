@@ -264,7 +264,7 @@ namespace ModuleManager
                 status = "Checking NEEDS.";
                 logger.Info(status);
                 yield return null;
-                CheckNeeds(mods, progress);
+                CheckNeeds(mods, progress, logger);
 
                 #endregion Check Needs
 
@@ -773,7 +773,7 @@ namespace ModuleManager
 
         #region Needs checking
 
-        private void CheckNeeds(IEnumerable<string> mods, IPatchProgress progress)
+        private static void CheckNeeds(IEnumerable<string> mods, IPatchProgress progress, IBasicLogger logger)
         {
             UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
 
