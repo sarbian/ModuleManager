@@ -197,7 +197,7 @@ XX}
             ConfigNode node = null;
             StringBuilder sb = new StringBuilder();
             node.PrettyPrint(ref sb, "XX");
-            Assert.Equal("XX<null node>", sb.ToString());
+            Assert.Equal("XX<null node>\n", sb.ToString());
         }
 
         [Fact]

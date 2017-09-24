@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 
 namespace ModuleManager.Extensions
 {
@@ -41,6 +42,24 @@ namespace ModuleManager.Extensions
                 return nodeName;
             else
                 return parentUrl + "/" + nodeName;
+        }
+
+        public static string PrettyPrint(this UrlDir.UrlConfig config)
+        {
+            if (config == null) return "<null UrlConfig>";
+
+            StringBuilder sb = new StringBuilder();
+
+            if (config.type == null) sb.Append("<null type>");
+            else sb.Append(config.type);
+
+            if (config.name == null) sb.Append("[<null name>]");
+            else if (config.name != config.type) sb.AppendFormat("[{0}]", config.name);
+
+            sb.Append('\n');
+            config.config.PrettyPrint(ref sb, "  ");
+            
+            return sb.ToString();
         }
     }
 }

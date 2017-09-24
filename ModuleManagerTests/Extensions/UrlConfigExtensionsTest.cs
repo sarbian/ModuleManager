@@ -72,5 +72,151 @@ namespace ModuleManagerTests.Extensions
             UrlDir.UrlConfig url = UrlBuilder.CreateConfig("abc/def", node);
             Assert.Equal("abc/def/<blank>", url.SafeUrl());
         }
+
+        [Fact]
+        public void TestPrettyPrint()
+        {
+            ConfigNode node = new TestConfigNode("SOME_NODE")
+            {
+                { "abc", "def" },
+                { "ghi", "jkl" },
+                new TestConfigNode("INNER_NODE_1")
+                {
+                    { "mno", "pqr" },
+                },
+            };
+
+            UrlDir.UrlConfig url = UrlBuilder.CreateConfig("abc/def.cfg", node);
+
+            string expected = @"
+SOME_NODE
+  SOME_NODE
+  {
+    abc = def
+    ghi = jkl
+    INNER_NODE_1
+    {
+      mno = pqr
+    }
+  }
+".TrimStart().Replace("\r", null);
+            
+            Assert.Equal(expected, url.PrettyPrint());
+        }
+
+        [Fact]
+        public void TestPrettyPrint__NameValue()
+        {
+            ConfigNode node = new TestConfigNode("SOME_NODE")
+            {
+                { "name", "Inigo Montoya" },
+                { "abc", "def" },
+                { "ghi", "jkl" },
+                new TestConfigNode("INNER_NODE_1")
+                {
+                    { "mno", "pqr" },
+                },
+            };
+
+            UrlDir.UrlConfig url = UrlBuilder.CreateConfig("abc/def.cfg", node);
+
+            string expected = @"
+SOME_NODE[Inigo Montoya]
+  SOME_NODE
+  {
+    name = Inigo Montoya
+    abc = def
+    ghi = jkl
+    INNER_NODE_1
+    {
+      mno = pqr
+    }
+  }
+".TrimStart().Replace("\r", null);
+
+            Assert.Equal(expected, url.PrettyPrint());
+        }
+
+        [Fact]
+        public void TestPrettyPrint__NullName()
+        {
+            ConfigNode node = new TestConfigNode()
+            {
+                { "abc", "def" },
+                { "ghi", "jkl" },
+                new TestConfigNode("INNER_NODE_1")
+                {
+                    { "mno", "pqr" },
+                },
+            };
+
+            node.name = null;
+
+            UrlDir.UrlConfig url = UrlBuilder.CreateConfig("abc/def.cfg", node);
+
+            string expected = @"
+<null type>[<null name>]
+  <null>
+  {
+    abc = def
+    ghi = jkl
+    INNER_NODE_1
+    {
+      mno = pqr
+    }
+  }
+".TrimStart().Replace("\r", null);
+
+            Assert.Equal(expected, url.PrettyPrint());
+        }
+
+        [Fact]
+        public void TestPrettyPrint__NullNameValue()
+        {
+            ConfigNode node = new TestConfigNode("SOME_NODE")
+            {
+                { "name", "temp" },
+                { "abc", "def" },
+                { "ghi", "jkl" },
+                new TestConfigNode("INNER_NODE_1")
+                {
+                    { "mno", "pqr" },
+                },
+            };
+
+            node.values[0].value = null;
+
+            UrlDir.UrlConfig url = UrlBuilder.CreateConfig("abc/def.cfg", node);
+
+            string expected = @"
+SOME_NODE[<null name>]
+  SOME_NODE
+  {
+    name = <null>
+    abc = def
+    ghi = jkl
+    INNER_NODE_1
+    {
+      mno = pqr
+    }
+  }
+".TrimStart().Replace("\r", null);
+
+            Assert.Equal(expected, url.PrettyPrint());
+        }
+
+        [Fact]
+        public void TestPrettyPrint__NullNode()
+        {
+            UrlDir.UrlConfig url = UrlBuilder.CreateConfig("abc/def.cfg", new ConfigNode("SOME_NODE"));
+            url.config = null;
+
+            string expected = @"
+SOME_NODE
+  <null node>
+".TrimStart().Replace("\r", null);
+
+            Assert.Equal(expected, url.PrettyPrint());
+        }
     }
 }

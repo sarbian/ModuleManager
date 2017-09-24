@@ -816,7 +816,7 @@ namespace ModuleManager
 
                     try
                     {
-                        logger.Error("Node is : " + PrettyConfig(currentMod));
+                        logger.Error("Node is : " + currentMod.PrettyPrint());
                     }
                     catch(Exception ex2)
                     {
@@ -1061,7 +1061,7 @@ namespace ModuleManager
 
                     try
                     {
-                        logger.Error("Processed node was\n" + PrettyConfig(mod));
+                        logger.Error("Processed node was\n" + mod.PrettyPrint());
                     }
                     catch (Exception ex2)
                     {
@@ -2243,22 +2243,6 @@ namespace ModuleManager
                 return;
             }
             newNode.AddValue(name, value);
-        }
-
-        private static string PrettyConfig(UrlDir.UrlConfig config)
-        {
-            StringBuilder sb = new StringBuilder();
-            sb.AppendFormat("{0}[{1}]\n", config.type ?? "NULL", config.name ?? "NULL");
-            if (config.config != null)
-            {
-                config.config.PrettyPrint(ref sb, "  ");
-            }
-            else
-            {
-                sb.Append("NULL\n");
-            }
-            sb.Append("\n");
-            return sb.ToString();
         }
 
         //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType.

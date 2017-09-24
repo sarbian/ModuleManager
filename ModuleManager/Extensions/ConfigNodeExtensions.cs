@@ -34,7 +34,7 @@ namespace ModuleManager.Extensions
             if (indent == null) indent = string.Empty;
             if (node == null)
             {
-                sb.Append(indent + "<null node>");
+                sb.Append(indent + "<null node>\n");
                 return;
             }
             sb.AppendFormat("{0}{1}\n{2}{{\n", indent, node.name ?? "<null>", indent);
