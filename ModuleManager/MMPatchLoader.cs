@@ -338,6 +338,8 @@ namespace ModuleManager
                     CreateCache(progress.PatchedNodeCount);
                 }
 
+                StatusUpdate(progress);
+
                 #endregion Saving Cache
 
                 SaveModdedTechTree();
