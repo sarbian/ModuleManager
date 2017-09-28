@@ -125,6 +125,7 @@ namespace ModuleManager
             if (!postPatchCallbacks.Contains(callback))
                 postPatchCallbacks.Add(callback);
         }
+
         private IEnumerable<string> GenerateModList(IPatchProgress progress)
         {
             #region List of mods
@@ -140,7 +141,17 @@ namespace ModuleManager
 
             List<string> mods = new List<string>();
 
-            string modlist = "compiling list of loaded mods...\nMod DLLs found:\n";
+            StringBuilder modListInfo = new StringBuilder();
+
+            modListInfo.Append("compiling list of loaded mods...\nMod DLLs found:\n");
+
+            modListInfo.AppendFormat(
+                "  {0,-40}{1,-30}{2,-30}{3}\n\n",
+                "Name",
+                "Assembly Version",
+                "Assembly File Version",
+                "SHA256"
+            );
 
             foreach (AssemblyLoader.LoadedAssembly mod in AssemblyLoader.loadedAssemblies)
             {
@@ -151,6 +162,14 @@ namespace ModuleManager
                 FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(mod.assembly.Location);
 
                 AssemblyName assemblyName = mod.assembly.GetName();
+
+                modListInfo.AppendFormat(
+                    "  {0,-40}{1,-30}{2,-30}{3}\n",
+                    assemblyName.Name,
+                    assemblyName.Version,
+                    fileVersionInfo.FileVersion,
+                    FileSHA(mod.assembly.Location)
+                );
 
                 string modInfo = "  " + assemblyName.Name
                                  + " v" + assemblyName.Version
@@ -163,13 +182,13 @@ namespace ModuleManager
                                      ? " / v" + fileVersionInfo.FileVersion
                                      : "");
 
-                modlist += String.Format("  {0,-50} SHA256 {1}\n", modInfo, FileSHA(mod.assembly.Location));
+                // modlist += String.Format("  {0,-50} SHA256 {1}\n", modInfo, FileSHA(mod.assembly.Location));
 
                 if (!mods.Contains(assemblyName.Name, StringComparer.OrdinalIgnoreCase))
                     mods.Add(assemblyName.Name);
             }
 
-            modlist += "Non-DLL mods added (:FOR[xxx]):\n";
+            modListInfo.Append("Non-DLL mods added (:FOR[xxx]):\n");
             foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
             {
                 if (CommandParser.Parse(cfgmod.type, out string name) != Command.Insert)
@@ -188,7 +207,7 @@ namespace ModuleManager
                             {
                                 // found one, now add it to the list.
                                 mods.Add(dependency);
-                                modlist += "  " + dependency + "\n";
+                                modListInfo.AppendFormat("  {0}\n", dependency);
                             }
                         }
                         catch (ArgumentOutOfRangeException)
@@ -199,7 +218,7 @@ namespace ModuleManager
                     }
                 }
             }
-            modlist += "Mods by directory (sub directories of GameData):\n";
+            modListInfo.Append("Mods by directory (sub directories of GameData):\n");
             string gameData = Path.Combine(Path.GetFullPath(KSPUtil.ApplicationRootPath), "GameData");
             foreach (string subdir in Directory.GetDirectories(gameData))
             {
@@ -208,10 +227,10 @@ namespace ModuleManager
                 if (!mods.Contains(cleanName, StringComparer.OrdinalIgnoreCase))
                 {
                     mods.Add(cleanName);
-                    modlist += "  " + cleanName + "\n";
+                    modListInfo.AppendFormat("  {0}\n", cleanName);
                 }
             }
-            logger.Info(modlist);
+            logger.Info(modListInfo.ToString());
 
             mods.Sort();
 
