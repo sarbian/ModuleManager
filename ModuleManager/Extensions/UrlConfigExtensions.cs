@@ -15,9 +15,9 @@ namespace ModuleManager.Extensions
             {
                 nodeName = url.type;
             }
-            else if (!string.IsNullOrEmpty(url.config?.name?.Trim()))
+            else if (url.type == null)
             {
-                nodeName = url.config.name;
+                nodeName = "<null>";
             }
             else
             {
@@ -50,12 +50,7 @@ namespace ModuleManager.Extensions
 
             StringBuilder sb = new StringBuilder();
 
-            if (config.type == null) sb.Append("<null type>");
-            else sb.Append(config.type);
-
-            if (config.name == null) sb.Append("[<null name>]");
-            else if (config.name != config.type) sb.AppendFormat("[{0}]", config.name);
-
+            sb.Append(config.SafeUrl());
             sb.Append('\n');
             config.config.PrettyPrint(ref sb, "  ");
             

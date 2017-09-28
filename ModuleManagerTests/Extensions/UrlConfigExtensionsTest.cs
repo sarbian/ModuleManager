@@ -40,7 +40,7 @@ namespace ModuleManagerTests.Extensions
                 name = null
             };
             UrlDir.UrlConfig url = new UrlDir.UrlConfig(null, node);
-            Assert.Equal("<blank>", url.SafeUrl());
+            Assert.Equal("<null>", url.SafeUrl());
         }
 
         [Fact]
@@ -59,7 +59,7 @@ namespace ModuleManagerTests.Extensions
             };
             node.name = null;
             UrlDir.UrlConfig url = UrlBuilder.CreateConfig("abc/def", node);
-            Assert.Equal("abc/def/<blank>", url.SafeUrl());
+            Assert.Equal("abc/def/<null>", url.SafeUrl());
         }
 
         [Fact]
@@ -89,7 +89,7 @@ namespace ModuleManagerTests.Extensions
             UrlDir.UrlConfig url = UrlBuilder.CreateConfig("abc/def.cfg", node);
 
             string expected = @"
-SOME_NODE
+abc/def/SOME_NODE
   SOME_NODE
   {
     abc = def
@@ -101,39 +101,6 @@ SOME_NODE
   }
 ".TrimStart().Replace("\r", null);
             
-            Assert.Equal(expected, url.PrettyPrint());
-        }
-
-        [Fact]
-        public void TestPrettyPrint__NameValue()
-        {
-            ConfigNode node = new TestConfigNode("SOME_NODE")
-            {
-                { "name", "Inigo Montoya" },
-                { "abc", "def" },
-                { "ghi", "jkl" },
-                new TestConfigNode("INNER_NODE_1")
-                {
-                    { "mno", "pqr" },
-                },
-            };
-
-            UrlDir.UrlConfig url = UrlBuilder.CreateConfig("abc/def.cfg", node);
-
-            string expected = @"
-SOME_NODE[Inigo Montoya]
-  SOME_NODE
-  {
-    name = Inigo Montoya
-    abc = def
-    ghi = jkl
-    INNER_NODE_1
-    {
-      mno = pqr
-    }
-  }
-".TrimStart().Replace("\r", null);
-
             Assert.Equal(expected, url.PrettyPrint());
         }
 
@@ -155,8 +122,39 @@ SOME_NODE[Inigo Montoya]
             UrlDir.UrlConfig url = UrlBuilder.CreateConfig("abc/def.cfg", node);
 
             string expected = @"
-<null type>[<null name>]
+abc/def/<null>
   <null>
+  {
+    abc = def
+    ghi = jkl
+    INNER_NODE_1
+    {
+      mno = pqr
+    }
+  }
+".TrimStart().Replace("\r", null);
+
+            Assert.Equal(expected, url.PrettyPrint());
+        }
+
+        [Fact]
+        public void TestPrettyPrint__BlankName()
+        {
+            ConfigNode node = new TestConfigNode(" ")
+            {
+                { "abc", "def" },
+                { "ghi", "jkl" },
+                new TestConfigNode("INNER_NODE_1")
+                {
+                    { "mno", "pqr" },
+                },
+            };
+
+            UrlDir.UrlConfig url = UrlBuilder.CreateConfig("abc/def.cfg", node);
+
+            string expected = @"
+abc/def/<blank>
+   
   {
     abc = def
     ghi = jkl
@@ -189,7 +187,7 @@ SOME_NODE[Inigo Montoya]
             UrlDir.UrlConfig url = UrlBuilder.CreateConfig("abc/def.cfg", node);
 
             string expected = @"
-SOME_NODE[<null name>]
+abc/def/SOME_NODE
   SOME_NODE
   {
     name = <null>
@@ -212,7 +210,7 @@ SOME_NODE[<null name>]
             url.config = null;
 
             string expected = @"
-SOME_NODE
+abc/def/SOME_NODE
   <null node>
 ".TrimStart().Replace("\r", null);
 
