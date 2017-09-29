@@ -812,8 +812,6 @@ namespace ModuleManager
             yield return null;
 
             activity = "ModuleManager " + Stage;
-
-            UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
             
             float nextYield = Time.realtimeSinceStartup + yieldInterval;
 
