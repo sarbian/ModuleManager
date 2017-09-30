@@ -144,13 +144,18 @@ namespace ModuleManager
 
             modListInfo.Append("compiling list of loaded mods...\nMod DLLs found:\n");
 
+            string format = "  {0,-40}{1,-25}{2,-25}{3,-25}{4}\n";
+
             modListInfo.AppendFormat(
-                "  {0,-40}{1,-30}{2,-30}{3}\n\n",
+                format,
                 "Name",
                 "Assembly Version",
                 "Assembly File Version",
+                "KSPAssembly Version",
                 "SHA256"
             );
+
+            modListInfo.Append('\n');
 
             foreach (AssemblyLoader.LoadedAssembly mod in AssemblyLoader.loadedAssemblies)
             {
@@ -162,24 +167,20 @@ namespace ModuleManager
 
                 AssemblyName assemblyName = mod.assembly.GetName();
 
+                string kspAssemblyVersion;
+                if (mod.versionMajor == 0 && mod.versionMinor == 0)
+                    kspAssemblyVersion = "";
+                else
+                    kspAssemblyVersion = mod.versionMajor + "." + mod.versionMinor;
+
                 modListInfo.AppendFormat(
-                    "  {0,-40}{1,-30}{2,-30}{3}\n",
+                    format,
                     assemblyName.Name,
                     assemblyName.Version,
                     fileVersionInfo.FileVersion,
+                    kspAssemblyVersion,
                     FileSHA(mod.assembly.Location)
                 );
-
-                string modInfo = "  " + assemblyName.Name
-                                 + " v" + assemblyName.Version
-                                 +
-                                 (fileVersionInfo.ProductVersion != " " && fileVersionInfo.ProductVersion != assemblyName.Version.ToString()
-                                     ? " / v" + fileVersionInfo.ProductVersion
-                                     : "")
-                                 +
-                                 (fileVersionInfo.FileVersion != " " &&fileVersionInfo.FileVersion != assemblyName.Version.ToString() && fileVersionInfo.FileVersion != fileVersionInfo.ProductVersion
-                                     ? " / v" + fileVersionInfo.FileVersion
-                                     : "");
 
                 // modlist += String.Format("  {0,-50} SHA256 {1}\n", modInfo, FileSHA(mod.assembly.Location));
 
