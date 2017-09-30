@@ -15,6 +15,7 @@ namespace TestUtilsTests
                 { "value2", "something else" },
                 { "multiple", "first" },
                 { "multiple", "second" },
+                new ConfigNode.Value("foo", "bar"),
                 { "NODE_1", new TestConfigNode
                     {
                         { "name", "something" },
@@ -36,6 +37,7 @@ namespace TestUtilsTests
             Assert.Equal("something", node.GetValue("value1"));
             Assert.Equal("something else", node.GetValue("value2"));
             Assert.Equal(new[] { "first", "second" }, node.GetValues("multiple"));
+            Assert.Equal("bar", node.GetValue("foo"));
 
             ConfigNode innerNode1 = node.GetNode("NODE_1");
             Assert.NotNull(innerNode1);

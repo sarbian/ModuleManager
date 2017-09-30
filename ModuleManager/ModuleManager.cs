@@ -297,10 +297,6 @@ namespace ModuleManager
             while (!MMPatchLoader.Instance.IsReady())
                 yield return null;
 
-            Log("DB Reload OK with patchCount=" + MMPatchLoader.Instance.progress.PatchedNodeCount + " errorCount=" +
-                MMPatchLoader.Instance.progress.ErrorCount + " needsUnsatisfiedCount=" +
-                MMPatchLoader.Instance.progress.NeedsUnsatisfiedCount + " exceptionCount=" + MMPatchLoader.Instance.progress.ExceptionCount);
-
             PartResourceLibrary.Instance.LoadDefinitions();
 
             PartUpgradeManager.Handler.FillUpgrades();

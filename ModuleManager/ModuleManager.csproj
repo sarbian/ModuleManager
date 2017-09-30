@@ -48,6 +48,7 @@
     <Compile Include="Logging\ModLogger.cs" />
     <Compile Include="MMPatchLoader.cs" />
     <Compile Include="ModuleManager.cs" />
+    <Compile Include="NeedsChecker.cs" />
     <Compile Include="PatchContext.cs" />
     <Compile Include="PatchExtractor.cs" />
     <Compile Include="PatchList.cs" />

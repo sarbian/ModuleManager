@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace ModuleManager.Extensions
@@ -17,9 +15,9 @@ namespace ModuleManager.Extensions
             {
                 nodeName = url.type;
             }
-            else if (!string.IsNullOrEmpty(url.config?.name?.Trim()))
+            else if (url.type == null)
             {
-                nodeName = url.config.name;
+                nodeName = "<null>";
             }
             else
             {
@@ -44,6 +42,19 @@ namespace ModuleManager.Extensions
                 return nodeName;
             else
                 return parentUrl + "/" + nodeName;
+        }
+
+        public static string PrettyPrint(this UrlDir.UrlConfig config)
+        {
+            if (config == null) return "<null UrlConfig>";
+
+            StringBuilder sb = new StringBuilder();
+
+            sb.Append(config.SafeUrl());
+            sb.Append('\n');
+            config.config.PrettyPrint(ref sb, "  ");
+            
+            return sb.ToString();
         }
     }
 }
