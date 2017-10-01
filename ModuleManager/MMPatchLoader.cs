@@ -194,7 +194,6 @@ namespace ModuleManager
             {
                 if (CommandParser.Parse(cfgmod.type, out string name) != Command.Insert)
                 {
-                    progress.PatchAdded();
                     if (name.Contains(":FOR["))
                     {
                         name = name.RemoveWS();

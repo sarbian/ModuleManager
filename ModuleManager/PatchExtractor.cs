@@ -185,6 +185,7 @@ namespace ModuleManager
                     }
 
                     thePass.Add(newUrl);
+                    progress.PatchAdded();
                 }
                 catch(Exception e)
                 {

@@ -198,6 +198,8 @@ namespace ModuleManagerTests
             AssertUrlCorrect("@NADE",                afterMod2Configs[2], currentPatches[2]);
             AssertUrlCorrect("@NADE",                afterMod2Configs[3], currentPatches[3]);
 
+            progress.Received(34).PatchAdded();
+
             progress.Received().NeedsUnsatisfiedBefore(beforeMod3Configs[0]);
             progress.Received().NeedsUnsatisfiedBefore(beforeMod3Configs[1]);
             progress.Received().NeedsUnsatisfiedBefore(beforeMod3Configs[2]);
@@ -237,6 +239,8 @@ namespace ModuleManagerTests
             Assert.Empty(list.modPasses["mod1"].beforePatches);
             Assert.Empty(list.modPasses["mod1"].forPatches);
             Assert.Empty(list.modPasses["mod1"].afterPatches);
+
+            progress.DidNotReceive().PatchAdded();
         }
 
         [Fact]
@@ -261,6 +265,8 @@ namespace ModuleManagerTests
             Assert.Empty(list.modPasses["mod1"].beforePatches);
             Assert.Empty(list.modPasses["mod1"].forPatches);
             Assert.Empty(list.modPasses["mod1"].afterPatches);
+
+            progress.Received(1).PatchAdded();
         }
 
         [Fact]
@@ -281,6 +287,8 @@ namespace ModuleManagerTests
             Assert.Equal(new[] { config1 }, list.legacyPatches);
             Assert.Equal(1, list.firstPatches.Count);
             AssertUrlCorrect("@NADE", config3, list.firstPatches[0]);
+
+            progress.Received(2).PatchAdded();
         }
 
         [Fact]
@@ -305,6 +313,8 @@ namespace ModuleManagerTests
             Assert.Equal(1, list.modPasses["mod1"].forPatches.Count);
             AssertUrlCorrect("@NODE", config1, list.modPasses["mod1"].forPatches[0]);
             Assert.Empty(list.modPasses["mod1"].afterPatches);
+
+            progress.Received(1).PatchAdded();
         }
 
         [Fact]
@@ -332,6 +342,8 @@ namespace ModuleManagerTests
             Assert.Equal(1, list.modPasses["mod1"].forPatches.Count);
             AssertUrlCorrect("@NODE", config1, list.modPasses["mod1"].forPatches[0]);
             Assert.Empty(list.modPasses["mod1"].afterPatches);
+
+            progress.Received(1).PatchAdded();
         }
 
         [Fact]
@@ -362,6 +374,8 @@ namespace ModuleManagerTests
             Assert.Equal(1, list.modPasses["mod1"].forPatches.Count);
             AssertUrlCorrect("@NODE", config1, list.modPasses["mod1"].forPatches[0]);
             Assert.Empty(list.modPasses["mod1"].afterPatches);
+
+            progress.Received(1).PatchAdded();
         }
 
         private UrlDir.UrlConfig CreateConfig(string name)
