@@ -174,13 +174,23 @@ namespace ModuleManager
                 else
                     kspAssemblyVersion = mod.versionMajor + "." + mod.versionMinor;
 
+                string fileSha;
+                try
+                {
+                    fileSha = FileSHA(mod.assembly.Location);
+                }
+                catch(Exception e)
+                {
+                    progress.Exception("Exception while generating SHA for assembly " + assemblyName.Name, e);
+                }
+
                 modListInfo.AppendFormat(
                     format,
                     assemblyName.Name,
                     assemblyName.Version,
                     fileVersionInfo.FileVersion,
                     kspAssemblyVersion,
-                    FileSHA(mod.assembly.Location)
+                    fileSha
                 );
 
                 // modlist += String.Format("  {0,-50} SHA256 {1}\n", modInfo, FileSHA(mod.assembly.Location));
@@ -491,36 +501,26 @@ namespace ModuleManager
             configs[0].config.Save(physicsPath);
         }
 
-        private string FileSHA(string filename)
+        private static string FileSHA(string filename)
         {
-            try
+            if (!File.Exists(filename)) throw new FileNotFoundException("File does not exist", filename);
+
+            System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
+
+            byte[] data = null;
+            using (FileStream fs = File.Open(filename, FileMode.Open, FileAccess.Read))
             {
-                if (File.Exists(filename))
-                {
-                    System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
-
-                    byte[] data = null;
-                    using (FileStream fs = File.Open(filename, FileMode.Open, FileAccess.Read))
-                    {
-                        data = sha.ComputeHash(fs);
-                    }
-
-                    string hashedValue = string.Empty;
-
-                    foreach (byte b in data)
-                    {
-                        hashedValue += String.Format("{0,2:x2}", b);
-                    }
-
-                    return hashedValue;
-                }
+                data = sha.ComputeHash(fs);
             }
-            catch (Exception e)
+
+            string hashedValue = string.Empty;
+
+            foreach (byte b in data)
             {
-                logger.Exception("Exception hashing file " + filename, e);
-                return "0";
+                hashedValue += String.Format("{0,2:x2}", b);
             }
-            return "0";
+
+            return hashedValue;
         }
 
         private void IsCacheUpToDate()
