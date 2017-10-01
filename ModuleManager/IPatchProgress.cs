@@ -10,7 +10,7 @@ namespace ModuleManager
         int ErrorCount { get; }
         int ExceptionCount { get; }
         int NeedsUnsatisfiedCount { get; }
-        int PatchedNodeCount { get; set; }
+        int PatchedNodeCount { get; }
         float ProgressFraction { get; }
         int TotalPatchCount { get; }
         Dictionary<String, int> ErrorFiles { get; }

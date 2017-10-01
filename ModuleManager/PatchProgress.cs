@@ -8,23 +8,30 @@ namespace ModuleManager
 {
     public class PatchProgress : IPatchProgress
     {
-        public int TotalPatchCount { get; private set; } = 0;
+        private class ProgressTracker
+        {
+            public int totalPatchCount = 0;
+            public int appliedPatchCount = 0;
+            public int patchedNodeCount = 0;
+            public int errorCount = 0;
+            public int exceptionCount = 0;
+            public int needsUnsatisfiedRootCount = 0;
+            public int needsUnsatisfiedCount = 0;
+            
+            public Dictionary<String, int> ErrorFiles { get; } = new Dictionary<string, int>();
+        }
 
-        public int AppliedPatchCount { get; private set; } = 0;
-
-        public int PatchedNodeCount { get; set; } = 0;
-
-        public int ErrorCount { get; private set; } = 0;
-
-        public int ExceptionCount { get; private set; } = 0;
-
-        public int NeedsUnsatisfiedRootCount { get; private set; } = 0;
-
-        public int NeedsUnsatisfiedCount { get; private set; } = 0;
-
-        public Dictionary<String, int> ErrorFiles { get; } = new Dictionary<string, int>();
+        public int TotalPatchCount => progressTracker.totalPatchCount;
+        public int AppliedPatchCount => progressTracker.appliedPatchCount;
+        public int PatchedNodeCount => progressTracker.patchedNodeCount;
+        public int ErrorCount => progressTracker.errorCount;
+        public int ExceptionCount => progressTracker.exceptionCount;
+        public int NeedsUnsatisfiedRootCount => progressTracker.needsUnsatisfiedRootCount;
+        public int NeedsUnsatisfiedCount => progressTracker.needsUnsatisfiedCount;
+        public Dictionary<String, int> ErrorFiles => progressTracker.ErrorFiles;
 
         private IBasicLogger logger;
+        private ProgressTracker progressTracker;
 
         public float ProgressFraction
         {
@@ -39,86 +46,87 @@ namespace ModuleManager
         public PatchProgress(IBasicLogger logger)
         {
             this.logger = logger;
+            progressTracker = new ProgressTracker();
         }
 
         public void PatchAdded()
         {
-            TotalPatchCount += 1;
+            progressTracker.totalPatchCount += 1;
         }
 
         public void ApplyingUpdate(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
             logger.Info($"Applying update {patch.SafeUrl()} to {original.SafeUrl()}");
-            PatchedNodeCount += 1;
+            progressTracker.patchedNodeCount += 1;
         }
 
         public void ApplyingCopy(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
             logger.Info($"Applying copy {patch.SafeUrl()} to {original.SafeUrl()}");
-            PatchedNodeCount += 1;
+            progressTracker.patchedNodeCount += 1;
         }
 
         public void ApplyingDelete(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
         {
             logger.Info($"Applying delete {patch.SafeUrl()} to {original.SafeUrl()}");
-            PatchedNodeCount += 1;
+            progressTracker.patchedNodeCount += 1;
         }
 
         public void PatchApplied()
         {
-            AppliedPatchCount += 1;
+            progressTracker.appliedPatchCount += 1;
         }
 
         public void NeedsUnsatisfiedRoot(UrlDir.UrlConfig url)
         {
             logger.Info($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its NEEDS");
-            NeedsUnsatisfiedCount += 1;
-            NeedsUnsatisfiedRootCount += 1;
+            progressTracker.needsUnsatisfiedCount += 1;
+            progressTracker.needsUnsatisfiedRootCount += 1;
         }
 
         public void NeedsUnsatisfiedNode(UrlDir.UrlConfig url, NodeStack path)
         {
             logger.Info($"Deleting node in file {url.parent.url} subnode: {path.GetPath()} as it can't satisfy its NEEDS");
-            NeedsUnsatisfiedCount += 1;
+            progressTracker.needsUnsatisfiedCount += 1;
         }
 
         public void NeedsUnsatisfiedValue(UrlDir.UrlConfig url, NodeStack path, string valName)
         {
             logger.Info($"Deleting value in file {url.parent.url} subnode: {path.GetPath()} value: {valName} as it can't satisfy its NEEDS");
-            NeedsUnsatisfiedCount += 1;
+            progressTracker.needsUnsatisfiedCount += 1;
         }
 
         public void NeedsUnsatisfiedBefore(UrlDir.UrlConfig url)
         {
             logger.Info($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its BEFORE");
-            NeedsUnsatisfiedCount += 1;
-            NeedsUnsatisfiedRootCount += 1;
+            progressTracker.needsUnsatisfiedCount += 1;
+            progressTracker.needsUnsatisfiedRootCount += 1;
         }
 
         public void NeedsUnsatisfiedFor(UrlDir.UrlConfig url)
         {
             logger.Warning($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its FOR (this shouldn't happen)");
-            NeedsUnsatisfiedCount += 1;
-            NeedsUnsatisfiedRootCount += 1;
+            progressTracker.needsUnsatisfiedCount += 1;
+            progressTracker.needsUnsatisfiedRootCount += 1;
         }
 
         public void NeedsUnsatisfiedAfter(UrlDir.UrlConfig url)
         {
             logger.Info($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its AFTER");
-            NeedsUnsatisfiedCount += 1;
-            NeedsUnsatisfiedRootCount += 1;
+            progressTracker.needsUnsatisfiedCount += 1;
+            progressTracker.needsUnsatisfiedRootCount += 1;
         }
 
         public void Error(UrlDir.UrlConfig url, string message)
         {
-            ErrorCount += 1;
+            progressTracker.errorCount += 1;
             logger.Error(message);
             RecordErrorFile(url);
         }
 
         public void Exception(string message, Exception exception)
         {
-            ExceptionCount += 1;
+            progressTracker.exceptionCount += 1;
             logger.Exception(message, exception);
         }
 
