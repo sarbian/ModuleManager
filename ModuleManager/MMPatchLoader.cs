@@ -175,7 +175,7 @@ namespace ModuleManager
                 else
                     kspAssemblyVersion = mod.versionMajor + "." + mod.versionMinor;
 
-                string fileSha;
+                string fileSha = "";
                 try
                 {
                     fileSha = FileUtils.FileSHA(mod.assembly.Location);
