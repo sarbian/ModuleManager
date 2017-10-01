@@ -81,6 +81,7 @@ namespace ModuleManager
             physicsFile = Path.Combine("GameData", "ModuleManager.Physics");
             physicsPath = Path.Combine(KSPUtil.ApplicationRootPath, physicsFile);
             defaultPhysicsPath = Path.Combine(KSPUtil.ApplicationRootPath, "Physics.cfg");
+            partDatabasePath = Path.Combine(KSPUtil.ApplicationRootPath, "PartDatabase.cfg");
             shaPath = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), "ModuleManager.ConfigSHA");
 
             logger = new ModLogger("ModuleManager", Debug.logger);
