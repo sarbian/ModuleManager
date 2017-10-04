@@ -127,7 +127,7 @@ namespace ModuleManager
                 postPatchCallbacks.Add(callback);
         }
 
-        private IEnumerable<string> GenerateModList(IPatchProgress progress)
+        private static IEnumerable<string> GenerateModList(IPatchProgress progress, IBasicLogger logger)
         {
             #region List of mods
 
@@ -276,7 +276,7 @@ namespace ModuleManager
                 IPatchProgress progress = new PatchProgress(logger);
                 status = "Pre patch init";
                 logger.Info(status);
-                IEnumerable<string> mods = GenerateModList(progress);
+                IEnumerable<string> mods = GenerateModList(progress, logger);
 
                 yield return null;
 
