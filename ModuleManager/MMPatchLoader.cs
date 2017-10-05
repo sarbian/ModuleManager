@@ -13,7 +13,6 @@ using Debug = UnityEngine.Debug;
 
 using ModuleManager.Logging;
 using ModuleManager.Extensions;
-using ModuleManager.Utils;
 using ModuleManager.Progress;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
