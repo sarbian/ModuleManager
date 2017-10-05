@@ -67,6 +67,8 @@
     <Compile Include="PatchExtractorTest.cs" />
     <Compile Include="PatchProgressTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Threading\TaskStatusTest.cs" />
+    <Compile Include="Threading\BackgroundTaskTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
