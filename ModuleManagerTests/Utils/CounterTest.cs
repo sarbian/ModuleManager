@@ -34,6 +34,22 @@ namespace ModuleManagerTests.Utils
         }
 
         [Fact]
+        public void TestToString()
+        {
+            Counter counter = new Counter();
+            
+            Assert.Equal("0", counter.ToString());
+
+            counter.Increment();
+            
+            Assert.Equal("1", counter.ToString());
+
+            counter.Increment();
+            
+            Assert.Equal("2", counter.ToString());
+        }
+
+        [Fact]
         public void Test__CastAsInt()
         {
             Counter counter = new Counter();

@@ -14,6 +14,11 @@ namespace ModuleManager.Utils
             Value++;
         }
 
+        public override string ToString()
+        {
+            return Value.ToString();
+        }
+
         public static implicit operator int(Counter counter) => counter.Value;
     }
 }
