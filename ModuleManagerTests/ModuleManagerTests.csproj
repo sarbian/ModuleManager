@@ -65,8 +65,8 @@
     <Compile Include="Extensions\NodeStackExtensionsTest.cs" />
     <Compile Include="Logging\ModLoggerTest.cs" />
     <Compile Include="PatchExtractorTest.cs" />
-    <Compile Include="PatchProgressTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Progress\PatchProgressTest.cs" />
     <Compile Include="Threading\TaskStatusTest.cs" />
     <Compile Include="Threading\BackgroundTaskTest.cs" />
   </ItemGroup>

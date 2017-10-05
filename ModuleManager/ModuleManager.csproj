@@ -43,7 +43,6 @@
     <Compile Include="Extensions\NodeStackExtensions.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />
     <Compile Include="Extensions\UrlConfigExtensions.cs" />
-    <Compile Include="IPatchProgress.cs" />
     <Compile Include="FatalErrorHandler.cs" />
     <Compile Include="Logging\ExceptionMessage.cs" />
     <Compile Include="Logging\IBasicLogger.cs" />
@@ -59,9 +58,10 @@
     <Compile Include="PatchContext.cs" />
     <Compile Include="PatchExtractor.cs" />
     <Compile Include="PatchList.cs" />
-    <Compile Include="PatchProgress.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs" />
+    <Compile Include="Progress\IPatchProgress.cs" />
+    <Compile Include="Progress\PatchProgress.cs" />
     <Compile Include="Threading\ITaskStatus.cs" />
     <Compile Include="Threading\TaskStatus.cs" />
     <Compile Include="Threading\TaskStatusWrapper.cs" />
