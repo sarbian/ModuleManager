@@ -100,16 +100,13 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("SOME_OTHER_NODE"));
 
             Assert.Equal(0, progress.NeedsUnsatisfiedCount);
-            Assert.Equal(0, progress.NeedsUnsatisfiedRootCount);
 
             progress.NeedsUnsatisfiedRoot(config1);
             Assert.Equal(1, progress.NeedsUnsatisfiedCount);
-            Assert.Equal(1, progress.NeedsUnsatisfiedRootCount);
             logger.Received().Info("Deleting root node in file abc/def node: SOME_NODE as it can't satisfy its NEEDS");
 
             progress.NeedsUnsatisfiedRoot(config2);
             Assert.Equal(2, progress.NeedsUnsatisfiedCount);
-            Assert.Equal(2, progress.NeedsUnsatisfiedRootCount);
             logger.Received().Info("Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its NEEDS");
         }
 
@@ -124,11 +121,11 @@ namespace ModuleManagerTests
             Assert.Equal(0, progress.NeedsUnsatisfiedCount);
 
             progress.NeedsUnsatisfiedNode(config1, stack1);
-            Assert.Equal(1, progress.NeedsUnsatisfiedCount);
+            Assert.Equal(0, progress.NeedsUnsatisfiedCount);
             logger.Received().Info("Deleting node in file abc/def subnode: SOME_NODE/SOME_CHILD_NODE as it can't satisfy its NEEDS");
 
             progress.NeedsUnsatisfiedNode(config2, stack2);
-            Assert.Equal(2, progress.NeedsUnsatisfiedCount);
+            Assert.Equal(0, progress.NeedsUnsatisfiedCount);
             logger.Received().Info("Deleting node in file ghi/jkl subnode: SOME_OTHER_NODE/SOME_OTHER_CHILD_NODE as it can't satisfy its NEEDS");
         }
 
@@ -143,11 +140,11 @@ namespace ModuleManagerTests
             Assert.Equal(0, progress.NeedsUnsatisfiedCount);
 
             progress.NeedsUnsatisfiedValue(config1, stack1, "some_value");
-            Assert.Equal(1, progress.NeedsUnsatisfiedCount);
+            Assert.Equal(0, progress.NeedsUnsatisfiedCount);
             logger.Received().Info("Deleting value in file abc/def subnode: SOME_NODE/SOME_CHILD_NODE value: some_value as it can't satisfy its NEEDS");
 
             progress.NeedsUnsatisfiedValue(config2, stack2, "some_other_value");
-            Assert.Equal(2, progress.NeedsUnsatisfiedCount);
+            Assert.Equal(0, progress.NeedsUnsatisfiedCount);
             logger.Received().Info("Deleting value in file ghi/jkl subnode: SOME_OTHER_NODE/SOME_OTHER_CHILD_NODE value: some_other_value as it can't satisfy its NEEDS");
         }
 
@@ -158,16 +155,13 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("SOME_OTHER_NODE"));
 
             Assert.Equal(0, progress.NeedsUnsatisfiedCount);
-            Assert.Equal(0, progress.NeedsUnsatisfiedRootCount);
 
             progress.NeedsUnsatisfiedBefore(config1);
             Assert.Equal(1, progress.NeedsUnsatisfiedCount);
-            Assert.Equal(1, progress.NeedsUnsatisfiedRootCount);
             logger.Received().Info("Deleting root node in file abc/def node: SOME_NODE as it can't satisfy its BEFORE");
 
             progress.NeedsUnsatisfiedBefore(config2);
             Assert.Equal(2, progress.NeedsUnsatisfiedCount);
-            Assert.Equal(2, progress.NeedsUnsatisfiedRootCount);
             logger.Received().Info("Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its BEFORE");
         }
 
@@ -178,16 +172,13 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("SOME_OTHER_NODE"));
 
             Assert.Equal(0, progress.NeedsUnsatisfiedCount);
-            Assert.Equal(0, progress.NeedsUnsatisfiedRootCount);
 
             progress.NeedsUnsatisfiedFor(config1);
             Assert.Equal(1, progress.NeedsUnsatisfiedCount);
-            Assert.Equal(1, progress.NeedsUnsatisfiedRootCount);
             logger.Received().Warning("Deleting root node in file abc/def node: SOME_NODE as it can't satisfy its FOR (this shouldn't happen)");
 
             progress.NeedsUnsatisfiedFor(config2);
             Assert.Equal(2, progress.NeedsUnsatisfiedCount);
-            Assert.Equal(2, progress.NeedsUnsatisfiedRootCount);
             logger.Received().Warning("Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its FOR (this shouldn't happen)");
         }
 
@@ -198,16 +189,13 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("SOME_OTHER_NODE"));
 
             Assert.Equal(0, progress.NeedsUnsatisfiedCount);
-            Assert.Equal(0, progress.NeedsUnsatisfiedRootCount);
 
             progress.NeedsUnsatisfiedAfter(config1);
             Assert.Equal(1, progress.NeedsUnsatisfiedCount);
-            Assert.Equal(1, progress.NeedsUnsatisfiedRootCount);
             logger.Received().Info("Deleting root node in file abc/def node: SOME_NODE as it can't satisfy its AFTER");
 
             progress.NeedsUnsatisfiedAfter(config2);
             Assert.Equal(2, progress.NeedsUnsatisfiedCount);
-            Assert.Equal(2, progress.NeedsUnsatisfiedRootCount);
             logger.Received().Info("Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its AFTER");
         }
 

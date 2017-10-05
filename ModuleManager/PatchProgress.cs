@@ -15,7 +15,6 @@ namespace ModuleManager
             public int patchedNodeCount = 0;
             public int errorCount = 0;
             public int exceptionCount = 0;
-            public int needsUnsatisfiedRootCount = 0;
             public int needsUnsatisfiedCount = 0;
             
             public Dictionary<String, int> ErrorFiles { get; } = new Dictionary<string, int>();
@@ -26,7 +25,6 @@ namespace ModuleManager
         public int PatchedNodeCount => progressTracker.patchedNodeCount;
         public int ErrorCount => progressTracker.errorCount;
         public int ExceptionCount => progressTracker.exceptionCount;
-        public int NeedsUnsatisfiedRootCount => progressTracker.needsUnsatisfiedRootCount;
         public int NeedsUnsatisfiedCount => progressTracker.needsUnsatisfiedCount;
         public Dictionary<String, int> ErrorFiles => progressTracker.ErrorFiles;
 
@@ -38,7 +36,7 @@ namespace ModuleManager
             get
             {
                 if (TotalPatchCount > 0)
-                    return (AppliedPatchCount + NeedsUnsatisfiedRootCount) / (float)TotalPatchCount;
+                    return (AppliedPatchCount + NeedsUnsatisfiedCount) / (float)TotalPatchCount;
                 return 0;
             }
         }
@@ -81,40 +79,34 @@ namespace ModuleManager
         {
             logger.Info($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its NEEDS");
             progressTracker.needsUnsatisfiedCount += 1;
-            progressTracker.needsUnsatisfiedRootCount += 1;
         }
 
         public void NeedsUnsatisfiedNode(UrlDir.UrlConfig url, NodeStack path)
         {
             logger.Info($"Deleting node in file {url.parent.url} subnode: {path.GetPath()} as it can't satisfy its NEEDS");
-            progressTracker.needsUnsatisfiedCount += 1;
         }
 
         public void NeedsUnsatisfiedValue(UrlDir.UrlConfig url, NodeStack path, string valName)
         {
             logger.Info($"Deleting value in file {url.parent.url} subnode: {path.GetPath()} value: {valName} as it can't satisfy its NEEDS");
-            progressTracker.needsUnsatisfiedCount += 1;
         }
 
         public void NeedsUnsatisfiedBefore(UrlDir.UrlConfig url)
         {
             logger.Info($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its BEFORE");
             progressTracker.needsUnsatisfiedCount += 1;
-            progressTracker.needsUnsatisfiedRootCount += 1;
         }
 
         public void NeedsUnsatisfiedFor(UrlDir.UrlConfig url)
         {
             logger.Warning($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its FOR (this shouldn't happen)");
             progressTracker.needsUnsatisfiedCount += 1;
-            progressTracker.needsUnsatisfiedRootCount += 1;
         }
 
         public void NeedsUnsatisfiedAfter(UrlDir.UrlConfig url)
         {
             logger.Info($"Deleting root node in file {url.parent.url} node: {url.type} as it can't satisfy its AFTER");
             progressTracker.needsUnsatisfiedCount += 1;
-            progressTracker.needsUnsatisfiedRootCount += 1;
         }
 
         public void Error(UrlDir.UrlConfig url, string message)
