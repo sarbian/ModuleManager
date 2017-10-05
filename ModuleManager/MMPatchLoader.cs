@@ -216,11 +216,11 @@ namespace ModuleManager
 
                 #region Saving Cache
 
-                if (progress.ErrorCount > 0 || progress.ExceptionCount > 0)
+                if (progress.Counter.errors > 0 || progress.Counter.exceptions > 0)
                 {
-                    foreach (string file in progress.ErrorFiles.Keys)
+                    foreach (KeyValuePair<string, int> item in progress.Counter.errorFiles)
                     {
-                        errors += progress.ErrorFiles[file] + " error" + (progress.ErrorFiles[file] > 1 ? "s" : "") + " related to GameData/" + file
+                        errors += item.Value + " error" + (item.Value > 1 ? "s" : "") + " related to GameData/" + item.Key
                                   + "\n";
                     }
 
@@ -242,7 +242,7 @@ namespace ModuleManager
                     status = "Saving Cache";
                     logger.Info(status);
                     yield return null;
-                    CreateCache(progress.PatchedNodeCount);
+                    CreateCache(progress.Counter.patchedNodes);
                 }
 
                 StatusUpdate(progress);
@@ -639,13 +639,13 @@ namespace ModuleManager
         {
             progressFraction = progress.ProgressFraction;
 
-            status = "ModuleManager: " + progress.PatchedNodeCount + " patch" + (progress.PatchedNodeCount != 1 ? "es" : "") + " applied";
+            status = "ModuleManager: " + progress.Counter.patchedNodes + " patch" + (progress.Counter.patchedNodes != 1 ? "es" : "") + " applied";
 
-            if (progress.ErrorCount > 0)
-                status += ", found <color=orange>" + progress.ErrorCount + " error" + (progress.ErrorCount != 1 ? "s" : "") + "</color>";
+            if (progress.Counter.errors > 0)
+                status += ", found <color=orange>" + progress.Counter.errors + " error" + (progress.Counter.errors != 1 ? "s" : "") + "</color>";
 
-            if (progress.ExceptionCount > 0)
-                status += ", encountered <color=red>" + progress.ExceptionCount + " exception" + (progress.ExceptionCount != 1 ? "s" : "") + "</color>";
+            if (progress.Counter.exceptions > 0)
+                status += ", encountered <color=red>" + progress.Counter.exceptions + " exception" + (progress.Counter.exceptions != 1 ? "s" : "") + "</color>";
         }
 
         private static void PurgeUnused()

@@ -69,6 +69,7 @@
     <Compile Include="Progress\PatchProgressTest.cs" />
     <Compile Include="Threading\TaskStatusTest.cs" />
     <Compile Include="Threading\BackgroundTaskTest.cs" />
+    <Compile Include="Utils\CounterTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

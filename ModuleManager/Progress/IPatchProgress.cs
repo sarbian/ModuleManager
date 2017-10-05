@@ -1,19 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManager.Progress
 {
     public interface IPatchProgress
     {
-        int AppliedPatchCount { get; }
-        int ErrorCount { get; }
-        int ExceptionCount { get; }
-        int NeedsUnsatisfiedCount { get; }
-        int PatchedNodeCount { get; }
+        ProgressCounter Counter { get; }
+
         float ProgressFraction { get; }
-        int TotalPatchCount { get; }
-        Dictionary<String, int> ErrorFiles { get; }
 
         void Error(UrlDir.UrlConfig url, string message);
         void Exception(string message, Exception exception);
