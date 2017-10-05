@@ -1,5 +1,6 @@
 ﻿using System;
 using ModuleManager.Logging;
+using ModuleManager.Progress;
 
 namespace ModuleManager
 {

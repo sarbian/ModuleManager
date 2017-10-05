@@ -5,6 +5,7 @@ using NSubstitute;
 using TestUtils;
 using ModuleManager;
 using ModuleManager.Logging;
+using ModuleManager.Progress;
 
 namespace ModuleManagerTests
 {

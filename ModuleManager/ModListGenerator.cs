@@ -8,6 +8,7 @@ using System.Reflection;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
 using ModuleManager.Utils;
+using ModuleManager.Progress;
 
 namespace ModuleManager
 {

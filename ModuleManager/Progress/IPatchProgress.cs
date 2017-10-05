@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
-namespace ModuleManager
+namespace ModuleManager.Progress
 {
     public interface IPatchProgress
     {

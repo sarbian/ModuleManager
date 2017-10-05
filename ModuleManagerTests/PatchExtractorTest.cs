@@ -4,6 +4,7 @@ using Xunit;
 using NSubstitute;
 using TestUtils;
 using ModuleManager;
+using ModuleManager.Progress;
 
 namespace ModuleManagerTests
 {

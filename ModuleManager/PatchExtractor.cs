@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ModuleManager.Extensions;
+using ModuleManager.Progress;
 
 namespace ModuleManager
 {

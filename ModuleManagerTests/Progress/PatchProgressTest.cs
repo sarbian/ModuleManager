@@ -4,6 +4,7 @@ using NSubstitute;
 using TestUtils;
 using ModuleManager;
 using ModuleManager.Logging;
+using ModuleManager.Progress;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManagerTests
