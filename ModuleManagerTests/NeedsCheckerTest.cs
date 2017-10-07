@@ -112,6 +112,48 @@ namespace ModuleManagerTests
         }
 
         [Fact]
+        public void TestCheckNeeds__Root__Not()
+        {
+            string[] modList = { "mod1", "mod2" };
+
+            UrlDir.UrlConfig noNeedsNode = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE"), file);
+
+            UrlDir.UrlConfig[] needsSatisfiedConfigs = new[] {
+                UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE:NEEDS[!mod3]"), file),
+                UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE:NEEDS[mod1,!mod3]"), file),
+                UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE:NEEDS[!mod1|!mod3]"), file),
+                UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE:NEEDS[mod1|!mod2]"), file),
+            };
+
+            UrlDir.UrlConfig[] needsUnsatisfiedConfigs = new[] {
+                UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE:NEEDS[!mod1]"), file),
+                UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE:NEEDS[!mod1,mod2]"), file),
+                UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE:NEEDS[!mod1&!mod3]"), file),
+            };
+
+            NeedsChecker.CheckNeeds(root, modList, progress, logger);
+
+            progress.DidNotReceiveWithAnyArgs().Exception(null, null);
+            progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
+            progress.DidNotReceiveWithAnyArgs().Error(null, null);
+
+            UrlDir.UrlConfig[] configs = root.AllConfigs.ToArray();
+            Assert.Equal(needsSatisfiedConfigs.Length + 1, configs.Length);
+
+            Assert.Same(noNeedsNode, configs[0]);
+
+            for (int i = 0; i < needsSatisfiedConfigs.Length; i++)
+            {
+                AssertUrlCorrect("SOME_NODE", needsSatisfiedConfigs[i], configs[i + 1]);
+            }
+
+            foreach (UrlDir.UrlConfig config in needsUnsatisfiedConfigs)
+            {
+                progress.Received().NeedsUnsatisfiedRoot(config);
+            }
+        }
+
+        [Fact]
         public void TestCheckNeeds__Root__CaseInsensitive()
         {
             string[] modList = { "mod1", "mod2" };
