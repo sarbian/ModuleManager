@@ -276,5 +276,37 @@ namespace ModuleManagerTests
             Assert.Equal(2, progress.Counter.errorFiles["abc/def.cfg"]);
             logger.Received().Exception("An exception was tossed", e2);
         }
+
+        [Fact]
+        public void TestProgressFraction()
+        {
+            Assert.Equal(0, progress.ProgressFraction);
+
+            progress.Counter.needsUnsatisfied.Increment();
+            progress.Counter.needsUnsatisfied.Increment();
+
+            progress.Counter.totalPatches.Increment();
+            progress.Counter.totalPatches.Increment();
+            progress.Counter.totalPatches.Increment();
+            progress.Counter.totalPatches.Increment();
+
+            Assert.Equal(0, progress.ProgressFraction);
+
+            progress.Counter.appliedPatches.Increment();
+
+            Assert.Equal(0.25, progress.ProgressFraction);
+
+            progress.Counter.appliedPatches.Increment();
+
+            Assert.Equal(0.5, progress.ProgressFraction);
+
+            progress.Counter.appliedPatches.Increment();
+
+            Assert.Equal(0.75, progress.ProgressFraction);
+
+            progress.Counter.appliedPatches.Increment();
+
+            Assert.Equal(1, progress.ProgressFraction);
+        }
     }
 }

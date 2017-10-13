@@ -16,7 +16,7 @@ namespace ModuleManager.Progress
             get
             {
                 if (Counter.totalPatches > 0)
-                    return (Counter.appliedPatches + Counter.needsUnsatisfied) / (float)Counter.totalPatches;
+                    return Counter.appliedPatches / (float)Counter.totalPatches;
                 return 0;
             }
         }
