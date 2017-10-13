@@ -13,6 +13,8 @@ using Debug = UnityEngine.Debug;
 
 using ModuleManager.Logging;
 using ModuleManager.Extensions;
+using ModuleManager.Collections;
+using ModuleManager.Threading;
 using ModuleManager.Progress;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
@@ -193,22 +195,48 @@ namespace ModuleManager
 
                 yield return null;
 
-                // :First node
-                yield return StartCoroutine(ApplyPatch(":FIRST", patchList.firstPatches, progress));
+                MessageQueue<ILogMessage> logQueue = new MessageQueue<ILogMessage>();
+                IBasicLogger patchLogger = new QueueLogger(logQueue);
+                IPatchProgress threadPatchProgress = new PatchProgress(progress, patchLogger);
+                PatchApplier applier = new PatchApplier(patchList, GameDatabase.Instance.root, threadPatchProgress, patchLogger);
 
-                // any node without a :pass
-                yield return StartCoroutine(ApplyPatch(":LEGACY (default)", patchList.legacyPatches, progress));
+                logger.Info("Starting patch thread");
 
-                foreach (PatchList.ModPass pass in patchList.modPasses)
+                ITaskStatus patchThread = BackgroundTask.Start(applier.ApplyPatches);
+
+                float nextYield = Time.realtimeSinceStartup + yieldInterval;
+
+                while (patchThread.IsRunning)
                 {
-                    string upperModName = pass.name.ToUpper();
-                    yield return StartCoroutine(ApplyPatch(":BEFORE[" + upperModName + "]", pass.beforePatches, progress));
-                    yield return StartCoroutine(ApplyPatch(":FOR[" + upperModName + "]", pass.forPatches, progress));
-                    yield return StartCoroutine(ApplyPatch(":AFTER[" + upperModName + "]", pass.afterPatches, progress));
+                    foreach (ILogMessage message in logQueue.TakeAll())
+                    {
+                        message.LogTo(logger);
+                    }
+
+                    if (nextYield < Time.realtimeSinceStartup)
+                    {
+                        nextYield = Time.realtimeSinceStartup + yieldInterval;
+                        StatusUpdate(progress);
+                        activity = applier.Activity;
+                        yield return null;
+                    }
                 }
 
-                // :Final node
-                yield return StartCoroutine(ApplyPatch(":FINAL", patchList.finalPatches, progress));
+                // Clear any log messages that might still be in the queue
+                foreach (ILogMessage message in logQueue.TakeAll())
+                {
+                    message.LogTo(logger);
+                }
+
+                if (patchThread.IsExitedWithError)
+                {
+                    progress.Exception("The patch runner threw an exception", patchThread.Exception);
+                    FatalErrorHandler.HandleFatalError("The patch runner threw an exception");
+                    yield break;
+                }
+
+                logger.Info("Done patching");
+                yield return null;
 
                 PurgeUnused();
 
@@ -660,126 +688,6 @@ namespace ModuleManager
         }
 
         #region Applying Patches
-
-        // Apply patch to all relevent nodes
-        public IEnumerator ApplyPatch(string Stage, IEnumerable<UrlDir.UrlConfig> patches, IPatchProgress progress)
-        {
-            StatusUpdate(progress);
-            logger.Info(Stage +  " pass");
-            yield return null;
-
-            activity = "ModuleManager " + Stage;
-            
-            float nextYield = Time.realtimeSinceStartup + yieldInterval;
-
-            foreach (UrlDir.UrlConfig mod in patches)
-            {
-                try
-                {
-                    string name = mod.type.RemoveWS();
-                    Command cmd = CommandParser.Parse(name, out string tmp);
-
-                    if (cmd == Command.Insert)
-                    {
-                        logger.Warning("Warning - Encountered insert node that should not exist at this stage: " + mod.SafeUrl());
-                        continue;
-                    }
-
-                    string upperName = name.ToUpper();
-                    PatchContext context = new PatchContext(mod, GameDatabase.Instance.root, logger, progress);
-                    char[] sep = { '[', ']' };
-                    string condition = "";
-
-                    if (upperName.Contains(":HAS["))
-                    {
-                        int start = upperName.IndexOf(":HAS[");
-                        condition = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
-                        name = name.Substring(0, start);
-                    }
-
-                    string[] splits = name.Split(sep, 3);
-                    string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] { null };
-                    string type = splits[0].Substring(1);
-
-                    foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
-                    {
-                        foreach (string pattern in patterns)
-                        {
-                            bool loop = false;
-                            do
-                            {
-                                if (url.type == type && WildcardMatch(url.name, pattern)
-                                    && CheckConstraints(url.config, condition))
-                                {
-                                    switch (cmd)
-                                    {
-                                        case Command.Edit:
-                                            progress.ApplyingUpdate(url, mod);
-                                            url.config = ModifyNode(new NodeStack(url.config), mod.config, context);
-                                            break;
-
-                                        case Command.Copy:
-                                            ConfigNode clone = ModifyNode(new NodeStack(url.config), mod.config, context);
-                                            if (url.config.name != mod.name)
-                                            {
-                                                progress.ApplyingCopy(url, mod);
-                                                url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                            }
-                                            else
-                                            {
-                                                progress.Error(mod, "Error - Error while processing " + mod.config.name +
-                                                    " the copy needs to have a different name than the parent (use @name = xxx)");
-                                            }
-                                            break;
-
-                                        case Command.Delete:
-                                            progress.ApplyingDelete(url, mod);
-                                            url.parent.configs.Remove(url);
-                                            break;
-
-                                        default:
-                                            logger.Warning("Invalid command encountered on a root node: " + mod.SafeUrl());
-                                            break;
-                                    }
-                                    // When this special node is found then try to apply the patch once more on the same NODE
-                                    if (mod.config.HasNode("MM_PATCH_LOOP"))
-                                    {
-                                        logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
-                                        loop = true;
-                                    }
-                                }
-                                else
-                                {
-                                    loop = false;
-                                }
-                            } while (loop);
-
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    progress.Exception(mod, "Exception while processing node : " + mod.SafeUrl(), e);
-
-                    try
-                    {
-                        logger.Error("Processed node was\n" + mod.PrettyPrint());
-                    }
-                    catch (Exception ex2)
-                    {
-                        logger.Exception("Exception while attempting to print a node", ex2);
-                    }
-                }
-                if (nextYield < Time.realtimeSinceStartup)
-                {
-                    nextYield = Time.realtimeSinceStartup + yieldInterval;
-                    StatusUpdate(progress);
-                    yield return null;
-                }
-            }
-            StatusUpdate(progress);
-            yield return null;
-        }
 
         // Name is group 1, index is group 2, vector related filed is group 3, vector separator is group 4, operator is group 5
         private static Regex parseValue = new Regex(@"([\w\&\-\.\?\*]+(?:,[^*\d][\w\&\-\.\?\*]*)*)(?:,(-?[0-9\*]+))?(?:\[((?:[0-9\*]+)+)(?:,(.))?\])?(?:\s([+\-*/^!]))?");
