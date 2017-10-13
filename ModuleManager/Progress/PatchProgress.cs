@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
