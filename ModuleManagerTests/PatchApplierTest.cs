@@ -799,11 +799,11 @@ namespace ModuleManagerTests
             logger.DidNotReceiveWithAnyArgs().Error(null);
             logger.DidNotReceiveWithAnyArgs().Exception(null, null);
 
-            logger.Received().Warning("Invalid command encountered on a root node: abc/def/%PART");
-            logger.Received().Warning("Invalid command encountered on a root node: abc/def/|PART");
-            logger.Received().Warning("Invalid command encountered on a root node: abc/def/#PART");
-            logger.Received().Warning("Invalid command encountered on a root node: abc/def/*PART");
-            logger.Received().Warning("Invalid command encountered on a root node: abc/def/&PART");
+            logger.Received().Warning("Invalid command encountered on a patch: abc/def/%PART");
+            logger.Received().Warning("Invalid command encountered on a patch: abc/def/|PART");
+            logger.Received().Warning("Invalid command encountered on a patch: abc/def/#PART");
+            logger.Received().Warning("Invalid command encountered on a patch: abc/def/*PART");
+            logger.Received().Warning("Invalid command encountered on a patch: abc/def/&PART");
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(1, allConfigs.Length);
