@@ -13,6 +13,9 @@ using Debug = UnityEngine.Debug;
 
 using ModuleManager.Logging;
 using ModuleManager.Extensions;
+using ModuleManager.Collections;
+using ModuleManager.Threading;
+using ModuleManager.Progress;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManager
@@ -81,6 +84,7 @@ namespace ModuleManager
             physicsFile = Path.Combine("GameData", "ModuleManager.Physics");
             physicsPath = Path.Combine(KSPUtil.ApplicationRootPath, physicsFile);
             defaultPhysicsPath = Path.Combine(KSPUtil.ApplicationRootPath, "Physics.cfg");
+            partDatabasePath = Path.Combine(KSPUtil.ApplicationRootPath, "PartDatabase.cfg");
             shaPath = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), "ModuleManager.ConfigSHA");
 
             logger = new ModLogger("ModuleManager", Debug.logger);
@@ -125,120 +129,6 @@ namespace ModuleManager
                 postPatchCallbacks.Add(callback);
         }
 
-        private IEnumerable<string> GenerateModList(IPatchProgress progress)
-        {
-            #region List of mods
-
-            //string envInfo = "ModuleManager env info\n";
-            //envInfo += "  " + Environment.OSVersion.Platform + " " + ModuleManager.intPtr.ToInt64().ToString("X16") + "\n";
-            //envInfo += "  " + Convert.ToString(ModuleManager.intPtr.ToInt64(), 2)  + " " + Convert.ToString(ModuleManager.intPtr.ToInt64() >> 63, 2) + "\n";
-            //string gamePath = Environment.GetCommandLineArgs()[0];
-            //envInfo += "  Args: " + gamePath.Split(Path.DirectorySeparatorChar).Last() + " " + string.Join(" ", Environment.GetCommandLineArgs().Skip(1).ToArray()) + "\n";
-            //envInfo += "  Executable SHA256 " + FileSHA(gamePath);
-            //
-            //log(envInfo);
-
-            List<string> mods = new List<string>();
-
-            StringBuilder modListInfo = new StringBuilder();
-
-            modListInfo.Append("compiling list of loaded mods...\nMod DLLs found:\n");
-
-            string format = "  {0,-40}{1,-25}{2,-25}{3,-25}{4}\n";
-
-            modListInfo.AppendFormat(
-                format,
-                "Name",
-                "Assembly Version",
-                "Assembly File Version",
-                "KSPAssembly Version",
-                "SHA256"
-            );
-
-            modListInfo.Append('\n');
-
-            foreach (AssemblyLoader.LoadedAssembly mod in AssemblyLoader.loadedAssemblies)
-            {
-
-                if (string.IsNullOrEmpty(mod.assembly.Location)) //Diazo Edit for xEvilReeperx AssemblyReloader mod
-                    continue;
-
-                FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(mod.assembly.Location);
-
-                AssemblyName assemblyName = mod.assembly.GetName();
-
-                string kspAssemblyVersion;
-                if (mod.versionMajor == 0 && mod.versionMinor == 0)
-                    kspAssemblyVersion = "";
-                else
-                    kspAssemblyVersion = mod.versionMajor + "." + mod.versionMinor;
-
-                modListInfo.AppendFormat(
-                    format,
-                    assemblyName.Name,
-                    assemblyName.Version,
-                    fileVersionInfo.FileVersion,
-                    kspAssemblyVersion,
-                    FileSHA(mod.assembly.Location)
-                );
-
-                // modlist += String.Format("  {0,-50} SHA256 {1}\n", modInfo, FileSHA(mod.assembly.Location));
-
-                if (!mods.Contains(assemblyName.Name, StringComparer.OrdinalIgnoreCase))
-                    mods.Add(assemblyName.Name);
-            }
-
-            modListInfo.Append("Non-DLL mods added (:FOR[xxx]):\n");
-            foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
-            {
-                if (CommandParser.Parse(cfgmod.type, out string name) != Command.Insert)
-                {
-                    progress.PatchAdded();
-                    if (name.Contains(":FOR["))
-                    {
-                        name = name.RemoveWS();
-
-                        // check for FOR[] blocks that don't match loaded DLLs and add them to the pass list
-                        try
-                        {
-                            string dependency = name.Substring(name.IndexOf(":FOR[") + 5);
-                            dependency = dependency.Substring(0, dependency.IndexOf(']'));
-                            if (!mods.Contains(dependency, StringComparer.OrdinalIgnoreCase))
-                            {
-                                // found one, now add it to the list.
-                                mods.Add(dependency);
-                                modListInfo.AppendFormat("  {0}\n", dependency);
-                            }
-                        }
-                        catch (ArgumentOutOfRangeException)
-                        {
-                            progress.Error(cfgmod, "Skipping :FOR init for line " + name +
-                                ". The line most likely contains a space that should be removed");
-                        }
-                    }
-                }
-            }
-            modListInfo.Append("Mods by directory (sub directories of GameData):\n");
-            string gameData = Path.Combine(Path.GetFullPath(KSPUtil.ApplicationRootPath), "GameData");
-            foreach (string subdir in Directory.GetDirectories(gameData))
-            {
-                string name = Path.GetFileName(subdir);
-                string cleanName = name.RemoveWS();
-                if (!mods.Contains(cleanName, StringComparer.OrdinalIgnoreCase))
-                {
-                    mods.Add(cleanName);
-                    modListInfo.AppendFormat("  {0}\n", cleanName);
-                }
-            }
-            logger.Info(modListInfo.ToString());
-
-            mods.Sort();
-
-            #endregion List of mods
-
-            return mods;
-        }
-
         private IEnumerator ProcessPatch()
         {
             status = "Checking Cache";
@@ -265,7 +155,7 @@ namespace ModuleManager
                 IPatchProgress progress = new PatchProgress(logger);
                 status = "Pre patch init";
                 logger.Info(status);
-                IEnumerable<string> mods = GenerateModList(progress);
+                IEnumerable<string> mods = ModListGenerator.GenerateModList(progress, logger);
 
                 yield return null;
 
@@ -305,22 +195,48 @@ namespace ModuleManager
 
                 yield return null;
 
-                // :First node
-                yield return StartCoroutine(ApplyPatch(":FIRST", patchList.firstPatches, progress));
+                MessageQueue<ILogMessage> logQueue = new MessageQueue<ILogMessage>();
+                IBasicLogger patchLogger = new QueueLogger(logQueue);
+                IPatchProgress threadPatchProgress = new PatchProgress(progress, patchLogger);
+                PatchApplier applier = new PatchApplier(patchList, GameDatabase.Instance.root, threadPatchProgress, patchLogger);
 
-                // any node without a :pass
-                yield return StartCoroutine(ApplyPatch(":LEGACY (default)", patchList.legacyPatches, progress));
+                logger.Info("Starting patch thread");
 
-                foreach (PatchList.ModPass pass in patchList.modPasses)
+                ITaskStatus patchThread = BackgroundTask.Start(applier.ApplyPatches);
+
+                float nextYield = Time.realtimeSinceStartup + yieldInterval;
+
+                while (patchThread.IsRunning)
                 {
-                    string upperModName = pass.name.ToUpper();
-                    yield return StartCoroutine(ApplyPatch(":BEFORE[" + upperModName + "]", pass.beforePatches, progress));
-                    yield return StartCoroutine(ApplyPatch(":FOR[" + upperModName + "]", pass.forPatches, progress));
-                    yield return StartCoroutine(ApplyPatch(":AFTER[" + upperModName + "]", pass.afterPatches, progress));
+                    foreach (ILogMessage message in logQueue.TakeAll())
+                    {
+                        message.LogTo(logger);
+                    }
+
+                    if (nextYield < Time.realtimeSinceStartup)
+                    {
+                        nextYield = Time.realtimeSinceStartup + yieldInterval;
+                        StatusUpdate(progress);
+                        activity = applier.Activity;
+                        yield return null;
+                    }
                 }
 
-                // :Final node
-                yield return StartCoroutine(ApplyPatch(":FINAL", patchList.finalPatches, progress));
+                // Clear any log messages that might still be in the queue
+                foreach (ILogMessage message in logQueue.TakeAll())
+                {
+                    message.LogTo(logger);
+                }
+
+                if (patchThread.IsExitedWithError)
+                {
+                    progress.Exception("The patch runner threw an exception", patchThread.Exception);
+                    FatalErrorHandler.HandleFatalError("The patch runner threw an exception");
+                    yield break;
+                }
+
+                logger.Info("Done patching");
+                yield return null;
 
                 PurgeUnused();
 
@@ -328,11 +244,11 @@ namespace ModuleManager
 
                 #region Saving Cache
 
-                if (progress.ErrorCount > 0 || progress.ExceptionCount > 0)
+                if (progress.Counter.errors > 0 || progress.Counter.exceptions > 0)
                 {
-                    foreach (string file in progress.ErrorFiles.Keys)
+                    foreach (KeyValuePair<string, int> item in progress.Counter.errorFiles)
                     {
-                        errors += progress.ErrorFiles[file] + " error" + (progress.ErrorFiles[file] > 1 ? "s" : "") + " related to GameData/" + file
+                        errors += item.Value + " error" + (item.Value > 1 ? "s" : "") + " related to GameData/" + item.Key
                                   + "\n";
                     }
 
@@ -354,7 +270,7 @@ namespace ModuleManager
                     status = "Saving Cache";
                     logger.Info(status);
                     yield return null;
-                    CreateCache(progress.PatchedNodeCount);
+                    CreateCache(progress.Counter.patchedNodes);
                 }
 
                 StatusUpdate(progress);
@@ -491,38 +407,6 @@ namespace ModuleManager
             configs[0].config.Save(physicsPath);
         }
 
-        private string FileSHA(string filename)
-        {
-            try
-            {
-                if (File.Exists(filename))
-                {
-                    System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
-
-                    byte[] data = null;
-                    using (FileStream fs = File.Open(filename, FileMode.Open, FileAccess.Read))
-                    {
-                        data = sha.ComputeHash(fs);
-                    }
-
-                    string hashedValue = string.Empty;
-
-                    foreach (byte b in data)
-                    {
-                        hashedValue += String.Format("{0,2:x2}", b);
-                    }
-
-                    return hashedValue;
-                }
-            }
-            catch (Exception e)
-            {
-                logger.Exception("Exception hashing file " + filename, e);
-                return "0";
-            }
-            return "0";
-        }
-
         private void IsCacheUpToDate()
         {
             Stopwatch sw = new Stopwatch();
@@ -600,6 +484,8 @@ namespace ModuleManager
         {
             bool noChange = true;
             StringBuilder changes = new StringBuilder();
+
+            changes.Append("Changes :\n");
             
             for (int i = 0; i < files.Length; i++)
             {
@@ -632,7 +518,7 @@ namespace ModuleManager
                 noChange = false;
             }
             if (!noChange)
-                logger.Info("Changes :\n" + changes.ToString());
+                logger.Info(changes.ToString());
             return noChange;
         }
 
@@ -783,13 +669,13 @@ namespace ModuleManager
         {
             progressFraction = progress.ProgressFraction;
 
-            status = "ModuleManager: " + progress.PatchedNodeCount + " patch" + (progress.PatchedNodeCount != 1 ? "es" : "") + " applied";
+            status = "ModuleManager: " + progress.Counter.patchedNodes + " patch" + (progress.Counter.patchedNodes != 1 ? "es" : "") + " applied";
 
-            if (progress.ErrorCount > 0)
-                status += ", found <color=orange>" + progress.ErrorCount + " error" + (progress.ErrorCount != 1 ? "s" : "") + "</color>";
+            if (progress.Counter.errors > 0)
+                status += ", found <color=orange>" + progress.Counter.errors + " error" + (progress.Counter.errors != 1 ? "s" : "") + "</color>";
 
-            if (progress.ExceptionCount > 0)
-                status += ", encountered <color=red>" + progress.ExceptionCount + " exception" + (progress.ExceptionCount != 1 ? "s" : "") + "</color>";
+            if (progress.Counter.exceptions > 0)
+                status += ", encountered <color=red>" + progress.Counter.exceptions + " exception" + (progress.Counter.exceptions != 1 ? "s" : "") + "</color>";
         }
 
         private static void PurgeUnused()
@@ -804,126 +690,6 @@ namespace ModuleManager
         }
 
         #region Applying Patches
-
-        // Apply patch to all relevent nodes
-        public IEnumerator ApplyPatch(string Stage, IEnumerable<UrlDir.UrlConfig> patches, IPatchProgress progress)
-        {
-            StatusUpdate(progress);
-            logger.Info(Stage +  " pass");
-            yield return null;
-
-            activity = "ModuleManager " + Stage;
-            
-            float nextYield = Time.realtimeSinceStartup + yieldInterval;
-
-            foreach (UrlDir.UrlConfig mod in patches)
-            {
-                try
-                {
-                    string name = mod.type.RemoveWS();
-                    Command cmd = CommandParser.Parse(name, out string tmp);
-
-                    if (cmd == Command.Insert)
-                    {
-                        logger.Warning("Warning - Encountered insert node that should not exist at this stage: " + mod.SafeUrl());
-                        continue;
-                    }
-
-                    string upperName = name.ToUpper();
-                    PatchContext context = new PatchContext(mod, GameDatabase.Instance.root, logger, progress);
-                    char[] sep = { '[', ']' };
-                    string condition = "";
-
-                    if (upperName.Contains(":HAS["))
-                    {
-                        int start = upperName.IndexOf(":HAS[");
-                        condition = name.Substring(start + 5, name.LastIndexOf(']') - start - 5);
-                        name = name.Substring(0, start);
-                    }
-
-                    string[] splits = name.Split(sep, 3);
-                    string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] { null };
-                    string type = splits[0].Substring(1);
-
-                    foreach (UrlDir.UrlConfig url in GameDatabase.Instance.root.AllConfigs.ToArray())
-                    {
-                        foreach (string pattern in patterns)
-                        {
-                            bool loop = false;
-                            do
-                            {
-                                if (url.type == type && WildcardMatch(url.name, pattern)
-                                    && CheckConstraints(url.config, condition))
-                                {
-                                    switch (cmd)
-                                    {
-                                        case Command.Edit:
-                                            progress.ApplyingUpdate(url, mod);
-                                            url.config = ModifyNode(new NodeStack(url.config), mod.config, context);
-                                            break;
-
-                                        case Command.Copy:
-                                            ConfigNode clone = ModifyNode(new NodeStack(url.config), mod.config, context);
-                                            if (url.config.name != mod.name)
-                                            {
-                                                progress.ApplyingCopy(url, mod);
-                                                url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                            }
-                                            else
-                                            {
-                                                progress.Error(mod, "Error - Error while processing " + mod.config.name +
-                                                    " the copy needs to have a different name than the parent (use @name = xxx)");
-                                            }
-                                            break;
-
-                                        case Command.Delete:
-                                            progress.ApplyingDelete(url, mod);
-                                            url.parent.configs.Remove(url);
-                                            break;
-
-                                        default:
-                                            logger.Warning("Invalid command encountered on a root node: " + mod.SafeUrl());
-                                            break;
-                                    }
-                                    // When this special node is found then try to apply the patch once more on the same NODE
-                                    if (mod.config.HasNode("MM_PATCH_LOOP"))
-                                    {
-                                        logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
-                                        loop = true;
-                                    }
-                                }
-                                else
-                                {
-                                    loop = false;
-                                }
-                            } while (loop);
-
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    progress.Exception(mod, "Exception while processing node : " + mod.SafeUrl(), e);
-
-                    try
-                    {
-                        logger.Error("Processed node was\n" + mod.PrettyPrint());
-                    }
-                    catch (Exception ex2)
-                    {
-                        logger.Exception("Exception while attempting to print a node", ex2);
-                    }
-                }
-                if (nextYield < Time.realtimeSinceStartup)
-                {
-                    nextYield = Time.realtimeSinceStartup + yieldInterval;
-                    StatusUpdate(progress);
-                    yield return null;
-                }
-            }
-            StatusUpdate(progress);
-            yield return null;
-        }
 
         // Name is group 1, index is group 2, vector related filed is group 3, vector separator is group 4, operator is group 5
         private static Regex parseValue = new Regex(@"([\w\&\-\.\?\*]+(?:,[^*\d][\w\&\-\.\?\*]*)*)(?:,(-?[0-9\*]+))?(?:\[((?:[0-9\*]+)+)(?:,(.))?\])?(?:\s([+\-*/^!]))?");

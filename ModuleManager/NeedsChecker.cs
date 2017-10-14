@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
+using ModuleManager.Progress;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManager

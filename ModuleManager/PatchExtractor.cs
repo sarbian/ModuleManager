@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using ModuleManager.Extensions;
+using ModuleManager.Progress;
 
 namespace ModuleManager
 {
@@ -185,6 +186,7 @@ namespace ModuleManager
                     }
 
                     thePass.Add(newUrl);
+                    progress.PatchAdded();
                 }
                 catch(Exception e)
                 {
