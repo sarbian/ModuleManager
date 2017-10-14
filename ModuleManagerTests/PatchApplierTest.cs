@@ -740,6 +740,7 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART:HAS[~aaa[>10]]")
             {
                 { "@aaa *", "2" },
+                { "bbb", "002" },
                 new ConfigNode("MM_PATCH_LOOP"),
             });
 
@@ -750,7 +751,9 @@ namespace ModuleManagerTests
             EnsureNoErrors();
 
             progress.Received(1).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1);
+            progress.Received(4).ApplyingUpdate(config1, patch1);
+
+            logger.Received().Info("Looping on abc/def/@PART:HAS[~aaa[>10]] to abc/def/PART");
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(1, allConfigs.Length);
@@ -759,10 +762,10 @@ namespace ModuleManagerTests
             {
                 { "name", "000" },
                 { "aaa", "16" },
-                new ConfigNode("MM_PATCH_LOOP"),
-                new ConfigNode("MM_PATCH_LOOP"),
-                new ConfigNode("MM_PATCH_LOOP"),
-                new ConfigNode("MM_PATCH_LOOP"),
+                { "bbb", "002" },
+                { "bbb", "002" },
+                { "bbb", "002" },
+                { "bbb", "002" },
             }, allConfigs[0].config);
         }
 

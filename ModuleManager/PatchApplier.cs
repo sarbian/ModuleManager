@@ -83,52 +83,49 @@ namespace ModuleManager
 
                     foreach (UrlDir.UrlConfig url in allConfigs)
                     {
-                        bool loop = false;
-                        do
+                        if (IsMatch(url.config, type, patterns, condition))
                         {
-                            if (IsMatch(url.config, type, patterns, condition))
+                            switch (cmd)
                             {
-                                switch (cmd)
-                                {
-                                    case Command.Edit:
+                                case Command.Edit:
+                                    ConfigNode node = url.config;
+                                    bool loop = mod.config.HasNode("MM_PATCH_LOOP");
+                                    if (loop) logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
+
+                                    do
+                                    {
                                         progress.ApplyingUpdate(url, mod);
-                                        url.config = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
-                                        break;
+                                        node = MMPatchLoader.ModifyNode(new NodeStack(node), mod.config, context);
+                                    } while (loop && IsMatch(node, type, patterns, condition));
 
-                                    case Command.Copy:
-                                        ConfigNode clone = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
-                                        if (url.config.HasValue("name") && url.config.GetValue("name") == clone.GetValue("name"))
-                                        {
-                                            progress.Error(mod, $"Error - when applying copy {mod.SafeUrl()} to {url.SafeUrl()} - the copy needs to have a different name than the parent (use @name = xxx)");
-                                        }
-                                        else
-                                        {
-                                            progress.ApplyingCopy(url, mod);
-                                            url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                        }
-                                        break;
+                                    if (loop) node.RemoveNodes("MM_PATCH_LOOP");
 
-                                    case Command.Delete:
-                                        progress.ApplyingDelete(url, mod);
-                                        url.parent.configs.Remove(url);
-                                        break;
+                                    url.config = node;
+                                    break;
 
-                                    default:
-                                        logger.Warning("Invalid command encountered on a root node: " + mod.SafeUrl());
-                                        break;
-                                }
-                                // When this special node is found then try to apply the patch once more on the same NODE
-                                if (mod.config.HasNode("MM_PATCH_LOOP"))
-                                {
-                                    logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
-                                    loop = true;
-                                }
+                                case Command.Copy:
+                                    ConfigNode clone = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
+                                    if (url.config.HasValue("name") && url.config.GetValue("name") == clone.GetValue("name"))
+                                    {
+                                        progress.Error(mod, $"Error - when applying copy {mod.SafeUrl()} to {url.SafeUrl()} - the copy needs to have a different name than the parent (use @name = xxx)");
+                                    }
+                                    else
+                                    {
+                                        progress.ApplyingCopy(url, mod);
+                                        url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
+                                    }
+                                    break;
+
+                                case Command.Delete:
+                                    progress.ApplyingDelete(url, mod);
+                                    url.parent.configs.Remove(url);
+                                    break;
+
+                                default:
+                                    logger.Warning("Invalid command encountered on a root node: " + mod.SafeUrl());
+                                    break;
                             }
-                            else
-                            {
-                                loop = false;
-                            }
-                        } while (loop);
+                        }
                     }
                     progress.PatchApplied();
                 }
