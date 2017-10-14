@@ -83,56 +83,52 @@ namespace ModuleManager
 
                     foreach (UrlDir.UrlConfig url in allConfigs)
                     {
-                        foreach (string pattern in patterns)
+                        bool loop = false;
+                        do
                         {
-                            bool loop = false;
-                            do
+                            if (IsMatch(url.config, type, patterns, condition))
                             {
-                                if (url.type == type && MMPatchLoader.WildcardMatch(url.name, pattern)
-                                    && MMPatchLoader.CheckConstraints(url.config, condition))
+                                switch (cmd)
                                 {
-                                    switch (cmd)
-                                    {
-                                        case Command.Edit:
-                                            progress.ApplyingUpdate(url, mod);
-                                            url.config = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
-                                            break;
+                                    case Command.Edit:
+                                        progress.ApplyingUpdate(url, mod);
+                                        url.config = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
+                                        break;
 
-                                        case Command.Copy:
-                                            ConfigNode clone = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
-                                            if (url.config.HasValue("name") && url.config.GetValue("name") == clone.GetValue("name"))
-                                            {
-                                                progress.Error(mod, $"Error - when applying copy {mod.SafeUrl()} to {url.SafeUrl()} - the copy needs to have a different name than the parent (use @name = xxx)");
-                                            }
-                                            else
-                                            {
-                                                progress.ApplyingCopy(url, mod);
-                                                url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                            }
-                                            break;
+                                    case Command.Copy:
+                                        ConfigNode clone = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
+                                        if (url.config.HasValue("name") && url.config.GetValue("name") == clone.GetValue("name"))
+                                        {
+                                            progress.Error(mod, $"Error - when applying copy {mod.SafeUrl()} to {url.SafeUrl()} - the copy needs to have a different name than the parent (use @name = xxx)");
+                                        }
+                                        else
+                                        {
+                                            progress.ApplyingCopy(url, mod);
+                                            url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
+                                        }
+                                        break;
 
-                                        case Command.Delete:
-                                            progress.ApplyingDelete(url, mod);
-                                            url.parent.configs.Remove(url);
-                                            break;
+                                    case Command.Delete:
+                                        progress.ApplyingDelete(url, mod);
+                                        url.parent.configs.Remove(url);
+                                        break;
 
-                                        default:
-                                            logger.Warning("Invalid command encountered on a root node: " + mod.SafeUrl());
-                                            break;
-                                    }
-                                    // When this special node is found then try to apply the patch once more on the same NODE
-                                    if (mod.config.HasNode("MM_PATCH_LOOP"))
-                                    {
-                                        logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
-                                        loop = true;
-                                    }
+                                    default:
+                                        logger.Warning("Invalid command encountered on a root node: " + mod.SafeUrl());
+                                        break;
                                 }
-                                else
+                                // When this special node is found then try to apply the patch once more on the same NODE
+                                if (mod.config.HasNode("MM_PATCH_LOOP"))
                                 {
-                                    loop = false;
+                                    logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
+                                    loop = true;
                                 }
-                            } while (loop);
-                        }
+                            }
+                            else
+                            {
+                                loop = false;
+                            }
+                        } while (loop);
                     }
                     progress.PatchApplied();
                 }
@@ -150,6 +146,21 @@ namespace ModuleManager
                     }
                 }
             }
+        }
+
+        private static bool IsMatch(ConfigNode node, string type, string[] namePatterns, string constraints)
+        {
+            if (node.name != type) return false;
+
+            if (namePatterns.Length > 0)
+            {
+                string name = node.GetValue("name");
+                if (name == null) return false;
+
+                if (!namePatterns.Any(pattern => MMPatchLoader.WildcardMatch(name, pattern))) return false;
+            }
+
+            return MMPatchLoader.CheckConstraints(node, constraints);
         }
     }
 }
