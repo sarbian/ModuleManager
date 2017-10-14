@@ -484,6 +484,8 @@ namespace ModuleManager
         {
             bool noChange = true;
             StringBuilder changes = new StringBuilder();
+
+            changes.Append("Changes :\n");
             
             for (int i = 0; i < files.Length; i++)
             {
@@ -516,7 +518,7 @@ namespace ModuleManager
                 noChange = false;
             }
             if (!noChange)
-                logger.Info("Changes :\n" + changes.ToString());
+                logger.Info(changes.ToString());
             return noChange;
         }
 
