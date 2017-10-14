@@ -50,6 +50,8 @@ namespace ModuleManager
             logger.Info(stage + " pass");
             Activity = "ModuleManager " + stage;
 
+            UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
+
             foreach (UrlDir.UrlConfig mod in patches)
             {
                 try
@@ -79,7 +81,7 @@ namespace ModuleManager
                     string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] { null };
                     string type = splits[0].Substring(1);
 
-                    foreach (UrlDir.UrlConfig url in databaseRoot.AllConfigs.ToArray())
+                    foreach (UrlDir.UrlConfig url in allConfigs)
                     {
                         foreach (string pattern in patterns)
                         {
