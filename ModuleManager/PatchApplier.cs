@@ -88,6 +88,8 @@ namespace ModuleManager
                     string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : null;
                     string type = splits[0].Substring(1);
 
+                    bool loop = mod.config.HasNode("MM_PATCH_LOOP");
+
                     foreach (UrlDir.UrlFile file in allConfigFiles)
                     {
                         if (cmd == Command.Edit)
@@ -95,7 +97,6 @@ namespace ModuleManager
                             foreach (UrlDir.UrlConfig url in file.configs)
                             {
                                 if (!IsMatch(url, type, patterns, condition)) continue;
-                                bool loop = mod.config.HasNode("MM_PATCH_LOOP");
                                 if (loop) logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
 
                                 do
