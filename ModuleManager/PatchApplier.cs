@@ -181,7 +181,17 @@ namespace ModuleManager
                 string name = node.GetValue("name");
                 if (name == null) return false;
 
-                if (!namePatterns.Any(pattern => MMPatchLoader.WildcardMatch(name, pattern))) return false;
+                bool match = false;
+                foreach (string pattern in namePatterns)
+                {
+                    if (MMPatchLoader.WildcardMatch(name, pattern))
+                    {
+                        match = true;
+                        break;
+                    }
+                }
+
+                if (!match) return false;
             }
 
             return MMPatchLoader.CheckConstraints(node, constraints);
