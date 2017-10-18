@@ -85,7 +85,7 @@ namespace ModuleManager
                     }
 
                     string[] splits = name.Split(sep, 3);
-                    string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] { null };
+                    string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : null;
                     string type = splits[0].Substring(1);
 
                     foreach (UrlDir.UrlFile file in allConfigFiles)
@@ -176,7 +176,7 @@ namespace ModuleManager
         {
             if (node.name != type) return false;
 
-            if (namePatterns.Length > 0)
+            if (namePatterns != null)
             {
                 string name = node.GetValue("name");
                 if (name == null) return false;
