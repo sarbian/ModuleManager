@@ -16,6 +16,8 @@ namespace ModuleManager
         private readonly UrlDir databaseRoot;
         private readonly PatchList patchList;
 
+        private readonly UrlDir.UrlFile[] allConfigFiles;
+
         public string Activity { get; private set; }
 
         public PatchApplier(PatchList patchList, UrlDir databaseRoot, IPatchProgress progress, IBasicLogger logger)
@@ -24,6 +26,8 @@ namespace ModuleManager
             this.databaseRoot = databaseRoot;
             this.progress = progress;
             this.logger = logger;
+
+            allConfigFiles = databaseRoot.AllConfigFiles.ToArray();
         }
 
         public void ApplyPatches()
@@ -84,7 +88,7 @@ namespace ModuleManager
                     string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] { null };
                     string type = splits[0].Substring(1);
 
-                    foreach (UrlDir.UrlFile file in databaseRoot.AllConfigFiles)
+                    foreach (UrlDir.UrlFile file in allConfigFiles)
                     {
                         if (cmd == Command.Edit)
                         {
