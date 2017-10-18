@@ -206,13 +206,16 @@ namespace ModuleManager
 
                 float nextYield = Time.realtimeSinceStartup + yieldInterval;
 
-                bool ShouldYield()
+                float updateTimeRemaining()
                 {
-                    if (nextYield >= Time.realtimeSinceStartup) return false;
-                    nextYield = Time.realtimeSinceStartup + yieldInterval;
-                    StatusUpdate(progress);
-                    activity = applier.Activity;
-                    return true;
+                    float timeRemaining = nextYield - Time.realtimeSinceStartup;
+                    if (timeRemaining < 0)
+                    {
+                        nextYield = Time.realtimeSinceStartup + yieldInterval;
+                        StatusUpdate(progress);
+                        activity = applier.Activity;
+                    }
+                    return timeRemaining;
                 }
 
                 while (patchThread.IsRunning)
@@ -221,10 +224,12 @@ namespace ModuleManager
                     {
                         message.LogTo(logger);
 
-                        if (ShouldYield()) yield return null;
+                        if (updateTimeRemaining() < 0) yield return null;
                     }
 
-                    if (ShouldYield()) yield return null;
+                    float timeRemaining = updateTimeRemaining();
+                    if (timeRemaining > 0) System.Threading.Thread.Sleep((int)(timeRemaining * 1000));
+                    yield return null;
                 }
 
                 StatusUpdate(progress);
