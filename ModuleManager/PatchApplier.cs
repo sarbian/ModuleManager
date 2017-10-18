@@ -129,19 +129,19 @@ namespace ModuleManager
                         }
                         else if (cmd == Command.Delete)
                         {
-                            int j = 0;
-                            while (j < file.configs.Count)
+                            int i = 0;
+                            while (i < file.configs.Count)
                             {
-                                UrlDir.UrlConfig url = file.configs[j];
+                                UrlDir.UrlConfig url = file.configs[i];
 
                                 if (IsMatch(url.config, type, patterns, condition))
                                 {
                                     progress.ApplyingDelete(url, mod);
-                                    file.configs.RemoveAt(j);
+                                    file.configs.RemoveAt(i);
                                 }
                                 else
                                 {
-                                    j++;
+                                    i++;
                                 }
                             }
                         }
