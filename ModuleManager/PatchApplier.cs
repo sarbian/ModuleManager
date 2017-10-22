@@ -16,6 +16,8 @@ namespace ModuleManager
         private readonly UrlDir databaseRoot;
         private readonly PatchList patchList;
 
+        private readonly UrlDir.UrlFile[] allConfigFiles;
+
         public string Activity { get; private set; }
 
         public PatchApplier(PatchList patchList, UrlDir databaseRoot, IPatchProgress progress, IBasicLogger logger)
@@ -24,6 +26,8 @@ namespace ModuleManager
             this.databaseRoot = databaseRoot;
             this.progress = progress;
             this.logger = logger;
+
+            allConfigFiles = databaseRoot.AllConfigFiles.ToArray();
         }
 
         public void ApplyPatches()
@@ -62,6 +66,11 @@ namespace ModuleManager
                         logger.Warning("Warning - Encountered insert node that should not exist at this stage: " + mod.SafeUrl());
                         continue;
                     }
+                    else if (cmd != Command.Edit && cmd != Command.Copy && cmd != Command.Delete)
+                    {
+                        logger.Warning("Invalid command encountered on a patch: " + mod.SafeUrl());
+                        continue;
+                    }
 
                     string upperName = name.ToUpper();
                     PatchContext context = new PatchContext(mod, databaseRoot, logger, progress);
@@ -76,60 +85,71 @@ namespace ModuleManager
                     }
 
                     string[] splits = name.Split(sep, 3);
-                    string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : new string[] { null };
+                    string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : null;
                     string type = splits[0].Substring(1);
 
-                    foreach (UrlDir.UrlConfig url in databaseRoot.AllConfigs.ToArray())
+                    bool loop = mod.config.HasNode("MM_PATCH_LOOP");
+
+                    foreach (UrlDir.UrlFile file in allConfigFiles)
                     {
-                        foreach (string pattern in patterns)
+                        if (cmd == Command.Edit)
                         {
-                            bool loop = false;
-                            do
+                            foreach (UrlDir.UrlConfig url in file.configs)
                             {
-                                if (url.type == type && MMPatchLoader.WildcardMatch(url.name, pattern)
-                                    && MMPatchLoader.CheckConstraints(url.config, condition))
+                                if (!IsMatch(url, type, patterns, condition)) continue;
+                                if (loop) logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
+
+                                do
                                 {
-                                    switch (cmd)
-                                    {
-                                        case Command.Edit:
-                                            progress.ApplyingUpdate(url, mod);
-                                            url.config = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
-                                            break;
+                                    progress.ApplyingUpdate(url, mod);
+                                    url.config = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
+                                } while (loop && IsMatch(url, type, patterns, condition));
 
-                                        case Command.Copy:
-                                            ConfigNode clone = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
-                                            if (url.config.HasValue("name") && url.config.GetValue("name") == clone.GetValue("name"))
-                                            {
-                                                progress.Error(mod, $"Error - when applying copy {mod.SafeUrl()} to {url.SafeUrl()} - the copy needs to have a different name than the parent (use @name = xxx)");
-                                            }
-                                            else
-                                            {
-                                                progress.ApplyingCopy(url, mod);
-                                                url.parent.configs.Add(new UrlDir.UrlConfig(url.parent, clone));
-                                            }
-                                            break;
+                                if (loop) url.config.RemoveNodes("MM_PATCH_LOOP");
+                            }
+                        }
+                        else if (cmd == Command.Copy)
+                        {
+                            // Avoid checking the new configs we are creating
+                            int count = file.configs.Count;
+                            for (int i = 0; i < count; i++)
+                            {
+                                UrlDir.UrlConfig url = file.configs[i];
+                                if (!IsMatch(url, type, patterns, condition)) continue;
 
-                                        case Command.Delete:
-                                            progress.ApplyingDelete(url, mod);
-                                            url.parent.configs.Remove(url);
-                                            break;
-
-                                        default:
-                                            logger.Warning("Invalid command encountered on a root node: " + mod.SafeUrl());
-                                            break;
-                                    }
-                                    // When this special node is found then try to apply the patch once more on the same NODE
-                                    if (mod.config.HasNode("MM_PATCH_LOOP"))
-                                    {
-                                        logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
-                                        loop = true;
-                                    }
+                                ConfigNode clone = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
+                                if (url.config.HasValue("name") && url.config.GetValue("name") == clone.GetValue("name"))
+                                {
+                                    progress.Error(mod, $"Error - when applying copy {mod.SafeUrl()} to {url.SafeUrl()} - the copy needs to have a different name than the parent (use @name = xxx)");
                                 }
                                 else
                                 {
-                                    loop = false;
+                                    progress.ApplyingCopy(url, mod);
+                                    file.AddConfig(clone);
                                 }
-                            } while (loop);
+                            }
+                        }
+                        else if (cmd == Command.Delete)
+                        {
+                            int i = 0;
+                            while (i < file.configs.Count)
+                            {
+                                UrlDir.UrlConfig url = file.configs[i];
+
+                                if (IsMatch(url, type, patterns, condition))
+                                {
+                                    progress.ApplyingDelete(url, mod);
+                                    file.configs.RemoveAt(i);
+                                }
+                                else
+                                {
+                                    i++;
+                                }
+                            }
+                        }
+                        else
+                        {
+                            throw new NotImplementedException("This code should not be reachable");
                         }
                     }
                     progress.PatchApplied();
@@ -148,6 +168,30 @@ namespace ModuleManager
                     }
                 }
             }
+        }
+
+        private static bool IsMatch(UrlDir.UrlConfig url, string type, string[] namePatterns, string constraints)
+        {
+            if (url.type != type) return false;
+
+            if (namePatterns != null)
+            {
+                if (url.name == url.type) return false;
+
+                bool match = false;
+                foreach (string pattern in namePatterns)
+                {
+                    if (MMPatchLoader.WildcardMatch(url.name, pattern))
+                    {
+                        match = true;
+                        break;
+                    }
+                }
+
+                if (!match) return false;
+            }
+
+            return MMPatchLoader.CheckConstraints(url.config, constraints);
         }
     }
 }

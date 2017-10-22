@@ -206,21 +206,35 @@ namespace ModuleManager
 
                 float nextYield = Time.realtimeSinceStartup + yieldInterval;
 
+                float updateTimeRemaining()
+                {
+                    float timeRemaining = nextYield - Time.realtimeSinceStartup;
+                    if (timeRemaining < 0)
+                    {
+                        nextYield = Time.realtimeSinceStartup + yieldInterval;
+                        StatusUpdate(progress);
+                        activity = applier.Activity;
+                    }
+                    return timeRemaining;
+                }
+
                 while (patchThread.IsRunning)
                 {
                     foreach (ILogMessage message in logQueue.TakeAll())
                     {
                         message.LogTo(logger);
+
+                        if (updateTimeRemaining() < 0) yield return null;
                     }
 
-                    if (nextYield < Time.realtimeSinceStartup)
-                    {
-                        nextYield = Time.realtimeSinceStartup + yieldInterval;
-                        StatusUpdate(progress);
-                        activity = applier.Activity;
-                        yield return null;
-                    }
+                    float timeRemaining = updateTimeRemaining();
+                    if (timeRemaining > 0) System.Threading.Thread.Sleep((int)(timeRemaining * 1000));
+                    yield return null;
                 }
+
+                StatusUpdate(progress);
+                activity = "ModuleManager - finishing up";
+                yield return null;
 
                 // Clear any log messages that might still be in the queue
                 foreach (ILogMessage message in logQueue.TakeAll())
