@@ -11,22 +11,22 @@ namespace ModuleManager
         {
             if (HighLogic.CurrentGame.Parameters.Career.TechTreeUrl != MMPatchLoader.techTreeFile &&  File.Exists(MMPatchLoader.techTreePath))
             {
-                log("Setting modded tech tree as the active one");
+                Log("Setting modded tech tree as the active one");
                 HighLogic.CurrentGame.Parameters.Career.TechTreeUrl = MMPatchLoader.techTreeFile;
             }
 
             if (PhysicsGlobals.PhysicsDatabaseFilename != MMPatchLoader.physicsFile && File.Exists(MMPatchLoader.physicsPath))
             {
-                log("Setting modded physics as the active one");
+                Log("Setting modded physics as the active one");
 
                 PhysicsGlobals.PhysicsDatabaseFilename = MMPatchLoader.physicsFile;
 
                 if (!PhysicsGlobals.Instance.LoadDatabase())
-                    log("Something went wrong while setting the active physics config.");
+                    Log("Something went wrong while setting the active physics config.");
             }
         }
 
-        public static void log(String s)
+        public static void Log(String s)
         {
             print("[CustomConfigsManager] " + s);
         }
