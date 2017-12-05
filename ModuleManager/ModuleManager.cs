@@ -32,6 +32,7 @@ namespace ModuleManager
 
         private bool nyan = false;
         private bool nCats = false;
+        public static bool dumpPostPatch = false;
 
         private PopupDialog menu;
 
@@ -113,6 +114,8 @@ namespace ModuleManager
 
             nCats = catDay
                 || Environment.GetCommandLineArgs().Contains("-ncats");
+
+            dumpPostPatch = Environment.GetCommandLineArgs().Contains("-mm-dump");
 
             loadedInScene = true;
         }
@@ -329,25 +332,85 @@ namespace ModuleManager
             ScreenMessages.PostScreenMessage("Database reloading finished", 1, ScreenMessageStyle.UPPER_CENTER);
         }
 
-        private static void OutputAllConfigs()
+        public static void OutputAllConfigs()
         {
-            string path = KSPUtil.ApplicationRootPath + Path.DirectorySeparatorChar + "_MMCfgOutput"
-                          + Path.DirectorySeparatorChar;
-            Directory.CreateDirectory(path);
-
-            foreach (UrlDir.UrlConfig d in GameDatabase.Instance.root.AllConfigs)
+            string path = KSPUtil.ApplicationRootPath + "/_MMCfgOutput/";
+            try
             {
-                string file = d.url.Replace('/', '.').Replace(':', '.');
-                string filePath = path + file + ".cfg";
-                try
+                Directory.CreateDirectory(path);
+                foreach (string file in Directory.GetFiles(path))
                 {
+                    File.Delete(file);
+                }
+                foreach (string dir in Directory.GetDirectories(path))
+                {
+                    Directory.Delete(dir, true);
+                }
+            }
+            catch (IOException ioException)
+            {
+                Log("Exception while cleaning the export dir\n" + ioException);
+            }
+            catch (UnauthorizedAccessException unauthorizedAccessException)
+            {
+                Log("Exception while cleaning the export dir\n" + unauthorizedAccessException);
+            }
+            Stack<UrlDir> dirs = new Stack<UrlDir>();
+            dirs.Push(GameDatabase.Instance.root);
+            Stack<String> paths = new Stack<string>();
+            paths.Push("");
 
-                    File.WriteAllText(filePath, d.config.ToString());
-                }
-                catch (Exception e)
+            try
+            {
+                while (dirs.Count > 0)
                 {
-                    Log("Exception while trying to write the file " + filePath + "\n" + e);
+                    var currentDir = dirs.Pop();
+                    string currentPath = paths.Pop();
+                
+                    foreach (UrlDir.UrlFile urlFile in currentDir.files)
+                    {
+                        if (urlFile.fileType == UrlDir.FileType.Config)
+                        {
+                            string dirPath = path + currentPath;
+                            if (!Directory.Exists(dirPath))
+                            {
+                                Directory.CreateDirectory(dirPath);
+                            }
+
+                            Log("Exporting " + currentPath + urlFile.name + "." + urlFile.fileExtension);
+                            string filePath = dirPath + urlFile.name + "." + urlFile.fileExtension;
+                            foreach (UrlDir.UrlConfig urlConfig in urlFile.configs)
+                            {
+                                try
+                                {
+                                    File.AppendAllText(filePath, urlConfig.config.ToString());
+                                }
+                                catch (Exception e)
+                                {
+                                    Log("Exception while trying to write the file " + filePath + "\n" + e);
+                                }
+                            }
+                        }
+                    }
+
+                    foreach (UrlDir urlDir in currentDir.children)
+                    {
+                        dirs.Push(urlDir);
+                        paths.Push(currentPath + urlDir.name + "/");
+                    }
                 }
+            }
+            catch (DirectoryNotFoundException directoryNotFoundException)
+            {
+                Log("Exception while exporting the cfg\n" + directoryNotFoundException);
+            }
+            catch (IOException ioException)
+            {
+                Log("Exception while exporting the cfg\n" + ioException);
+            }
+            catch (UnauthorizedAccessException unauthorizedAccessException)
+            {
+                Log("Exception while exporting the cfg\n" + unauthorizedAccessException);
             }
         }
 
