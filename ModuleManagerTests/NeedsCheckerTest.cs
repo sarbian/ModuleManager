@@ -6,6 +6,8 @@ using TestUtils;
 using ModuleManager;
 using ModuleManager.Logging;
 using ModuleManager.Progress;
+using ModuleManager.Extensions;
+using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManagerTests
 {
@@ -344,6 +346,56 @@ namespace ModuleManagerTests
             Assert.Equal("qq", newNode.nodes[2].nodes[1].values[0].name);
             Assert.Equal("16", newNode.nodes[2].nodes[1].values[0].value);
 
+        }
+
+        [Fact]
+        public void TestCheckNeeds__RootAndNested()
+        {
+            string[] modList = { "mod1", "mod2" };
+
+            UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig(new TestConfigNode("SOME_NODE:NEEDS[mod1]")
+            {
+                { "aa:NEEDS[mod2]", "00" },
+                { "bb:NEEDS[mod3]", "01" },
+                new TestConfigNode("INNER_NODE_1:NEEDS[mod2]")
+                {
+                    { "cc", "02" },
+                },
+                new TestConfigNode("INNER_NODE_2:NEEDS[mod3]")
+                {
+                    { "dd", "03" },
+                },
+            }, file);
+            UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig(new ConfigNode("SOME_OTHER_NODE:NEEDS[mod3]"), file);
+
+            NeedsChecker.CheckNeeds(root, modList, progress, logger);
+
+            progress.DidNotReceiveWithAnyArgs().Exception(null, null);
+            progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
+            progress.DidNotReceiveWithAnyArgs().Error(null, null);
+
+            UrlDir.UrlConfig[] configs = root.AllConfigs.ToArray();
+            Assert.Equal(1, configs.Length);
+
+            UrlDir.UrlConfig url = configs[0];
+            Assert.Equal("SOME_NODE", url.type);
+            ConfigNode newNode = url.config;
+            Assert.Equal("SOME_NODE", newNode.name);
+
+            Assert.Equal(1, newNode.values.Count);
+            Assert.Equal(1, newNode.nodes.Count);
+
+            Assert.Equal("aa", newNode.values[0].name);
+            Assert.Equal("00", newNode.values[0].value);
+
+            Assert.Equal("INNER_NODE_1", newNode.nodes[0].name);
+
+            Assert.Equal("cc", newNode.nodes[0].values[0].name);
+            Assert.Equal("02", newNode.nodes[0].values[0].value);
+
+            progress.Received().NeedsUnsatisfiedRoot(config2);
+            progress.Received().NeedsUnsatisfiedValue(url, Arg.Is<NodeStack>(stack => stack.GetPath() == "SOME_NODE"), "bb:NEEDS[mod3]");
+            progress.Received().NeedsUnsatisfiedNode(url, Arg.Is<NodeStack>(stack => stack.GetPath() == "SOME_NODE/INNER_NODE_2:NEEDS[mod3]"));
         }
 
         [Fact]
