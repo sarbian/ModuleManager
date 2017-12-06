@@ -41,14 +41,14 @@ namespace ModuleManager
                     }
 
                     // Recursively check the contents
-                    PatchContext context = new PatchContext(mod, gameDatabaseRoot, logger, progress);
-                    CheckNeeds(new NodeStack(mod.config), context, mods);
+                    PatchContext context = new PatchContext(currentMod, gameDatabaseRoot, logger, progress);
+                    CheckNeeds(new NodeStack(currentMod.config), context, mods);
                 }
                 catch (Exception ex)
                 {
                     try
                     {
-                        progress.Exception(currentMod, "Exception while checking needs on root node :\n" + currentMod.PrettyPrint(), ex);
+                        progress.Exception(mod, "Exception while checking needs on root node :\n" + mod.PrettyPrint(), ex);
                     }
                     catch (Exception ex2)
                     {
