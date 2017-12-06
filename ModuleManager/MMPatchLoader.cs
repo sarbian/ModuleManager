@@ -384,6 +384,11 @@ namespace ModuleManager
 
             yield return null;
 
+            if (ModuleManager.dumpPostPatch)
+                ModuleManager.OutputAllConfigs();
+
+            yield return null;
+
             ready = true;
         }
 
@@ -391,7 +396,7 @@ namespace ModuleManager
         {
             logger.Info("Loading Physics.cfg");
             UrlDir gameDataDir = GameDatabase.Instance.root.AllDirectories.First(d => d.path.EndsWith("GameData") && d.name == "" && d.url == "");
-            // need to use a file with a cfg extenssion to get the right fileType or you can't AddConfig on it
+            // need to use a file with a cfg extension to get the right fileType or you can't AddConfig on it
             physicsUrlFile = new UrlDir.UrlFile(gameDataDir, new FileInfo(defaultPhysicsPath));
             // Since it loaded the default config badly (sub node only) we clear it first
             physicsUrlFile.configs.Clear();
