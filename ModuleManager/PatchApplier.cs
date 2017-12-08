@@ -96,14 +96,14 @@ namespace ModuleManager
                         {
                             foreach (UrlDir.UrlConfig url in file.configs)
                             {
-                                if (!IsMatch(url, type, patterns, condition)) continue;
+                                if (!IsMatch(url, type, patterns, condition, context)) continue;
                                 if (loop) logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
 
                                 do
                                 {
                                     progress.ApplyingUpdate(url, mod);
                                     url.config = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
-                                } while (loop && IsMatch(url, type, patterns, condition));
+                                } while (loop && IsMatch(url, type, patterns, condition, context));
 
                                 if (loop) url.config.RemoveNodes("MM_PATCH_LOOP");
                             }
@@ -115,7 +115,7 @@ namespace ModuleManager
                             for (int i = 0; i < count; i++)
                             {
                                 UrlDir.UrlConfig url = file.configs[i];
-                                if (!IsMatch(url, type, patterns, condition)) continue;
+                                if (!IsMatch(url, type, patterns, condition, context)) continue;
 
                                 ConfigNode clone = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
                                 if (url.config.HasValue("name") && url.config.GetValue("name") == clone.GetValue("name"))
@@ -136,7 +136,7 @@ namespace ModuleManager
                             {
                                 UrlDir.UrlConfig url = file.configs[i];
 
-                                if (IsMatch(url, type, patterns, condition))
+                                if (IsMatch(url, type, patterns, condition, context))
                                 {
                                     progress.ApplyingDelete(url, mod);
                                     file.configs.RemoveAt(i);
@@ -170,13 +170,16 @@ namespace ModuleManager
             }
         }
 
-        private static bool IsMatch(UrlDir.UrlConfig url, string type, string[] namePatterns, string constraints)
+        private static bool IsMatch(UrlDir.UrlConfig url, string type, string[] namePatterns, string constraints, PatchContext context)
         {
             if (url.type != type) return false;
 
             if (namePatterns != null)
             {
-                if (url.name == url.type) return false;
+                if (url.name == url.type)
+                {
+                    context.progress.Error(context.patchUrl, $"Attempting to apply a patch with a name matcher/wildcard to a node with no name value: {context.patchUrl.SafeUrl()} -> {url.SafeUrl()}");
+                }
 
                 bool match = false;
                 foreach (string pattern in namePatterns)

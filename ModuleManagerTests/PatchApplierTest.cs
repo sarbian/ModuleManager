@@ -813,7 +813,37 @@ namespace ModuleManagerTests
                 { "name", "000" },
                 { "aaa", "1" },
             }, allConfigs[0].config);
+        }
 
+        [Fact]
+        public void TestApplyPatches__NameMatcherToNodeWithNoName()
+        {
+            UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig(new TestConfigNode("SOME_NODE")
+            {
+                { "aa", "00" },
+            }, file);
+
+            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new ConfigNode("@SOME_NODE[blah*]"));
+
+            patchList.firstPatches.Add(patch1);
+
+            patchApplier.ApplyPatches();
+            
+            progress.DidNotReceiveWithAnyArgs().Exception(null, null);
+            progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
+
+            logger.DidNotReceiveWithAnyArgs().Error(null);
+            logger.DidNotReceiveWithAnyArgs().Exception(null, null);
+
+            progress.Received().Error(patch1, "Attempting to apply a patch with a name matcher/wildcard to a node with no name value: abc/def/@SOME_NODE[blah*] -> abc/def/SOME_NODE");
+
+            UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
+            Assert.Equal(1, allConfigs.Length);
+
+            AssertNodesEqual(new TestConfigNode("SOME_NODE")
+            {
+                { "aa", "00" },
+            }, allConfigs[0].config);
         }
 
         [Fact]
