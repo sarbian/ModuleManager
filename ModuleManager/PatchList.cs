@@ -10,9 +10,9 @@ namespace ModuleManager
     {
         public class ModPass
         {
-            public readonly List<UrlDir.UrlConfig> beforePatches = new List<UrlDir.UrlConfig>(0);
-            public readonly List<UrlDir.UrlConfig> forPatches = new List<UrlDir.UrlConfig>(0);
-            public readonly List<UrlDir.UrlConfig> afterPatches = new List<UrlDir.UrlConfig>(0);
+            public readonly List<Patch> beforePatches = new List<Patch>(0);
+            public readonly List<Patch> forPatches = new List<Patch>(0);
+            public readonly List<Patch> afterPatches = new List<Patch>(0);
 
             public readonly string name;
 
@@ -52,9 +52,9 @@ namespace ModuleManager
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
 
-        public readonly List<UrlDir.UrlConfig> firstPatches = new List<UrlDir.UrlConfig>();
-        public readonly List<UrlDir.UrlConfig> legacyPatches = new List<UrlDir.UrlConfig>();
-        public readonly List<UrlDir.UrlConfig> finalPatches = new List<UrlDir.UrlConfig>();
+        public readonly List<Patch> firstPatches = new List<Patch> ();
+        public readonly List<Patch> legacyPatches = new List<Patch>();
+        public readonly List<Patch> finalPatches = new List<Patch>();
 
         public readonly ModPassCollection modPasses;
 

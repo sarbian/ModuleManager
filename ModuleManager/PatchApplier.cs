@@ -49,31 +49,30 @@ namespace ModuleManager
             ApplyPatches(":FINAL", patchList.finalPatches);
         }
 
-        private void ApplyPatches(string stage, IEnumerable<UrlDir.UrlConfig> patches)
+        private void ApplyPatches(string stage, IEnumerable<Patch> patches)
         {
             logger.Info(stage + " pass");
             Activity = "ModuleManager " + stage;
 
-            foreach (UrlDir.UrlConfig mod in patches)
+            foreach (Patch patch in patches)
             {
                 try
                 {
-                    string name = mod.type.RemoveWS();
-                    Command cmd = CommandParser.Parse(name, out string tmp);
+                    string name = patch.node.name.RemoveWS();
 
-                    if (cmd == Command.Insert)
+                    if (patch.command == Command.Insert)
                     {
-                        logger.Warning("Warning - Encountered insert node that should not exist at this stage: " + mod.SafeUrl());
+                        logger.Warning("Warning - Encountered insert node that should not exist at this stage: " + patch.urlConfig.SafeUrl());
                         continue;
                     }
-                    else if (cmd != Command.Edit && cmd != Command.Copy && cmd != Command.Delete)
+                    else if (patch.command != Command.Edit && patch.command != Command.Copy && patch.command != Command.Delete)
                     {
-                        logger.Warning("Invalid command encountered on a patch: " + mod.SafeUrl());
+                        logger.Warning("Invalid command encountered on a patch: " + patch.urlConfig.SafeUrl());
                         continue;
                     }
 
                     string upperName = name.ToUpper();
-                    PatchContext context = new PatchContext(mod, databaseRoot, logger, progress);
+                    PatchContext context = new PatchContext(patch.urlConfig, databaseRoot, logger, progress);
                     char[] sep = { '[', ']' };
                     string condition = "";
 
@@ -88,27 +87,27 @@ namespace ModuleManager
                     string[] patterns = splits.Length > 1 ? splits[1].Split(',', '|') : null;
                     string type = splits[0].Substring(1);
 
-                    bool loop = mod.config.HasNode("MM_PATCH_LOOP");
+                    bool loop = patch.node.HasNode("MM_PATCH_LOOP");
 
                     foreach (UrlDir.UrlFile file in allConfigFiles)
                     {
-                        if (cmd == Command.Edit)
+                        if (patch.command == Command.Edit)
                         {
                             foreach (UrlDir.UrlConfig url in file.configs)
                             {
                                 if (!IsMatch(url, type, patterns, condition)) continue;
-                                if (loop) logger.Info("Looping on " + mod.SafeUrl() + " to " + url.SafeUrl());
+                                if (loop) logger.Info($"Looping on {patch.urlConfig.SafeUrl()} to {url.SafeUrl()}");
 
                                 do
                                 {
-                                    progress.ApplyingUpdate(url, mod);
-                                    url.config = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
+                                    progress.ApplyingUpdate(url, patch.urlConfig);
+                                    url.config = MMPatchLoader.ModifyNode(new NodeStack(url.config), patch.node, context);
                                 } while (loop && IsMatch(url, type, patterns, condition));
 
                                 if (loop) url.config.RemoveNodes("MM_PATCH_LOOP");
                             }
                         }
-                        else if (cmd == Command.Copy)
+                        else if (patch.command == Command.Copy)
                         {
                             // Avoid checking the new configs we are creating
                             int count = file.configs.Count;
@@ -117,19 +116,19 @@ namespace ModuleManager
                                 UrlDir.UrlConfig url = file.configs[i];
                                 if (!IsMatch(url, type, patterns, condition)) continue;
 
-                                ConfigNode clone = MMPatchLoader.ModifyNode(new NodeStack(url.config), mod.config, context);
+                                ConfigNode clone = MMPatchLoader.ModifyNode(new NodeStack(url.config), patch.node, context);
                                 if (url.config.HasValue("name") && url.config.GetValue("name") == clone.GetValue("name"))
                                 {
-                                    progress.Error(mod, $"Error - when applying copy {mod.SafeUrl()} to {url.SafeUrl()} - the copy needs to have a different name than the parent (use @name = xxx)");
+                                    progress.Error(patch.urlConfig, $"Error - when applying copy {patch.urlConfig.SafeUrl()} to {url.SafeUrl()} - the copy needs to have a different name than the parent (use @name = xxx)");
                                 }
                                 else
                                 {
-                                    progress.ApplyingCopy(url, mod);
+                                    progress.ApplyingCopy(url, patch.urlConfig);
                                     file.AddConfig(clone);
                                 }
                             }
                         }
-                        else if (cmd == Command.Delete)
+                        else if (patch.command == Command.Delete)
                         {
                             int i = 0;
                             while (i < file.configs.Count)
@@ -138,7 +137,7 @@ namespace ModuleManager
 
                                 if (IsMatch(url, type, patterns, condition))
                                 {
-                                    progress.ApplyingDelete(url, mod);
+                                    progress.ApplyingDelete(url, patch.urlConfig);
                                     file.configs.RemoveAt(i);
                                 }
                                 else
@@ -156,11 +155,11 @@ namespace ModuleManager
                 }
                 catch (Exception e)
                 {
-                    progress.Exception(mod, "Exception while processing node : " + mod.SafeUrl(), e);
+                    progress.Exception(patch.urlConfig, "Exception while processing node : " + patch.urlConfig.SafeUrl(), e);
 
                     try
                     {
-                        logger.Error("Processed node was\n" + mod.PrettyPrint());
+                        logger.Error("Processed node was\n" + patch.urlConfig.PrettyPrint());
                     }
                     catch (Exception ex2)
                     {

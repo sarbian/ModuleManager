@@ -50,7 +50,7 @@ namespace ModuleManagerTests
                 { "jkl", "mno" },
             }, file);
 
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART")
+            Patch patch1 = CreatePatch(Command.Edit, new TestConfigNode("@PART")
             {
                 { "@foo", "baz" },
                 { "pqr", "stw" },
@@ -63,8 +63,8 @@ namespace ModuleManagerTests
             EnsureNoErrors();
 
             progress.Received(1).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1);
-            progress.Received().ApplyingUpdate(config2, patch1);
+            progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+            progress.Received().ApplyingUpdate(config2, patch1.urlConfig);
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(3, allConfigs.Length);
@@ -109,7 +109,7 @@ namespace ModuleManagerTests
                 { "bbb", "004" },
             }, file);
 
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("+PART")
+            Patch patch1 = CreatePatch(Command.Copy, new TestConfigNode("+PART")
             {
                 { "@name ^", ":^00:01:" },
                 { "@aaa", "011" },
@@ -123,79 +123,8 @@ namespace ModuleManagerTests
             EnsureNoErrors();
 
             progress.Received(1).PatchApplied();
-            progress.Received().ApplyingCopy(config1, patch1);
-            progress.Received().ApplyingCopy(config2, patch1);
-
-            UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
-            Assert.Equal(5, allConfigs.Length);
-
-            AssertNodesEqual(new TestConfigNode("PART")
-            {
-                { "name", "000" },
-                { "aaa", "001" },
-            }, allConfigs[0].config);
-
-            AssertNodesEqual(new TestConfigNode("PART")
-            {
-                { "name", "002" },
-            }, allConfigs[1].config);
-
-            AssertNodesEqual(new TestConfigNode("PORT")
-            {
-                { "name", "003" },
-                { "bbb", "004" },
-            }, allConfigs[2].config);
-
-            AssertNodesEqual(new TestConfigNode("PART")
-            {
-                { "name", "010" },
-                { "aaa", "011" },
-                { "ccc", "005" },
-            }, allConfigs[3].config);
-
-            AssertNodesEqual(new TestConfigNode("PART")
-            {
-                { "name", "012" },
-                { "ccc", "005" },
-            }, allConfigs[4].config);
-        }
-
-        [Fact]
-        public void TestApplyPatches__Copy__AlternateCommand()
-        {
-            UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig(new TestConfigNode("PART")
-            {
-                { "name", "000" },
-                { "aaa", "001" },
-            }, file);
-
-            UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig(new TestConfigNode("PART")
-            {
-                { "name", "002" },
-            }, file);
-
-            UrlDir.UrlConfig config3 = UrlBuilder.CreateConfig(new TestConfigNode("PORT")
-            {
-                { "name", "003" },
-                { "bbb", "004" },
-            }, file);
-
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("$PART")
-            {
-                { "@name ^", ":^00:01:" },
-                { "@aaa", "011" },
-                { "ccc", "005" },
-            });
-
-            patchList.firstPatches.Add(patch1);
-
-            patchApplier.ApplyPatches();
-
-            EnsureNoErrors();
-
-            progress.Received(1).PatchApplied();
-            progress.Received().ApplyingCopy(config1, patch1);
-            progress.Received().ApplyingCopy(config2, patch1);
+            progress.Received().ApplyingCopy(config1, patch1.urlConfig);
+            progress.Received().ApplyingCopy(config2, patch1.urlConfig);
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(5, allConfigs.Length);
@@ -251,7 +180,7 @@ namespace ModuleManagerTests
                 { "jkl", "mno" },
             }, file);
 
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("-PART"));
+            Patch patch1 = CreatePatch(Command.Delete, new TestConfigNode("-PART"));
 
             patchList.firstPatches.Add(patch1);
 
@@ -260,50 +189,8 @@ namespace ModuleManagerTests
             EnsureNoErrors();
 
             progress.Received(1).PatchApplied();
-            progress.Received().ApplyingDelete(config1, patch1);
-            progress.Received().ApplyingDelete(config2, patch1);
-
-            UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
-            Assert.Equal(1, allConfigs.Length);
-
-            AssertNodesEqual(new TestConfigNode("PORT")
-            {
-                { "name", "ghi" },
-                { "jkl", "mno" },
-            }, allConfigs[0].config);
-        }
-
-        [Fact]
-        public void TestApplyPatches__Delete__AlternateCommand()
-        {
-            UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig(new TestConfigNode("PART")
-            {
-                { "name", "abc" },
-                { "foo", "bar" },
-            }, file);
-
-            UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig(new TestConfigNode("PART")
-            {
-                { "name", "def" },
-            }, file);
-
-            UrlDir.UrlConfig config3 = UrlBuilder.CreateConfig(new TestConfigNode("PORT")
-            {
-                { "name", "ghi" },
-                { "jkl", "mno" },
-            }, file);
-
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("-PART"));
-
-            patchList.firstPatches.Add(patch1);
-
-            patchApplier.ApplyPatches();
-
-            EnsureNoErrors();
-
-            progress.Received(1).PatchApplied();
-            progress.Received().ApplyingDelete(config1, patch1);
-            progress.Received().ApplyingDelete(config2, patch1);
+            progress.Received().ApplyingDelete(config1, patch1.urlConfig);
+            progress.Received().ApplyingDelete(config2, patch1.urlConfig);
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(1, allConfigs.Length);
@@ -342,20 +229,20 @@ namespace ModuleManagerTests
                 { "ddd", "007" },
             }, file);
 
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART[000]")
+            Patch patch1 = CreatePatch(Command.Edit, new TestConfigNode("@PART[000]")
             {
                 { "@aaa", "011" },
                 { "eee", "012" },
             });
 
-            UrlDir.UrlConfig patch2 = new UrlDir.UrlConfig(file, new TestConfigNode("+PART[002]")
+            Patch patch2 = CreatePatch(Command.Copy, new TestConfigNode("+PART[002]")
             {
                 { "@name", "022" },
                 { "@bbb", "013" },
                 { "fff", "014" },
             });
 
-            UrlDir.UrlConfig patch3 = new UrlDir.UrlConfig(file, new TestConfigNode("!PART[004]"));
+            Patch patch3 = CreatePatch(Command.Delete, new TestConfigNode("!PART[004]"));
 
             patchList.firstPatches.Add(patch1);
             patchList.firstPatches.Add(patch2);
@@ -366,9 +253,9 @@ namespace ModuleManagerTests
             EnsureNoErrors();
 
             progress.Received(3).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1);
-            progress.Received().ApplyingCopy(config2, patch2);
-            progress.Received().ApplyingDelete(config3, patch3);
+            progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+            progress.Received().ApplyingCopy(config2, patch2.urlConfig);
+            progress.Received().ApplyingDelete(config3, patch3.urlConfig);
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(4, allConfigs.Length);
@@ -427,20 +314,20 @@ namespace ModuleManagerTests
                 { "ddd", "007" },
             }, file);
 
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART[0*0]")
+            Patch patch1 = CreatePatch(Command.Edit, new TestConfigNode("@PART[0*0]")
             {
                 { "@aaa", "011" },
                 { "eee", "012" },
             });
 
-            UrlDir.UrlConfig patch2 = new UrlDir.UrlConfig(file, new TestConfigNode("+PART[0*2]")
+            Patch patch2 = CreatePatch(Command.Copy, new TestConfigNode("+PART[0*2]")
             {
                 { "@name", "022" },
                 { "@bbb", "013" },
                 { "fff", "014" },
             });
 
-            UrlDir.UrlConfig patch3 = new UrlDir.UrlConfig(file, new TestConfigNode("!PART[0*4]"));
+            Patch patch3 = CreatePatch(Command.Delete, new TestConfigNode("!PART[0*4]"));
 
             patchList.firstPatches.Add(patch1);
             patchList.firstPatches.Add(patch2);
@@ -451,9 +338,9 @@ namespace ModuleManagerTests
             EnsureNoErrors();
 
             progress.Received(3).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1);
-            progress.Received().ApplyingCopy(config2, patch2);
-            progress.Received().ApplyingDelete(config3, patch3);
+            progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+            progress.Received().ApplyingCopy(config2, patch2.urlConfig);
+            progress.Received().ApplyingDelete(config3, patch3.urlConfig);
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(4, allConfigs.Length);
@@ -506,7 +393,7 @@ namespace ModuleManagerTests
                 { "ccc", "005" },
             }, file);
 
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART[000|0*2]")
+            Patch patch1 = CreatePatch(Command.Edit, new TestConfigNode("@PART[000|0*2]")
             {
                 { "@aaa", "011" },
                 { "ddd", "006" },
@@ -519,8 +406,8 @@ namespace ModuleManagerTests
             EnsureNoErrors();
 
             progress.Received(1).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1);
-            progress.Received().ApplyingUpdate(config2, patch1);
+            progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+            progress.Received().ApplyingUpdate(config2, patch1.urlConfig);
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(3, allConfigs.Length);
@@ -555,47 +442,47 @@ namespace ModuleManagerTests
                 { "aaa", "001" },
             }, file);
             
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART[000|0*2]")
+            Patch patch1 = CreatePatch(Command.Edit, new TestConfigNode("@PART[000|0*2]")
             {
                 { "bbb", "002" },
             });
 
-            UrlDir.UrlConfig patch2 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART[000|0*2]")
+            Patch patch2 = CreatePatch(Command.Edit, new TestConfigNode("@PART[000|0*2]")
             {
                 { "ccc", "003" },
             });
 
-            UrlDir.UrlConfig patch3 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART[000|0*2]")
+            Patch patch3 = CreatePatch(Command.Edit, new TestConfigNode("@PART[000|0*2]")
             {
                 { "ddd", "004" },
             });
 
-            UrlDir.UrlConfig patch4 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART[000|0*2]")
+            Patch patch4 = CreatePatch(Command.Edit, new TestConfigNode("@PART[000|0*2]")
             {
                 { "eee", "005" },
             });
 
-            UrlDir.UrlConfig patch5 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART[000|0*2]")
+            Patch patch5 = CreatePatch(Command.Edit, new TestConfigNode("@PART[000|0*2]")
             {
                 { "fff", "006" },
             });
 
-            UrlDir.UrlConfig patch6 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART[000|0*2]")
+            Patch patch6 = CreatePatch(Command.Edit, new TestConfigNode("@PART[000|0*2]")
             {
                 { "ggg", "007" },
             });
 
-            UrlDir.UrlConfig patch7 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART[000|0*2]")
+            Patch patch7 = CreatePatch(Command.Edit, new TestConfigNode("@PART[000|0*2]")
             {
                 { "hhh", "008" },
             });
 
-            UrlDir.UrlConfig patch8 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART[000|0*2]")
+            Patch patch8 = CreatePatch(Command.Edit, new TestConfigNode("@PART[000|0*2]")
             {
                 { "iii", "009" },
             });
 
-            UrlDir.UrlConfig patch9 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART[000|0*2]")
+            Patch patch9 = CreatePatch(Command.Edit, new TestConfigNode("@PART[000|0*2]")
             {
                 { "jjj", "010" },
             });
@@ -615,15 +502,15 @@ namespace ModuleManagerTests
             EnsureNoErrors();
 
             progress.Received(9).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1);
-            progress.Received().ApplyingUpdate(config1, patch2);
-            progress.Received().ApplyingUpdate(config1, patch3);
-            progress.Received().ApplyingUpdate(config1, patch4);
-            progress.Received().ApplyingUpdate(config1, patch5);
-            progress.Received().ApplyingUpdate(config1, patch6);
-            progress.Received().ApplyingUpdate(config1, patch7);
-            progress.Received().ApplyingUpdate(config1, patch8);
-            progress.Received().ApplyingUpdate(config1, patch9);
+            progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+            progress.Received().ApplyingUpdate(config1, patch2.urlConfig);
+            progress.Received().ApplyingUpdate(config1, patch3.urlConfig);
+            progress.Received().ApplyingUpdate(config1, patch4.urlConfig);
+            progress.Received().ApplyingUpdate(config1, patch5.urlConfig);
+            progress.Received().ApplyingUpdate(config1, patch6.urlConfig);
+            progress.Received().ApplyingUpdate(config1, patch7.urlConfig);
+            progress.Received().ApplyingUpdate(config1, patch8.urlConfig);
+            progress.Received().ApplyingUpdate(config1, patch9.urlConfig);
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(1, allConfigs.Length);
@@ -671,20 +558,20 @@ namespace ModuleManagerTests
                 { "ddd", "007" },
             }, file);
 
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART:HAS[#aaa[001]]")
+            Patch patch1 = CreatePatch(Command.Edit, new TestConfigNode("@PART:HAS[#aaa[001]]")
             {
                 { "@aaa", "011" },
                 { "eee", "012" },
             });
 
-            UrlDir.UrlConfig patch2 = new UrlDir.UrlConfig(file, new TestConfigNode("+PART:HAS[#bbb[003]]")
+            Patch patch2 = CreatePatch(Command.Copy, new TestConfigNode("+PART:HAS[#bbb[003]]")
             {
                 { "@name", "012" },
                 { "@bbb", "013" },
                 { "fff", "014" },
             });
 
-            UrlDir.UrlConfig patch3 = new UrlDir.UrlConfig(file, new TestConfigNode("!PART:HAS[#ccc[005]]"));
+            Patch patch3 = CreatePatch(Command.Delete, new TestConfigNode("!PART:HAS[#ccc[005]]"));
 
             patchList.firstPatches.Add(patch1);
             patchList.firstPatches.Add(patch2);
@@ -695,9 +582,9 @@ namespace ModuleManagerTests
             EnsureNoErrors();
 
             progress.Received(3).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1);
-            progress.Received().ApplyingCopy(config2, patch2);
-            progress.Received().ApplyingDelete(config3, patch3);
+            progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+            progress.Received().ApplyingCopy(config2, patch2.urlConfig);
+            progress.Received().ApplyingDelete(config3, patch3.urlConfig);
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(4, allConfigs.Length);
@@ -738,7 +625,7 @@ namespace ModuleManagerTests
                 { "aaa", "1" },
             }, file);
 
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("@PART:HAS[~aaa[>10]]")
+            Patch patch1 = CreatePatch(Command.Edit, new TestConfigNode("@PART:HAS[~aaa[>10]]")
             {
                 { "@aaa *", "2" },
                 { "bbb", "002" },
@@ -752,7 +639,7 @@ namespace ModuleManagerTests
             EnsureNoErrors();
 
             progress.Received(1).PatchApplied();
-            progress.Received(4).ApplyingUpdate(config1, patch1);
+            progress.Received(4).ApplyingUpdate(config1, patch1.urlConfig);
 
             logger.Received().Log(LogType.Log, "Looping on abc/def/@PART:HAS[~aaa[>10]] to abc/def/PART");
 
@@ -770,6 +657,7 @@ namespace ModuleManagerTests
             }, allConfigs[0].config);
         }
 
+        /*
         [Fact]
         public void TestApplyPatches__InvalidOperator()
         {
@@ -816,6 +704,7 @@ namespace ModuleManagerTests
             }, allConfigs[0].config);
 
         }
+        */
 
         [Fact]
         public void TestApplyPatches__Copy__NameNotChanged()
@@ -826,7 +715,7 @@ namespace ModuleManagerTests
                 { "aaa", "001" },
             }, file);
 
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new TestConfigNode("+PART")
+            Patch patch1 = CreatePatch(Command.Copy, new TestConfigNode("+PART")
             {
                 { "@aaa", "011" },
                 { "bbb", "012" },
@@ -839,7 +728,7 @@ namespace ModuleManagerTests
             progress.DidNotReceiveWithAnyArgs().Exception(null, null);
             progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
 
-            progress.Received().Error(patch1, "Error - when applying copy abc/def/+PART to abc/def/PART - the copy needs to have a different name than the parent (use @name = xxx)");
+            progress.Received().Error(patch1.urlConfig, "Error - when applying copy abc/def/+PART to abc/def/PART - the copy needs to have a different name than the parent (use @name = xxx)");
 
             logger.DidNotReceive().Log(LogType.Warning, Arg.Any<string>());
             logger.DidNotReceive().Log(LogType.Error, Arg.Any<string>());
@@ -872,6 +761,11 @@ namespace ModuleManagerTests
         private void AssertNodesEqual(ConfigNode expected, ConfigNode actual)
         {
             Assert.Equal(expected.ToString(), actual.ToString());
+        }
+
+        private Patch CreatePatch(Command command, ConfigNode node)
+        {
+            return new Patch(new UrlDir.UrlConfig(file, node), command, node);
         }
     }
 }
