@@ -139,65 +139,68 @@ namespace ModuleManagerTests
 
             Assert.Equal(insertConfigs, root.AllConfigs);
 
-            Assert.Equal(legacyConfigs, list.legacyPatches);
+            List<Patch> currentPatches;
 
-            List<UrlDir.UrlConfig> currentPatches;
+            currentPatches = list.legacyPatches;
+            Assert.Equal(legacyConfigs.Length, currentPatches.Count);
+            AssertPatchCorrect(currentPatches[0], legacyConfigs[0], Command.Edit, "NODE");
+            AssertPatchCorrect(currentPatches[1], legacyConfigs[1], Command.Edit, "NADE[foo]:HAS[#bar]");
 
             currentPatches = list.firstPatches;
             Assert.Equal(firstConfigs.Length, currentPatches.Count);
-            AssertUrlCorrect("@NODE",                firstConfigs[0], currentPatches[0]);
-            AssertUrlCorrect("@NODE[foo]:HAS[#bar]", firstConfigs[1], currentPatches[1]);
-            AssertUrlCorrect("@NADE",                firstConfigs[2], currentPatches[2]);
-            AssertUrlCorrect("@NADE",                firstConfigs[3], currentPatches[3]);
+            AssertPatchCorrect(currentPatches[0], firstConfigs[0], Command.Edit, "NODE");
+            AssertPatchCorrect(currentPatches[1], firstConfigs[1], Command.Edit, "NODE[foo]:HAS[#bar]");
+            AssertPatchCorrect(currentPatches[2], firstConfigs[2], Command.Edit, "NADE");
+            AssertPatchCorrect(currentPatches[3], firstConfigs[3], Command.Edit, "NADE");
 
             currentPatches = list.finalPatches;
             Assert.Equal(finalConfigs.Length, currentPatches.Count);
-            AssertUrlCorrect("@NODE",                finalConfigs[0], currentPatches[0]);
-            AssertUrlCorrect("@NODE[foo]:HAS[#bar]", finalConfigs[1], currentPatches[1]);
-            AssertUrlCorrect("@NADE",                finalConfigs[2], currentPatches[2]);
-            AssertUrlCorrect("@NADE",                finalConfigs[3], currentPatches[3]);
+            AssertPatchCorrect(currentPatches[0], finalConfigs[0], Command.Edit, "NODE");
+            AssertPatchCorrect(currentPatches[1], finalConfigs[1], Command.Edit, "NODE[foo]:HAS[#bar]");
+            AssertPatchCorrect(currentPatches[2], finalConfigs[2], Command.Edit, "NADE");
+            AssertPatchCorrect(currentPatches[3], finalConfigs[3], Command.Edit, "NADE");
 
             currentPatches = list.modPasses["mod1"].beforePatches;
             Assert.Equal(beforeMod1Configs.Length, currentPatches.Count);
-            AssertUrlCorrect("@NODE",                beforeMod1Configs[0], currentPatches[0]);
-            AssertUrlCorrect("@NODE[foo]:HAS[#bar]", beforeMod1Configs[1], currentPatches[1]);
-            AssertUrlCorrect("@NADE",                beforeMod1Configs[2], currentPatches[2]);
-            AssertUrlCorrect("@NADE",                beforeMod1Configs[3], currentPatches[3]);
+            AssertPatchCorrect(currentPatches[0], beforeMod1Configs[0], Command.Edit, "NODE");
+            AssertPatchCorrect(currentPatches[1], beforeMod1Configs[1], Command.Edit, "NODE[foo]:HAS[#bar]");
+            AssertPatchCorrect(currentPatches[2], beforeMod1Configs[2], Command.Edit, "NADE");
+            AssertPatchCorrect(currentPatches[3], beforeMod1Configs[3], Command.Edit, "NADE");
 
             currentPatches = list.modPasses["mod1"].forPatches;
             Assert.Equal(forMod1Configs.Length, currentPatches.Count);
-            AssertUrlCorrect("@NODE",                forMod1Configs[0], currentPatches[0]);
-            AssertUrlCorrect("@NODE[foo]:HAS[#bar]", forMod1Configs[1], currentPatches[1]);
-            AssertUrlCorrect("@NADE",                forMod1Configs[2], currentPatches[2]);
-            AssertUrlCorrect("@NADE",                forMod1Configs[3], currentPatches[3]);
+            AssertPatchCorrect(currentPatches[0], forMod1Configs[0], Command.Edit, "NODE");
+            AssertPatchCorrect(currentPatches[1], forMod1Configs[1], Command.Edit, "NODE[foo]:HAS[#bar]");
+            AssertPatchCorrect(currentPatches[2], forMod1Configs[2], Command.Edit, "NADE");
+            AssertPatchCorrect(currentPatches[3], forMod1Configs[3], Command.Edit, "NADE");
 
             currentPatches = list.modPasses["mod1"].afterPatches;
             Assert.Equal(afterMod1Configs.Length, currentPatches.Count);
-            AssertUrlCorrect("@NODE",                afterMod1Configs[0], currentPatches[0]);
-            AssertUrlCorrect("@NODE[foo]:HAS[#bar]", afterMod1Configs[1], currentPatches[1]);
-            AssertUrlCorrect("@NADE",                afterMod1Configs[2], currentPatches[2]);
-            AssertUrlCorrect("@NADE",                afterMod1Configs[3], currentPatches[3]);
+            AssertPatchCorrect(currentPatches[0], afterMod1Configs[0], Command.Edit, "NODE");
+            AssertPatchCorrect(currentPatches[1], afterMod1Configs[1], Command.Edit, "NODE[foo]:HAS[#bar]");
+            AssertPatchCorrect(currentPatches[2], afterMod1Configs[2], Command.Edit, "NADE");
+            AssertPatchCorrect(currentPatches[3], afterMod1Configs[3], Command.Edit, "NADE");
 
             currentPatches = list.modPasses["mod2"].beforePatches;
             Assert.Equal(beforeMod2Configs.Length, currentPatches.Count);
-            AssertUrlCorrect("@NODE",                beforeMod2Configs[0], currentPatches[0]);
-            AssertUrlCorrect("@NODE[foo]:HAS[#bar]", beforeMod2Configs[1], currentPatches[1]);
-            AssertUrlCorrect("@NADE",                beforeMod2Configs[2], currentPatches[2]);
-            AssertUrlCorrect("@NADE",                beforeMod2Configs[3], currentPatches[3]);
+            AssertPatchCorrect(currentPatches[0], beforeMod2Configs[0], Command.Edit, "NODE");
+            AssertPatchCorrect(currentPatches[1], beforeMod2Configs[1], Command.Edit, "NODE[foo]:HAS[#bar]");
+            AssertPatchCorrect(currentPatches[2], beforeMod2Configs[2], Command.Edit, "NADE");
+            AssertPatchCorrect(currentPatches[3], beforeMod2Configs[3], Command.Edit, "NADE");
 
             currentPatches = list.modPasses["mod2"].forPatches;
             Assert.Equal(forMod2Configs.Length, currentPatches.Count);
-            AssertUrlCorrect("@NODE",                forMod2Configs[0], currentPatches[0]);
-            AssertUrlCorrect("@NODE[foo]:HAS[#bar]", forMod2Configs[1], currentPatches[1]);
-            AssertUrlCorrect("@NADE",                forMod2Configs[2], currentPatches[2]);
-            AssertUrlCorrect("@NADE",                forMod2Configs[3], currentPatches[3]);
+            AssertPatchCorrect(currentPatches[0], forMod2Configs[0], Command.Edit, "NODE");
+            AssertPatchCorrect(currentPatches[1], forMod2Configs[1], Command.Edit, "NODE[foo]:HAS[#bar]");
+            AssertPatchCorrect(currentPatches[2], forMod2Configs[2], Command.Edit, "NADE");
+            AssertPatchCorrect(currentPatches[3], forMod2Configs[3], Command.Edit, "NADE");
 
             currentPatches = list.modPasses["mod2"].afterPatches;
             Assert.Equal(afterMod2Configs.Length, currentPatches.Count);
-            AssertUrlCorrect("@NODE",                afterMod2Configs[0], currentPatches[0]);
-            AssertUrlCorrect("@NODE[foo]:HAS[#bar]", afterMod2Configs[1], currentPatches[1]);
-            AssertUrlCorrect("@NADE",                afterMod2Configs[2], currentPatches[2]);
-            AssertUrlCorrect("@NADE",                afterMod2Configs[3], currentPatches[3]);
+            AssertPatchCorrect(currentPatches[0], afterMod2Configs[0], Command.Edit, "NODE");
+            AssertPatchCorrect(currentPatches[1], afterMod2Configs[1], Command.Edit, "NODE[foo]:HAS[#bar]");
+            AssertPatchCorrect(currentPatches[2], afterMod2Configs[2], Command.Edit, "NADE");
+            AssertPatchCorrect(currentPatches[3], afterMod2Configs[3], Command.Edit, "NADE");
 
             progress.Received(34).PatchAdded();
 
@@ -260,7 +263,7 @@ namespace ModuleManagerTests
             progress.Received().Error(config3, "Error - more than one pass specifier on a node: abc/def/@NODE:FIRST:FOR[mod1]");
 
             Assert.Equal(1, list.firstPatches.Count);
-            AssertUrlCorrect("@NODE", config1, list.firstPatches[0]);
+            AssertPatchCorrect(list.firstPatches[0], config1, Command.Edit, "NODE");
             Assert.Empty(list.legacyPatches);
             Assert.Empty(list.finalPatches);
             Assert.Empty(list.modPasses["mod1"].beforePatches);
@@ -285,9 +288,10 @@ namespace ModuleManagerTests
 
             progress.Received().Exception(config2, "Exception while parsing pass for config: abc/def/@NODE:FIRST:FIRST", e);
 
-            Assert.Equal(new[] { config1 }, list.legacyPatches);
+            Assert.Equal(1, list.legacyPatches.Count);
+            AssertPatchCorrect(list.legacyPatches[0], config1, Command.Edit, "NODE");
             Assert.Equal(1, list.firstPatches.Count);
-            AssertUrlCorrect("@NADE", config3, list.firstPatches[0]);
+            AssertPatchCorrect(list.firstPatches[0], config3, Command.Edit, "NADE");
 
             progress.Received(2).PatchAdded();
         }
@@ -312,7 +316,7 @@ namespace ModuleManagerTests
             Assert.Empty(list.finalPatches);
             Assert.Empty(list.modPasses["mod1"].beforePatches);
             Assert.Equal(1, list.modPasses["mod1"].forPatches.Count);
-            AssertUrlCorrect("@NODE", config1, list.modPasses["mod1"].forPatches[0]);
+            AssertPatchCorrect(list.modPasses["mod1"].forPatches[0], config1, Command.Edit, "NODE");
             Assert.Empty(list.modPasses["mod1"].afterPatches);
 
             progress.Received(1).PatchAdded();
@@ -341,42 +345,50 @@ namespace ModuleManagerTests
             Assert.Empty(list.finalPatches);
             Assert.Empty(list.modPasses["mod1"].beforePatches);
             Assert.Equal(1, list.modPasses["mod1"].forPatches.Count);
-            AssertUrlCorrect("@NODE", config1, list.modPasses["mod1"].forPatches[0]);
+            AssertPatchCorrect(list.modPasses["mod1"].forPatches[0], config1, Command.Edit, "NODE");
             Assert.Empty(list.modPasses["mod1"].afterPatches);
 
             progress.Received(1).PatchAdded();
         }
 
         [Fact]
-        public void TestSortAndExtractPatches__InvalidCommand()
+        public void TestSortAndExtractPatches__Command()
         {
-            UrlDir.UrlConfig config1 = CreateConfig("@NODE:FOR[mod1]");
-            UrlDir.UrlConfig config2 = CreateConfig("%NODE:FOR[mod1]");
-            UrlDir.UrlConfig config3 = CreateConfig("&NODE:FOR[mod1]");
-            UrlDir.UrlConfig config4 = CreateConfig("|NODE:FOR[mod1]");
-            UrlDir.UrlConfig config5 = CreateConfig("#NODE:FOR[mod1]");
-            UrlDir.UrlConfig config6 = CreateConfig("*NODE:FOR[mod1]");
+            UrlDir.UrlConfig config01 = CreateConfig("@NODE:FOR[mod1]");
+            UrlDir.UrlConfig config02 = CreateConfig("+NODE:FOR[mod1]");
+            UrlDir.UrlConfig config03 = CreateConfig("$NODE:FOR[mod1]");
+            UrlDir.UrlConfig config04 = CreateConfig("!NODE:FOR[mod1]");
+            UrlDir.UrlConfig config05 = CreateConfig("-NODE:FOR[mod1]");
+            UrlDir.UrlConfig config06 = CreateConfig("%NODE:FOR[mod1]");
+            UrlDir.UrlConfig config07 = CreateConfig("&NODE:FOR[mod1]");
+            UrlDir.UrlConfig config08 = CreateConfig("|NODE:FOR[mod1]");
+            UrlDir.UrlConfig config09 = CreateConfig("#NODE:FOR[mod1]");
+            UrlDir.UrlConfig config10 = CreateConfig("*NODE:FOR[mod1]");
 
             string[] modList = { "mod1" };
             PatchList list = PatchExtractor.SortAndExtractPatches(root, modList, progress);
 
             Assert.Empty(root.AllConfigs);
 
-            progress.Received().Error(config2, "Error - replace command (%) is not valid on a root node: abc/def/%NODE:FOR[mod1]");
-            progress.Received().Error(config3, "Error - create command (&) is not valid on a root node: abc/def/&NODE:FOR[mod1]");
-            progress.Received().Error(config4, "Error - rename command (|) is not valid on a root node: abc/def/|NODE:FOR[mod1]");
-            progress.Received().Error(config5, "Error - paste command (#) is not valid on a root node: abc/def/#NODE:FOR[mod1]");
-            progress.Received().Error(config6, "Error - special command (*) is not valid on a root node: abc/def/*NODE:FOR[mod1]");
+            progress.Received().Error(config06, "Error - replace command (%) is not valid on a root node: abc/def/%NODE:FOR[mod1]");
+            progress.Received().Error(config07, "Error - create command (&) is not valid on a root node: abc/def/&NODE:FOR[mod1]");
+            progress.Received().Error(config08, "Error - rename command (|) is not valid on a root node: abc/def/|NODE:FOR[mod1]");
+            progress.Received().Error(config09, "Error - paste command (#) is not valid on a root node: abc/def/#NODE:FOR[mod1]");
+            progress.Received().Error(config10, "Error - special command (*) is not valid on a root node: abc/def/*NODE:FOR[mod1]");
 
             Assert.Empty(list.firstPatches);
             Assert.Empty(list.legacyPatches);
             Assert.Empty(list.finalPatches);
             Assert.Empty(list.modPasses["mod1"].beforePatches);
-            Assert.Equal(1, list.modPasses["mod1"].forPatches.Count);
-            AssertUrlCorrect("@NODE", config1, list.modPasses["mod1"].forPatches[0]);
+            Assert.Equal(5, list.modPasses["mod1"].forPatches.Count);
+            AssertPatchCorrect(list.modPasses["mod1"].forPatches[0], config01, Command.Edit, "NODE");
+            AssertPatchCorrect(list.modPasses["mod1"].forPatches[1], config02, Command.Copy, "NODE");
+            AssertPatchCorrect(list.modPasses["mod1"].forPatches[2], config03, Command.Copy, "NODE");
+            AssertPatchCorrect(list.modPasses["mod1"].forPatches[3], config04, Command.Delete, "NODE");
+            AssertPatchCorrect(list.modPasses["mod1"].forPatches[4], config05, Command.Delete, "NODE");
             Assert.Empty(list.modPasses["mod1"].afterPatches);
 
-            progress.Received(1).PatchAdded();
+            progress.Received(5).PatchAdded();
         }
 
         private UrlDir.UrlConfig CreateConfig(string name)
@@ -395,31 +407,25 @@ namespace ModuleManagerTests
             return UrlBuilder.CreateConfig(node, file);
         }
 
-        private void AssertUrlCorrect(string expectedNodeName, UrlDir.UrlConfig originalUrl, UrlDir.UrlConfig observedUrl)
+        private void AssertPatchCorrect(Patch patch, UrlDir.UrlConfig originalUrl, Command expectedCommand, string expectedNodeName)
         {
-            Assert.Equal(expectedNodeName, observedUrl.type);
+            Assert.Same(originalUrl, patch.urlConfig);
+            Assert.Equal(expectedNodeName, patch.node.name);
 
             ConfigNode originalNode = originalUrl.config;
-            ConfigNode observedNode = observedUrl.config;
 
-            Assert.Equal(expectedNodeName, observedNode.name);
-
-            if (originalNode.HasValue("name")) Assert.Equal(originalNode.GetValue("name"), observedUrl.name);
-
-            Assert.Same(originalUrl.parent, observedUrl.parent);
-
-            Assert.Equal(originalNode.id, observedNode.id);
-            Assert.Equal(originalNode.values.Count, observedNode.values.Count);
-            Assert.Equal(originalNode.nodes.Count, observedNode.nodes.Count);
+            Assert.Equal(originalNode.id, patch.node.id);
+            Assert.Equal(originalNode.values.Count, patch.node.values.Count);
+            Assert.Equal(originalNode.nodes.Count, patch.node.nodes.Count);
 
             for (int i = 0; i < originalNode.values.Count; i++)
             {
-                Assert.Same(originalNode.values[i], observedNode.values[i]);
+                Assert.Same(originalNode.values[i], patch.node.values[i]);
             }
 
             for (int i = 0; i < originalNode.nodes.Count; i++)
             {
-                Assert.Same(originalNode.nodes[i], observedNode.nodes[i]);
+                Assert.Same(originalNode.nodes[i], patch.node.nodes[i]);
             }
         }
     }

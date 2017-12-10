@@ -31,13 +31,13 @@ namespace ModuleManager
                         continue;
                     }
 
-                    Command command = CommandParser.Parse(url.type, out _);;
+                    Command command = CommandParser.Parse(url.type, out string name);;
 
-                    Match firstMatch = firstRegex.Match(url.type);
-                    Match finalMatch = finalRegex.Match(url.type);
-                    Match beforeMatch = beforeRegex.Match(url.type);
-                    Match forMatch = forRegex.Match(url.type);
-                    Match afterMatch = afterRegex.Match(url.type);
+                    Match firstMatch = firstRegex.Match(name);
+                    Match finalMatch = finalRegex.Match(name);
+                    Match beforeMatch = beforeRegex.Match(name);
+                    Match forMatch = forRegex.Match(name);
+                    Match afterMatch = afterRegex.Match(name);
 
                     int matchCount = 0;
 
@@ -117,7 +117,7 @@ namespace ModuleManager
                     url.parent.configs.Remove(url);
 
                     Match theMatch = null;
-                    List<UrlDir.UrlConfig> thePass = null;
+                    List<Patch> thePass = null;
                     bool modNotFound = false;
 
                     if (firstMatch.Success)
@@ -176,16 +176,17 @@ namespace ModuleManager
 
                     if (modNotFound) continue;
 
-                    UrlDir.UrlConfig newUrl = url;
-                    if (theMatch != null)
-                    {
-                        string newName = url.type.Remove(theMatch.Index, theMatch.Length);
-                        ConfigNode newNode = new ConfigNode(newName) { id = url.config.id };
-                        newNode.ShallowCopyFrom(url.config);
-                        newUrl = new UrlDir.UrlConfig(url.parent, newNode);
-                    }
+                    string newName;
+                    if (theMatch == null)
+                        newName = name;
+                    else
+                        newName = name.Remove(theMatch.Index, theMatch.Length);
 
-                    thePass.Add(newUrl);
+                    ConfigNode node = new ConfigNode(newName) { id = url.config.id };
+                    node.ShallowCopyFrom(url.config);
+                    Patch patch = new Patch(url, command, node);
+
+                    thePass.Add(patch);
                     progress.PatchAdded();
                 }
                 catch(Exception e)
