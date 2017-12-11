@@ -31,7 +31,7 @@ namespace ModuleManager
                         continue;
                     }
 
-                    Command command = CommandParser.Parse(url.type, out string name);;
+                    Command command = CommandParser.Parse(url.type, out string name);
 
                     Match firstMatch = firstRegex.Match(name);
                     Match finalMatch = finalRegex.Match(name);
