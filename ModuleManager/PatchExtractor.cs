@@ -118,7 +118,6 @@ namespace ModuleManager
 
                     Match theMatch = null;
                     List<Patch> thePass = null;
-                    bool modNotFound = false;
 
                     if (firstMatch.Success)
                     {
@@ -139,8 +138,8 @@ namespace ModuleManager
                         }
                         else
                         {
-                            modNotFound = true;
                             progress.NeedsUnsatisfiedBefore(url);
+                            continue;
                         }
                     }
                     else if (forMatch.Success)
@@ -152,8 +151,8 @@ namespace ModuleManager
                         }
                         else
                         {
-                            modNotFound = true;
                             progress.NeedsUnsatisfiedFor(url);
+                            continue;
                         }
                     }
                     else if (afterMatch.Success)
@@ -165,16 +164,14 @@ namespace ModuleManager
                         }
                         else
                         {
-                            modNotFound = true;
                             progress.NeedsUnsatisfiedAfter(url);
+                            continue;
                         }
                     }
                     else
                     {
                         thePass = list.legacyPatches;
                     }
-
-                    if (modNotFound) continue;
 
                     string newName;
                     if (theMatch == null)
