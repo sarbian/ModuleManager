@@ -23,29 +23,48 @@ namespace ModuleManager
                                 " has config.name == null");
                     }
 
+                    UrlDir.UrlConfig newMod;
+
                     if (currentMod.type.IndexOf(":NEEDS[", StringComparison.OrdinalIgnoreCase) >= 0)
                     {
-                        mod.parent.configs.Remove(currentMod);
                         string type = currentMod.type;
 
-                        if (!CheckNeeds(ref type, mods))
+                        if (CheckNeeds(ref type, mods))
+                        {
+
+                            ConfigNode copy = new ConfigNode(type);
+                            copy.ShallowCopyFrom(currentMod.config);
+                            int index = mod.parent.configs.IndexOf(currentMod);
+                            newMod = new UrlDir.UrlConfig(currentMod.parent, copy);
+                            mod.parent.configs[index] = newMod;
+                        }
+                        else
                         {
                             progress.NeedsUnsatisfiedRoot(currentMod);
+                            mod.parent.configs.Remove(currentMod);
                             continue;
                         }
-
-                        ConfigNode copy = new ConfigNode(type);
-                        copy.ShallowCopyFrom(currentMod.config);
-                        currentMod = new UrlDir.UrlConfig(currentMod.parent, copy);
-                        mod.parent.configs.Add(currentMod);
+                    }
+                    else
+                    {
+                        newMod = currentMod;
                     }
 
                     // Recursively check the contents
-                    PatchContext context = new PatchContext(currentMod, gameDatabaseRoot, logger, progress);
-                    CheckNeeds(new NodeStack(currentMod.config), context, mods);
+                    PatchContext context = new PatchContext(newMod, gameDatabaseRoot, logger, progress);
+                    CheckNeeds(new NodeStack(newMod.config), context, mods);
                 }
                 catch (Exception ex)
                 {
+                    try
+                    {
+                        mod.parent.configs.Remove(currentMod);
+                    }
+                    catch(Exception ex2)
+                    {
+                        logger.Exception("Exception while attempting to ensure config removed" ,ex2);
+                    }
+
                     try
                     {
                         progress.Exception(mod, "Exception while checking needs on root node :\n" + mod.PrettyPrint(), ex);

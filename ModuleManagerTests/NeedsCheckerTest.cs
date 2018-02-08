@@ -197,6 +197,31 @@ namespace ModuleManagerTests
         }
 
         [Fact]
+        public void TestCheckNeeds__Root__KeepsOrder()
+        {
+            string[] modList = { "mod1", "mod2" };
+
+            UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig(new ConfigNode("NODE_1"), file);
+            UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig(new ConfigNode("NODE_2:NEEDS[mod1]"), file);
+            UrlDir.UrlConfig config3 = UrlBuilder.CreateConfig(new ConfigNode("NODE_3:NEEDS[mod2]"), file);
+            UrlDir.UrlConfig config4 = UrlBuilder.CreateConfig(new ConfigNode("NODE_4"), file);
+
+            NeedsChecker.CheckNeeds(root, modList, progress, logger);
+
+            progress.DidNotReceiveWithAnyArgs().Exception(null, null);
+            progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
+            progress.DidNotReceiveWithAnyArgs().Error(null, null);
+
+            UrlDir.UrlConfig[] configs = root.AllConfigs.ToArray();
+            Assert.Equal(4, configs.Length);
+
+            Assert.Same(config1, configs[0]);
+            AssertUrlCorrect("NODE_2", config2, configs[1]);
+            AssertUrlCorrect("NODE_3", config3, configs[2]);
+            Assert.Same(config4, configs[3]);
+        }
+
+        [Fact]
         public void TestCheckNeeds__Nested()
         {
             string[] modList = { "mod1", "mod2" };
