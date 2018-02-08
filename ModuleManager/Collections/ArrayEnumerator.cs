@@ -9,7 +9,7 @@ namespace ModuleManager.Collections
         private readonly T[] array;
         private int index;
 
-        public ArrayEnumerator(T[] array)
+        public ArrayEnumerator(params T[] array)
         {
             this.array = array;
             index = -1;

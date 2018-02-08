@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using ModuleManager.Logging;
 using ModuleManager.Extensions;
@@ -14,13 +13,13 @@ namespace ModuleManager
         private readonly IPatchProgress progress;
 
         private readonly UrlDir databaseRoot;
-        private readonly PatchList patchList;
+        private readonly IPatchList patchList;
 
         private readonly UrlDir.UrlFile[] allConfigFiles;
 
         public string Activity { get; private set; }
 
-        public PatchApplier(PatchList patchList, UrlDir databaseRoot, IPatchProgress progress, IBasicLogger logger)
+        public PatchApplier(IPatchList patchList, UrlDir databaseRoot, IPatchProgress progress, IBasicLogger logger)
         {
             this.patchList = patchList;
             this.databaseRoot = databaseRoot;
@@ -32,29 +31,18 @@ namespace ModuleManager
 
         public void ApplyPatches()
         {
-            ApplyPatches(":FIRST", patchList.firstPatches);
-
-            // any node without a :pass
-            ApplyPatches(":LEGACY (default)", patchList.legacyPatches);
-
-            foreach (PatchList.ModPass pass in patchList.modPasses)
+            foreach (IPass pass in patchList)
             {
-                string upperModName = pass.name.ToUpper();
-                ApplyPatches($":BEFORE[{upperModName}]", pass.beforePatches);
-                ApplyPatches($":FOR[{upperModName}]", pass.forPatches);
-                ApplyPatches($":AFTER[{upperModName}]", pass.afterPatches);
+                ApplyPatches(pass);
             }
-
-            // :Final node
-            ApplyPatches(":FINAL", patchList.finalPatches);
         }
 
-        private void ApplyPatches(string stage, IEnumerable<Patch> patches)
+        private void ApplyPatches(IPass pass)
         {
-            logger.Info(stage + " pass");
-            Activity = "ModuleManager " + stage;
+            logger.Info(pass.Name + " pass");
+            Activity = "ModuleManager " + pass.Name;
 
-            foreach (Patch patch in patches)
+            foreach (Patch patch in pass)
             {
                 try
                 {
