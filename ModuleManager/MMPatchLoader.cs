@@ -175,7 +175,16 @@ namespace ModuleManager
 
                 yield return null;
 
-                PatchList patchList = PatchExtractor.SortAndExtractPatches(GameDatabase.Instance.root, mods, progress);
+                // PatchList patchList = PatchExtractor.SortAndExtractPatches(GameDatabase.Instance.root, mods, progress);
+
+                PatchList patchList = new PatchList(mods);
+                PatchExtractor extractor = new PatchExtractor(patchList, progress, logger);
+
+                // Have to convert to an array because we will be removing patches
+                foreach (UrlDir.UrlConfig urlConfig in GameDatabase.Instance.root.AllConfigs.ToArray())
+                {
+                    extractor.ExtractPatch(urlConfig);
+                }
 
                 #endregion
 

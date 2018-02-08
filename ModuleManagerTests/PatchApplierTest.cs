@@ -5,6 +5,8 @@ using NSubstitute;
 using UnityEngine;
 using TestUtils;
 using ModuleManager;
+using ModuleManager.Collections;
+using ModuleManager.Extensions;
 using ModuleManager.Logging;
 using ModuleManager.Progress;
 
@@ -17,7 +19,10 @@ namespace ModuleManagerTests
         private readonly string[] modList = new[] { "mod1", "mod2" };
         private UrlDir databaseRoot;
         private UrlDir.UrlFile file;
-        private readonly PatchList patchList;
+        private readonly IPass pass1;
+        private readonly IPass pass2;
+        private readonly IPass pass3;
+        private readonly IPatchList patchList;
         private readonly PatchApplier patchApplier;
 
         public PatchApplierTest()
@@ -26,7 +31,14 @@ namespace ModuleManagerTests
             progress = Substitute.For<IPatchProgress>();
             databaseRoot = UrlBuilder.CreateRoot();
             file = UrlBuilder.CreateFile("abc/def.cfg", databaseRoot);
-            patchList = new PatchList(modList);
+            pass1 = Substitute.For<IPass>();
+            pass2 = Substitute.For<IPass>();
+            pass3 = Substitute.For<IPass>();
+            pass1.Name.Returns(":PASS1");
+            pass2.Name.Returns(":PASS2");
+            pass3.Name.Returns(":PASS3");
+            patchList = Substitute.For<IPatchList>();
+            patchList.GetEnumerator().Returns(new ArrayEnumerator<IPass>(pass1, pass2, pass3));
             patchApplier = new PatchApplier(patchList, databaseRoot, progress, logger);
         }
 
@@ -56,15 +68,21 @@ namespace ModuleManagerTests
                 { "pqr", "stw" },
             });
 
-            patchList.firstPatches.Add(patch1);
+            pass1.GetEnumerator().Returns(new ArrayEnumerator<Patch>(patch1));
 
             patchApplier.ApplyPatches();
 
             EnsureNoErrors();
 
-            progress.Received(1).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
-            progress.Received().ApplyingUpdate(config2, patch1.urlConfig);
+            Received.InOrder(delegate
+            {
+                logger.Received().Log(LogType.Log, ":PASS1 pass");
+                progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+                progress.Received().ApplyingUpdate(config2, patch1.urlConfig);
+                progress.Received(1).PatchApplied();
+                logger.Received().Log(LogType.Log, ":PASS2 pass");
+                logger.Received().Log(LogType.Log, ":PASS3 pass");
+            });
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(3, allConfigs.Length);
@@ -116,15 +134,21 @@ namespace ModuleManagerTests
                 { "ccc", "005" },
             });
 
-            patchList.firstPatches.Add(patch1);
+            pass1.GetEnumerator().Returns(new ArrayEnumerator<Patch>(patch1));
 
             patchApplier.ApplyPatches();
 
             EnsureNoErrors();
 
-            progress.Received(1).PatchApplied();
-            progress.Received().ApplyingCopy(config1, patch1.urlConfig);
-            progress.Received().ApplyingCopy(config2, patch1.urlConfig);
+            Received.InOrder(delegate
+            {
+                logger.Received().Log(LogType.Log, ":PASS1 pass");
+                progress.Received().ApplyingCopy(config1, patch1.urlConfig);
+                progress.Received().ApplyingCopy(config2, patch1.urlConfig);
+                progress.Received(1).PatchApplied();
+                logger.Received().Log(LogType.Log, ":PASS2 pass");
+                logger.Received().Log(LogType.Log, ":PASS3 pass");
+            });
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(5, allConfigs.Length);
@@ -182,15 +206,21 @@ namespace ModuleManagerTests
 
             Patch patch1 = CreatePatch(Command.Delete, new TestConfigNode("-PART"));
 
-            patchList.firstPatches.Add(patch1);
+            pass1.GetEnumerator().Returns(new ArrayEnumerator<Patch>(patch1));
 
             patchApplier.ApplyPatches();
 
             EnsureNoErrors();
 
-            progress.Received(1).PatchApplied();
-            progress.Received().ApplyingDelete(config1, patch1.urlConfig);
-            progress.Received().ApplyingDelete(config2, patch1.urlConfig);
+            Received.InOrder(delegate
+            {
+                logger.Received().Log(LogType.Log, ":PASS1 pass");
+                progress.Received().ApplyingDelete(config1, patch1.urlConfig);
+                progress.Received().ApplyingDelete(config2, patch1.urlConfig);
+                progress.Received(1).PatchApplied();
+                logger.Received().Log(LogType.Log, ":PASS2 pass");
+                logger.Received().Log(LogType.Log, ":PASS3 pass");
+            });
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(1, allConfigs.Length);
@@ -244,18 +274,24 @@ namespace ModuleManagerTests
 
             Patch patch3 = CreatePatch(Command.Delete, new TestConfigNode("!PART[004]"));
 
-            patchList.firstPatches.Add(patch1);
-            patchList.firstPatches.Add(patch2);
-            patchList.firstPatches.Add(patch3);
+            pass1.GetEnumerator().Returns(new ArrayEnumerator<Patch>(patch1, patch2, patch3));
 
             patchApplier.ApplyPatches();
 
             EnsureNoErrors();
 
-            progress.Received(3).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
-            progress.Received().ApplyingCopy(config2, patch2.urlConfig);
-            progress.Received().ApplyingDelete(config3, patch3.urlConfig);
+            Received.InOrder(delegate
+            {
+                logger.Received().Log(LogType.Log, ":PASS1 pass");
+                progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+                progress.Received().PatchApplied();
+                progress.Received().ApplyingCopy(config2, patch2.urlConfig);
+                progress.Received().PatchApplied();
+                progress.Received().ApplyingDelete(config3, patch3.urlConfig);
+                progress.Received().PatchApplied();
+                logger.Received().Log(LogType.Log, ":PASS2 pass");
+                logger.Received().Log(LogType.Log, ":PASS3 pass");
+            });
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(4, allConfigs.Length);
@@ -329,18 +365,24 @@ namespace ModuleManagerTests
 
             Patch patch3 = CreatePatch(Command.Delete, new TestConfigNode("!PART[0*4]"));
 
-            patchList.firstPatches.Add(patch1);
-            patchList.firstPatches.Add(patch2);
-            patchList.firstPatches.Add(patch3);
+            pass1.GetEnumerator().Returns(new ArrayEnumerator<Patch>(patch1, patch2, patch3));
 
             patchApplier.ApplyPatches();
 
             EnsureNoErrors();
 
-            progress.Received(3).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
-            progress.Received().ApplyingCopy(config2, patch2.urlConfig);
-            progress.Received().ApplyingDelete(config3, patch3.urlConfig);
+            Received.InOrder(delegate
+            {
+                logger.Received().Log(LogType.Log, ":PASS1 pass");
+                progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+                progress.Received().PatchApplied();
+                progress.Received().ApplyingCopy(config2, patch2.urlConfig);
+                progress.Received().PatchApplied();
+                progress.Received().ApplyingDelete(config3, patch3.urlConfig);
+                progress.Received().PatchApplied();
+                logger.Received().Log(LogType.Log, ":PASS2 pass");
+                logger.Received().Log(LogType.Log, ":PASS3 pass");
+            });
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(4, allConfigs.Length);
@@ -399,15 +441,21 @@ namespace ModuleManagerTests
                 { "ddd", "006" },
             });
 
-            patchList.firstPatches.Add(patch1);
+            pass1.GetEnumerator().Returns(new ArrayEnumerator<Patch>(patch1));
 
             patchApplier.ApplyPatches();
 
             EnsureNoErrors();
 
-            progress.Received(1).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
-            progress.Received().ApplyingUpdate(config2, patch1.urlConfig);
+            Received.InOrder(delegate
+            {
+                logger.Received().Log(LogType.Log, ":PASS1 pass");
+                progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+                progress.Received().ApplyingUpdate(config2, patch1.urlConfig);
+                progress.Received().PatchApplied();
+                logger.Received().Log(LogType.Log, ":PASS2 pass");
+                logger.Received().Log(LogType.Log, ":PASS3 pass");
+            });
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(3, allConfigs.Length);
@@ -487,30 +535,38 @@ namespace ModuleManagerTests
                 { "jjj", "010" },
             });
 
-            patchList.firstPatches.Add(patch1);
-            patchList.legacyPatches.Add(patch2);
-            patchList.modPasses["mod1"].beforePatches.Add(patch3);
-            patchList.modPasses["mod1"].forPatches.Add(patch4);
-            patchList.modPasses["mod1"].afterPatches.Add(patch5);
-            patchList.modPasses["mod2"].beforePatches.Add(patch6);
-            patchList.modPasses["mod2"].forPatches.Add(patch7);
-            patchList.modPasses["mod2"].afterPatches.Add(patch8);
-            patchList.finalPatches.Add(patch9);
+            pass1.GetEnumerator().Returns(new ArrayEnumerator<Patch>(patch1, patch2, patch3));
+            pass2.GetEnumerator().Returns(new ArrayEnumerator<Patch>(patch4, patch5, patch6));
+            pass3.GetEnumerator().Returns(new ArrayEnumerator<Patch>(patch7, patch8, patch9));
 
             patchApplier.ApplyPatches();
 
             EnsureNoErrors();
 
-            progress.Received(9).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
-            progress.Received().ApplyingUpdate(config1, patch2.urlConfig);
-            progress.Received().ApplyingUpdate(config1, patch3.urlConfig);
-            progress.Received().ApplyingUpdate(config1, patch4.urlConfig);
-            progress.Received().ApplyingUpdate(config1, patch5.urlConfig);
-            progress.Received().ApplyingUpdate(config1, patch6.urlConfig);
-            progress.Received().ApplyingUpdate(config1, patch7.urlConfig);
-            progress.Received().ApplyingUpdate(config1, patch8.urlConfig);
-            progress.Received().ApplyingUpdate(config1, patch9.urlConfig);
+            Received.InOrder(delegate
+            {
+                logger.Received().Log(LogType.Log, ":PASS1 pass");
+                progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+                progress.Received().PatchApplied();
+                progress.Received().ApplyingUpdate(config1, patch2.urlConfig);
+                progress.Received().PatchApplied();
+                progress.Received().ApplyingUpdate(config1, patch3.urlConfig);
+                progress.Received().PatchApplied();
+                logger.Received().Log(LogType.Log, ":PASS2 pass");
+                progress.Received().ApplyingUpdate(config1, patch4.urlConfig);
+                progress.Received().PatchApplied();
+                progress.Received().ApplyingUpdate(config1, patch5.urlConfig);
+                progress.Received().PatchApplied();
+                progress.Received().ApplyingUpdate(config1, patch6.urlConfig);
+                progress.Received().PatchApplied();
+                logger.Received().Log(LogType.Log, ":PASS3 pass");
+                progress.Received().ApplyingUpdate(config1, patch7.urlConfig);
+                progress.Received().PatchApplied();
+                progress.Received().ApplyingUpdate(config1, patch8.urlConfig);
+                progress.Received().PatchApplied();
+                progress.Received().ApplyingUpdate(config1, patch9.urlConfig);
+                progress.Received().PatchApplied();
+            });
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(1, allConfigs.Length);
@@ -573,18 +629,24 @@ namespace ModuleManagerTests
 
             Patch patch3 = CreatePatch(Command.Delete, new TestConfigNode("!PART:HAS[#ccc[005]]"));
 
-            patchList.firstPatches.Add(patch1);
-            patchList.firstPatches.Add(patch2);
-            patchList.firstPatches.Add(patch3);
+            pass1.GetEnumerator().Returns(new ArrayEnumerator<Patch>(patch1, patch2, patch3));
 
             patchApplier.ApplyPatches();
 
             EnsureNoErrors();
 
-            progress.Received(3).PatchApplied();
-            progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
-            progress.Received().ApplyingCopy(config2, patch2.urlConfig);
-            progress.Received().ApplyingDelete(config3, patch3.urlConfig);
+            Received.InOrder(delegate
+            {
+                logger.Received().Log(LogType.Log, ":PASS1 pass");
+                progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+                progress.Received().PatchApplied();
+                progress.Received().ApplyingCopy(config2, patch2.urlConfig);
+                progress.Received().PatchApplied();
+                progress.Received().ApplyingDelete(config3, patch3.urlConfig);
+                progress.Received().PatchApplied();
+                logger.Received().Log(LogType.Log, ":PASS2 pass");
+                logger.Received().Log(LogType.Log, ":PASS3 pass");
+            });
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(4, allConfigs.Length);
@@ -632,16 +694,24 @@ namespace ModuleManagerTests
                 new ConfigNode("MM_PATCH_LOOP"),
             });
 
-            patchList.firstPatches.Add(patch1);
+            pass1.GetEnumerator().Returns(new ArrayEnumerator<Patch>(patch1));
 
             patchApplier.ApplyPatches();
 
             EnsureNoErrors();
 
-            progress.Received(1).PatchApplied();
-            progress.Received(4).ApplyingUpdate(config1, patch1.urlConfig);
-
-            logger.Received().Log(LogType.Log, "Looping on abc/def/@PART:HAS[~aaa[>10]] to abc/def/PART");
+            Received.InOrder(delegate
+            {
+                logger.Received().Log(LogType.Log, ":PASS1 pass");
+                logger.Received().Log(LogType.Log, "Looping on abc/def/@PART:HAS[~aaa[>10]] to abc/def/PART");
+                progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+                progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+                progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+                progress.Received().ApplyingUpdate(config1, patch1.urlConfig);
+                progress.Received().PatchApplied();
+                logger.Received().Log(LogType.Log, ":PASS2 pass");
+                logger.Received().Log(LogType.Log, ":PASS3 pass");
+            });
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(1, allConfigs.Length);
@@ -656,55 +726,6 @@ namespace ModuleManagerTests
                 { "bbb", "002" },
             }, allConfigs[0].config);
         }
-
-        /*
-        [Fact]
-        public void TestApplyPatches__InvalidOperator()
-        {
-            UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig(new TestConfigNode("PART")
-            {
-                { "name", "000" },
-                { "aaa", "1" },
-            }, file);
-
-            UrlDir.UrlConfig patch1 = new UrlDir.UrlConfig(file, new ConfigNode("%PART"));
-            UrlDir.UrlConfig patch2 = new UrlDir.UrlConfig(file, new ConfigNode("|PART"));
-            UrlDir.UrlConfig patch3 = new UrlDir.UrlConfig(file, new ConfigNode("#PART"));
-            UrlDir.UrlConfig patch4 = new UrlDir.UrlConfig(file, new ConfigNode("*PART"));
-            UrlDir.UrlConfig patch5 = new UrlDir.UrlConfig(file, new ConfigNode("&PART"));
-
-            patchList.firstPatches.Add(patch1);
-            patchList.firstPatches.Add(patch2);
-            patchList.firstPatches.Add(patch3);
-            patchList.firstPatches.Add(patch4);
-            patchList.firstPatches.Add(patch5);
-
-            patchApplier.ApplyPatches();
-
-            progress.DidNotReceiveWithAnyArgs().Error(null, null);
-            progress.DidNotReceiveWithAnyArgs().Exception(null, null);
-            progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
-
-            logger.DidNotReceive().Log(LogType.Error, Arg.Any<string>());
-            logger.DidNotReceiveWithAnyArgs().Exception(null, null);
-
-            logger.Received().Log(LogType.Warning, "Invalid command encountered on a patch: abc/def/%PART");
-            logger.Received().Log(LogType.Warning, "Invalid command encountered on a patch: abc/def/|PART");
-            logger.Received().Log(LogType.Warning, "Invalid command encountered on a patch: abc/def/#PART");
-            logger.Received().Log(LogType.Warning, "Invalid command encountered on a patch: abc/def/*PART");
-            logger.Received().Log(LogType.Warning, "Invalid command encountered on a patch: abc/def/&PART");
-
-            UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
-            Assert.Equal(1, allConfigs.Length);
-
-            AssertNodesEqual(new TestConfigNode("PART")
-            {
-                { "name", "000" },
-                { "aaa", "1" },
-            }, allConfigs[0].config);
-
-        }
-        */
 
         [Fact]
         public void TestApplyPatches__Copy__NameNotChanged()
@@ -721,21 +742,27 @@ namespace ModuleManagerTests
                 { "bbb", "012" },
             });
 
-            patchList.firstPatches.Add(patch1);
+            pass1.GetEnumerator().Returns(new ArrayEnumerator<Patch>(patch1));
 
             patchApplier.ApplyPatches();
             
             progress.DidNotReceiveWithAnyArgs().Exception(null, null);
             progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
 
-            progress.Received().Error(patch1.urlConfig, "Error - when applying copy abc/def/+PART to abc/def/PART - the copy needs to have a different name than the parent (use @name = xxx)");
-
-            logger.DidNotReceive().Log(LogType.Warning, Arg.Any<string>());
-            logger.DidNotReceive().Log(LogType.Error, Arg.Any<string>());
             logger.DidNotReceiveWithAnyArgs().Exception(null, null);
-
-            progress.Received(1).PatchApplied();
+            
+            progress.DidNotReceiveWithAnyArgs().ApplyingUpdate(null, null);
             progress.DidNotReceiveWithAnyArgs().ApplyingCopy(null, null);
+            progress.DidNotReceiveWithAnyArgs().ApplyingDelete(null, null);
+
+            Received.InOrder(delegate
+            {
+                logger.Received().Log(LogType.Log, ":PASS1 pass");
+                progress.Received().Error(patch1.urlConfig, "Error - when applying copy abc/def/+PART to abc/def/PART - the copy needs to have a different name than the parent (use @name = xxx)");
+                progress.Received().PatchApplied();
+                logger.Received().Log(LogType.Log, ":PASS2 pass");
+                logger.Received().Log(LogType.Log, ":PASS3 pass");
+            });
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(1, allConfigs.Length);
@@ -765,7 +792,13 @@ namespace ModuleManagerTests
 
         private Patch CreatePatch(Command command, ConfigNode node)
         {
-            return new Patch(new UrlDir.UrlConfig(file, node), command, node);
+            ConfigNode newNode = node;
+            if (command != Command.Insert)
+            {
+                newNode = new ConfigNode(node.name.Substring(1));
+                newNode.ShallowCopyFrom(node);
+            }
+            return new Patch(new UrlDir.UrlConfig(file, node), command, newNode);
         }
     }
 }
