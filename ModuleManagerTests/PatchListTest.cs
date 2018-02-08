@@ -1,86 +1,304 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Xunit;
+using TestUtils;
 using ModuleManager;
 
 namespace ModuleManagerTests
 {
     public class PatchListTest
     {
-        [Fact]
-        public void TestConstructor()
-        {
-            PatchList list = new PatchList(new string[0]);
+        private UrlDir databaseRoot;
+        private UrlDir.UrlFile file;
+        private PatchList patchList;
 
-            Assert.NotNull(list.firstPatches);
-            Assert.NotNull(list.legacyPatches);
-            Assert.NotNull(list.finalPatches);
-            Assert.NotNull(list.modPasses);
+        public PatchListTest()
+        {
+            databaseRoot = UrlBuilder.CreateRoot();
+            file = UrlBuilder.CreateFile("abc/def.cfg", databaseRoot);
+
+            patchList = new PatchList(new[] { "mod1", "mod2" });
         }
 
         [Fact]
-        public void TestModPasses__HasMod()
+        public void Test__Lifecycle()
         {
-            PatchList list = new PatchList(new[] { "mod1", "Mod2", "MOD3" });
+            Patch patch01 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch02 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch03 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch04 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch05 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch06 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch07 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch08 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch09 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch10 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch11 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch12 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch13 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch14 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch15 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch16 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch17 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            Patch patch18 = CreatePatch(Command.Edit, new ConfigNode("blah"));
 
-            PatchList.ModPassCollection collection = list.modPasses;
+            patchList.AddFirstPatch(patch01);
+            patchList.AddFirstPatch(patch02);
+            patchList.AddLegacyPatch(patch03);
+            patchList.AddLegacyPatch(patch04);
+            patchList.AddBeforePatch("mod1", patch05);
+            patchList.AddBeforePatch("MOD1", patch06);
+            patchList.AddForPatch("mod1", patch07);
+            patchList.AddForPatch("MOD1", patch08);
+            patchList.AddAfterPatch("mod1", patch09);
+            patchList.AddAfterPatch("MOD1", patch10);
+            patchList.AddBeforePatch("mod2", patch11);
+            patchList.AddBeforePatch("MOD2", patch12);
+            patchList.AddForPatch("mod2", patch13);
+            patchList.AddForPatch("MOD2", patch14);
+            patchList.AddAfterPatch("mod2", patch15);
+            patchList.AddAfterPatch("MOD2", patch16);
+            patchList.AddFinalPatch(patch17);
+            patchList.AddFinalPatch(patch18);
 
-            Assert.True(collection.HasMod("mod1"));
-            Assert.True(collection.HasMod("Mod1"));
-            Assert.True(collection.HasMod("MOD1"));
+            IPass[] passes = patchList.ToArray();
+            
+            Assert.Equal(":FIRST", passes[0].Name);
+            Assert.Equal(new[] { patch01, patch02 }, passes[0]);
 
-            Assert.True(collection.HasMod("mod2"));
-            Assert.True(collection.HasMod("Mod2"));
-            Assert.True(collection.HasMod("MOD2"));
+            Assert.Equal(":LEGACY (default)", passes[1].Name);
+            Assert.Equal(new[] { patch03, patch04 }, passes[1]);
 
-            Assert.True(collection.HasMod("mod3"));
-            Assert.True(collection.HasMod("Mod3"));
-            Assert.True(collection.HasMod("MOD3"));
+            Assert.Equal(":BEFORE[MOD1]", passes[2].Name);
+            Assert.Equal(new[] { patch05, patch06 }, passes[2]);
 
-            Assert.False(collection.HasMod("mod4"));
-            Assert.False(collection.HasMod("Mod4"));
-            Assert.False(collection.HasMod("MOD4"));
+            Assert.Equal(":FOR[MOD1]", passes[3].Name);
+            Assert.Equal(new[] { patch07, patch08 }, passes[3]);
+
+            Assert.Equal(":AFTER[MOD1]", passes[4].Name);
+            Assert.Equal(new[] { patch09, patch10 }, passes[4]);
+
+            Assert.Equal(":BEFORE[MOD2]", passes[5].Name);
+            Assert.Equal(new[] { patch11, patch12 }, passes[5]);
+
+            Assert.Equal(":FOR[MOD2]", passes[6].Name);
+            Assert.Equal(new[] { patch13, patch14 }, passes[6]);
+
+            Assert.Equal(":AFTER[MOD2]", passes[7].Name);
+            Assert.Equal(new[] { patch15, patch16 }, passes[7]);
+
+            Assert.Equal(":FINAL", passes[8].Name);
+            Assert.Equal(new[] { patch17, patch18 }, passes[8]);
         }
 
         [Fact]
-        public void TestModPasses__Accessor()
+        public void TestHasMod__True()
         {
-            PatchList list = new PatchList(new[] { "mod1", "mod2" });
+            patchList = new PatchList(new[] { "mod1", "Mod2", "MOD3" });
 
-            PatchList.ModPass pass1 = list.modPasses["mod1"];
-            Assert.NotNull(pass1);
-            Assert.Equal("mod1", pass1.name);
-            Assert.NotNull(pass1.beforePatches);
-            Assert.Equal(0, pass1.beforePatches.Capacity);
-            Assert.NotNull(pass1.forPatches);
-            Assert.Equal(0, pass1.forPatches.Capacity);
-            Assert.NotNull(pass1.afterPatches);
-            Assert.Equal(0, pass1.afterPatches.Capacity);
+            Assert.True(patchList.HasMod("mod1"));
+            Assert.True(patchList.HasMod("Mod1"));
+            Assert.True(patchList.HasMod("MOD1"));
+            Assert.True(patchList.HasMod("mod2"));
+            Assert.True(patchList.HasMod("Mod2"));
+            Assert.True(patchList.HasMod("MOD2"));
+            Assert.True(patchList.HasMod("mod3"));
+            Assert.True(patchList.HasMod("Mod3"));
+            Assert.True(patchList.HasMod("MOD3"));
+        }
 
-            PatchList.ModPass pass2 = list.modPasses["mod2"];
-            Assert.NotNull(pass2);
-            Assert.Equal("mod2", pass2.name);
-            Assert.NotNull(pass2.beforePatches);
-            Assert.Equal(0, pass2.beforePatches.Capacity);
-            Assert.NotNull(pass2.forPatches);
-            Assert.Equal(0, pass2.forPatches.Capacity);
-            Assert.NotNull(pass2.afterPatches);
-            Assert.Equal(0, pass2.afterPatches.Capacity);
+        [Fact]
+        public void TestHasMod__False()
+        {
+            Assert.False(patchList.HasMod("mod3"));
+            Assert.False(patchList.HasMod("Mod3"));
+            Assert.False(patchList.HasMod("MOD3"));
+        }
 
-            Assert.Throws<KeyNotFoundException>(delegate
+        [Fact]
+        public void TestHasMod__Null()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                PatchList.ModPass mod3 = list.modPasses["mod3"];
+                Assert.True(patchList.HasMod(null));
             });
+
+            Assert.Equal("mod", ex.ParamName);
         }
 
         [Fact]
-        public void TestModPasses__Enumeration()
+        public void TestHasMod__Blank()
         {
-            PatchList list = new PatchList(new[] { "mod1", "mod2" });
+            ArgumentException ex = Assert.Throws<ArgumentException>(delegate
+            {
+                Assert.True(patchList.HasMod(""));
+            });
 
-            PatchList.ModPass[] passes = new PatchList.ModPass[] { list.modPasses["mod1"], list.modPasses["mod2"] };
+            Assert.Equal("can't be empty\r\nParameter name: mod", ex.Message);
+            Assert.Equal("mod", ex.ParamName);
+        }
 
-            Assert.Equal(passes, list.modPasses);
+        [Fact]
+        public void TestAddLegacyPatch__Null()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                patchList.AddLegacyPatch(null);
+            });
+
+            Assert.Equal("patch", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestAddBeforePatch__ModNull()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                patchList.AddBeforePatch(null, CreatePatch(Command.Edit, new ConfigNode()));
+            });
+
+            Assert.Equal("mod", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestAddBeforePatch__ModBlank()
+        {
+            ArgumentException ex = Assert.Throws<ArgumentException>(delegate
+            {
+                patchList.AddBeforePatch("", CreatePatch(Command.Edit, new ConfigNode()));
+            });
+
+            Assert.Equal("can't be empty\r\nParameter name: mod", ex.Message);
+            Assert.Equal("mod", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestAddBeforePatch__PatchNull()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                patchList.AddBeforePatch("mod1", null);
+            });
+
+            Assert.Equal("patch", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestAddBeforePatch__ModDoesNotExist()
+        {
+            KeyNotFoundException ex = Assert.Throws<KeyNotFoundException>(delegate
+            {
+                patchList.AddBeforePatch("mod3", CreatePatch(Command.Edit, new ConfigNode()));
+            });
+
+            Assert.Equal("Mod 'mod3' not found", ex.Message);
+        }
+
+        [Fact]
+        public void TestAddForPatch__ModNull()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                patchList.AddForPatch(null, CreatePatch(Command.Edit, new ConfigNode()));
+            });
+
+            Assert.Equal("mod", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestAddForPatch__ModBlank()
+        {
+            ArgumentException ex = Assert.Throws<ArgumentException>(delegate
+            {
+                patchList.AddForPatch("", CreatePatch(Command.Edit, new ConfigNode()));
+            });
+
+            Assert.Equal("can't be empty\r\nParameter name: mod", ex.Message);
+            Assert.Equal("mod", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestAddForPatch__PatchNull()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                patchList.AddForPatch("mod1", null);
+            });
+
+            Assert.Equal("patch", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestAddForPatch__ModDoesNotExist()
+        {
+            KeyNotFoundException ex = Assert.Throws<KeyNotFoundException>(delegate
+            {
+                patchList.AddForPatch("mod3", CreatePatch(Command.Edit, new ConfigNode()));
+            });
+
+            Assert.Equal("Mod 'mod3' not found", ex.Message);
+        }
+
+        [Fact]
+        public void TestAddAfterPatch__ModNull()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                patchList.AddAfterPatch(null, CreatePatch(Command.Edit, new ConfigNode()));
+            });
+
+            Assert.Equal("mod", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestAddAfterPatch__ModBlank()
+        {
+            ArgumentException ex = Assert.Throws<ArgumentException>(delegate
+            {
+                patchList.AddAfterPatch("", CreatePatch(Command.Edit, new ConfigNode()));
+            });
+
+            Assert.Equal("can't be empty\r\nParameter name: mod", ex.Message);
+            Assert.Equal("mod", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestAddAfterPatch__PatchNull()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                patchList.AddAfterPatch("mod1", null);
+            });
+
+            Assert.Equal("patch", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestAddAddafterPatch__ModDoesNotExist()
+        {
+            KeyNotFoundException ex = Assert.Throws<KeyNotFoundException>(delegate
+            {
+                patchList.AddAfterPatch("mod3", CreatePatch(Command.Edit, new ConfigNode()));
+            });
+
+            Assert.Equal("Mod 'mod3' not found", ex.Message);
+        }
+
+        [Fact]
+        public void TestAddFinalPatch__Null()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                patchList.AddFinalPatch(null);
+            });
+
+            Assert.Equal("patch", ex.ParamName);
+        }
+
+        private Patch CreatePatch(Command command, ConfigNode node)
+        {
+            return new Patch(new UrlDir.UrlConfig(file, node), command, node);
         }
     }
 }
