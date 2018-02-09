@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -757,28 +758,29 @@ namespace ModuleManager
                     
                     if (assignMatch.Groups[2].Success)
                     {
-                        if (double.TryParse(modVal.value, out double s) && double.TryParse(val.value, out double os))
+                        if (double.TryParse(modVal.value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double s) 
+                            && double.TryParse(val.value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double os))
                         {
                             switch (assignMatch.Groups[2].Value[0])
                             {
                                 case '*':
-                                    val.value = (os * s).ToString();
+                                    val.value = (os * s).ToString(CultureInfo.InvariantCulture);
                                     break;
 
                                 case '/':
-                                    val.value = (os / s).ToString();
+                                    val.value = (os / s).ToString(CultureInfo.InvariantCulture);
                                     break;
 
                                 case '+':
-                                    val.value = (os + s).ToString();
+                                    val.value = (os + s).ToString(CultureInfo.InvariantCulture);
                                     break;
 
                                 case '-':
-                                    val.value = (os - s).ToString();
+                                    val.value = (os - s).ToString(CultureInfo.InvariantCulture);
                                     break;
 
                                 case '!':
-                                    val.value = Math.Pow(os, s).ToString();
+                                    val.value = Math.Pow(os, s).ToString(CultureInfo.InvariantCulture);
                                     break;
                             }
                         }
@@ -1636,28 +1638,29 @@ namespace ModuleManager
                             return null;
                         }
                     }
-                    else if (double.TryParse(value, out double s) && double.TryParse(oValue, out double os))
+                    else if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double s) 
+                             && double.TryParse(oValue, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double os))
                     {
                         switch (op)
                         {
                             case '*':
-                                value = (os * s).ToString();
+                                value = (os * s).ToString(CultureInfo.InvariantCulture);
                                 break;
 
                             case '/':
-                                value = (os / s).ToString();
+                                value = (os / s).ToString(CultureInfo.InvariantCulture);
                                 break;
 
                             case '+':
-                                value = (os + s).ToString();
+                                value = (os + s).ToString(CultureInfo.InvariantCulture);
                                 break;
 
                             case '-':
-                                value = (os - s).ToString();
+                                value = (os - s).ToString(CultureInfo.InvariantCulture);
                                 break;
 
                             case '!':
-                                value = Math.Pow(os, s).ToString();
+                                value = Math.Pow(os, s).ToString(CultureInfo.InvariantCulture);
                                 break;
                         }
                     }
@@ -1805,7 +1808,7 @@ namespace ModuleManager
         {
             double val = 0;
             bool compare = value.Length > 1 && (value[0] == '<' || value[0] == '>');
-            compare = compare && Double.TryParse(value.Substring(1), out val);
+            compare = compare && double.TryParse(value.Substring(1), NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out val);
 
             string[] values = node.GetValues(type);
             for (int i = 0; i < values.Length; i++)
@@ -1813,7 +1816,7 @@ namespace ModuleManager
                 if (!compare && WildcardMatch(values[i], value))
                     return true;
 
-                if (compare && Double.TryParse(values[i], out double val2)
+                if (compare && double.TryParse(values[i], NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double val2)
                     && ((value[0] == '<' && val2 < val) || (value[0] == '>' && val2 > val)))
                 {
                     return true;
