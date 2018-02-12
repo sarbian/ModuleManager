@@ -477,6 +477,38 @@ abc/def/SOME_NODE:NEEDS[mod3]
             Assert.Equal(new[] { config1, config3 }, root.AllConfigs);
         }
 
+        [Fact]
+        public void TestCheckNeeds__AllNeedsSatisfied()
+        {
+            string[] modList = { "mod1", "mod2" };
+
+            UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig(new TestConfigNode("SOME_NODE")
+            {
+                { "value", "1" },
+            }, file);
+            UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig(new TestConfigNode("@SOME_NODE")
+            {
+                { "@value", "2" },
+                { "@value:NEEDS[mod1] +", "4" },
+            }, file);
+
+            NeedsChecker.CheckNeeds(root, modList, progress, logger);
+
+            progress.DidNotReceiveWithAnyArgs().Exception(null, null);
+            progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
+            progress.DidNotReceiveWithAnyArgs().Error(null, null);
+
+            ConfigNode node = root.AllConfigs.ToArray().Last().config;
+            Assert.Equal("@SOME_NODE", node.name);
+            Assert.Equal("@value", node.values[0].name);
+            Assert.Equal("2", node.values[0].value);
+            Assert.Equal("@value +", node.values[1].name);
+            Assert.Equal("4", node.values[1].value);
+            
+            progress.DidNotReceiveWithAnyArgs().NeedsUnsatisfiedValue(null, null, null);
+
+        }
+
         private UrlDir.UrlConfig CreateConfig(string name)
         {
             ConfigNode node = new TestConfigNode(name)
