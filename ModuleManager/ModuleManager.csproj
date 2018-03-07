@@ -136,11 +136,6 @@
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
-    <PostBuildEvent>echo copying to "%25KSPDIR%25\GameData\"
-"C:\Games\Tools\pdb2mdb\pdb2mdb.exe" $(TargetFileName)
-xcopy /Y "$(TargetPath)" "C:\Games\ksp-win_dev\GameData\"
-xcopy /Y "$(TargetDir)$(TargetName).pdb" "C:\Games\ksp-win_dev\GameData\"
-xcopy /Y "$(TargetDir)$(TargetName).dll.mdb" "C:\Games\ksp-win_dev\GameData\"
-del "C:\Games\ksp-win_dev\GameData\ModuleManager.ConfigCache"</PostBuildEvent>
+    <PostBuildEvent>sh -c "TARGET_PATH='$(TargetPath)' TARGET_DIR='$(TargetDir)' TARGET_NAME='$(TargetName)' sh '$(ProjectDir)/copy_build.sh'"</PostBuildEvent>
   </PropertyGroup>
 </Project>

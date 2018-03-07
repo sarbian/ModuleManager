@@ -79,9 +79,7 @@ namespace ModuleManager
 
         private static void CheckNeeds(NodeStack stack, PatchContext context, IEnumerable<string> mods)
         {
-            bool needsCopy = false;
             ConfigNode original = stack.value;
-            ConfigNode copy = new ConfigNode(original.name);
             for (int i = 0; i < original.values.Count; ++i)
             {
                 ConfigNode.Value val = original.values[i];
@@ -90,11 +88,12 @@ namespace ModuleManager
                 {
                     if (CheckNeeds(ref valname, mods))
                     {
-                        copy.AddValue(valname, val.value);
+                        val.name = valname;
                     }
                     else
                     {
-                        needsCopy = true;
+                        original.values.Remove(val);
+                        i--;
                         context.progress.NeedsUnsatisfiedValue(context.patchUrl, stack, val.name);
                     }
                 }
@@ -127,11 +126,11 @@ namespace ModuleManager
                     {
                         node.name = nodeName;
                         CheckNeeds(stack.Push(node), context, mods);
-                        copy.AddNode(node);
                     }
                     else
                     {
-                        needsCopy = true;
+                        original.nodes.Remove(node);
+                        i--;
                         context.progress.NeedsUnsatisfiedNode(context.patchUrl, stack.Push(node));
                     }
                 }
@@ -146,9 +145,6 @@ namespace ModuleManager
                     throw;
                 }
             }
-
-            if (needsCopy)
-                original.ShallowCopyFrom(copy);
         }
 
         /// <summary>
