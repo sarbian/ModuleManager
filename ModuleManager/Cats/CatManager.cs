@@ -100,8 +100,10 @@ namespace ModuleManager.Cats
             trail.material.mainTexture = rainbow;
             trail.time = 1.5f;
             trail.startWidth = 0.6f * scale * rainbow.height;
-            trail.endWidth = 0.6f * scale * rainbow.height * 0.9f;
 
+            trail.endColor = Color.white.A(0.1f);
+            trail.colorGradient = new Gradient {alphaKeys = new GradientAlphaKey[3] { new GradientAlphaKey(1, 0), new GradientAlphaKey(1, 0.75f), new GradientAlphaKey(0.2f, 1)  }};
+            trail.Clear();
             cat.layer = LayerMask.NameToLayer("UI");
 
             catAnimator.frames = catFrames;

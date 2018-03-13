@@ -72,8 +72,10 @@ namespace ModuleManager.Cats
 
                 transform.localScale *= scale;
                 TrailRenderer trail = gameObject.GetComponent<TrailRenderer>();
+                trail.colorGradient = new Gradient() {alphaKeys = new GradientAlphaKey[3] { new GradientAlphaKey(1, 0), new GradientAlphaKey(1, 0.7f), new GradientAlphaKey(0, 1)  }};
                 trail.startWidth *= scale;
-                trail.endWidth *= scale;
+                //trail.endWidth *= scale;
+                trail.widthCurve = new AnimationCurve(new Keyframe(0, trail.startWidth ), new Keyframe(0.7f, trail.startWidth), new Keyframe(1, trail.startWidth * 0.9f));
 
                 //Mass = factor * 2E16;
 

@@ -21,12 +21,13 @@ namespace ModuleManager.Cats
         private float time = 5;
         private float trailTime = 0.5f;
 
+        private int frames = 1;
+
         // Use this for initialization
         void Start()
         {
             trail = this.GetComponent<TrailRenderer>();
             trail.sortingOrder = 2;
-
 
             spriteRenderer = this.GetComponent<SpriteRenderer>();
 
@@ -38,6 +39,7 @@ namespace ModuleManager.Cats
 
             totalLenth = (int) (Screen.width / time * trail.time) + 150;
             trail.time = trailTime;
+            trail.widthCurve = new AnimationCurve(new Keyframe(0, trail.startWidth ), new Keyframe(0.7f, trail.startWidth), new Keyframe(1, trail.startWidth * 0.9f));
         }
 
         void Update()

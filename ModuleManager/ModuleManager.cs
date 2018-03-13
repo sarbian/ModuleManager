@@ -24,6 +24,7 @@ namespace ModuleManager
         public bool showUI = false;
 
         private Rect windowPos = new Rect(80f, 60f, 240f, 40f);
+        private float textPos = 0;
 
         private string version = "";
 
@@ -63,7 +64,24 @@ namespace ModuleManager
 
             // Allow loading the background in the laoding screen
             Application.runInBackground = true;
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = -1;
 
+            // More cool loading screen. Less 4 stoke logo.
+            for (int i = 0; i < LoadingScreen.Instance.Screens.Count; i++)
+            {
+                var state = LoadingScreen.Instance.Screens[i];
+                state.fadeInTime = i < 3 ? 0.1f : 1;
+                state.displayTime = i < 3 ? 1 : 3;
+                state.fadeOutTime = i < 3 ? 0.1f : 1;
+            }
+
+            TextMeshProUGUI[] texts = LoadingScreen.Instance.gameObject.GetComponentsInChildren<TextMeshProUGUI>();
+            foreach (var text in texts)
+            {
+                textPos = Mathf.Min(textPos, text.rectTransform.localPosition.y);
+            }
+            
             // Ensure that only one copy of the service is run per scene change.
             if (loadedInScene || !ElectionAndCheck())
             {
@@ -152,12 +170,15 @@ namespace ModuleManager
             GameObject statusGameObject = new GameObject(name);
             TextMeshProUGUI text = statusGameObject.AddComponent<TextMeshProUGUI>();
             text.text = "STATUS";
-            text.fontSize = 16;
+            text.fontSize = 18;
             text.autoSizeTextContainer = true;
             text.font = Resources.Load("Fonts/Calibri SDF", typeof(TMP_FontAsset)) as TMP_FontAsset;
             text.alignment = TextAlignmentOptions.Center;
             text.enableWordWrapping = false;
             text.isOverlay = true;
+            text.rectTransform.anchorMin = new Vector2(0.5f, 0);
+            text.rectTransform.anchorMax = new Vector2(0.5f, 0);
+            text.rectTransform.anchoredPosition = Vector2.zero;
             statusGameObject.transform.SetParent(canvas.transform);
 
             return text;
@@ -224,32 +245,33 @@ namespace ModuleManager
                 Log("Total loading Time = " + ((float)totalTime.ElapsedMilliseconds / 1000).ToString("F3") + "s");
 
                 Application.runInBackground = GameSettings.SIMULATE_IN_BACKGROUND;
+                QualitySettings.vSyncCount = GameSettings.SYNC_VBL;
+                Application.targetFrameRate = GameSettings.FRAMERATE_LIMIT;
             }
 
-            float offsetY = Mathf.FloorToInt(0.23f * Screen.height);
+            float offsetY = textPos;
             float h;
             if (warning)
             {
-                warning.transform.localPosition = new Vector3(0, -offsetY);
-                h = warning.textBounds.size.y;
-                if (h > 0)
-                    offsetY = offsetY + h + 10;
+                h = warning.text.Length > 0 ? warning.textBounds.size.y : 0;
+                offsetY = offsetY + h;
+                warning.rectTransform.localPosition = new Vector3(0, offsetY);
             }
 
             if (status)
             {
-                status.transform.localPosition = new Vector3(0, -offsetY);
                 status.text = MMPatchLoader.Instance.status;
-
-                h = status.textBounds.size.y;
-                if (h > 0)
-                    offsetY = offsetY + h + 10;
+                h = status.text.Length > 0 ? status.textBounds.size.y: 0;
+                offsetY = offsetY + h;
+                status.transform.localPosition = new Vector3(0, offsetY);
             }
 
             if (errors)
             {
-                errors.transform.localPosition = new Vector3(0, -offsetY);
                 errors.text = MMPatchLoader.Instance.errors;
+                h = errors.text.Length > 0 ? errors.textBounds.size.y: 0;
+                offsetY = offsetY + h;
+                errors.transform.localPosition = new Vector3(0, offsetY);
             }
 
             if (reloading)
