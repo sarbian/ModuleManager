@@ -8,13 +8,46 @@ namespace ModuleManagerTests.Logging
 {
     public class ModLoggerTest
     {
-        private ILogger innerLogger;
+        private IBasicLogger innerLogger;
         private ModLogger logger;
 
         public ModLoggerTest()
         {
-            innerLogger = Substitute.For<ILogger>();
+            innerLogger = Substitute.For<IBasicLogger>();
             logger = new ModLogger("MyMod", innerLogger);
+        }
+
+        [Fact]
+        public void TestConstructor__PrefixNull()
+        {
+            ArgumentNullException e = Assert.Throws<ArgumentNullException>(delegate
+            {
+                new ModLogger(null, innerLogger);
+            });
+
+            Assert.Equal("prefix", e.ParamName);
+        }
+
+        [Fact]
+        public void TestConstructor__PrefixBlank()
+        {
+            ArgumentNullException e = Assert.Throws<ArgumentNullException>(delegate
+            {
+                new ModLogger("", innerLogger);
+            });
+
+            Assert.Equal("prefix", e.ParamName);
+        }
+
+        [Fact]
+        public void TestConstructor__LoggerNull()
+        {
+            ArgumentNullException e = Assert.Throws<ArgumentNullException>(delegate
+            {
+                new ModLogger("blah", null);
+            });
+
+            Assert.Equal("logger", e.ParamName);
         }
 
         [Fact]
@@ -46,9 +79,8 @@ namespace ModuleManagerTests.Logging
         {
             Exception e = new Exception();
             logger.Exception("An exception was thrown", e);
-
-            innerLogger.Received().Log(LogType.Error, "[MyMod] An exception was thrown");
-            innerLogger.Received().LogException(e);
+            
+            innerLogger.Received().Exception("[MyMod] An exception was thrown", e);
         }
     }
 }

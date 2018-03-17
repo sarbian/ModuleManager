@@ -53,6 +53,7 @@
     <Compile Include="Extensions\IBasicLoggerExtensionsTest.cs" />
     <Compile Include="Extensions\StringExtensionsTest.cs" />
     <Compile Include="Extensions\UrlConfigExtensionsTest.cs" />
+    <Compile Include="Logging\UnityLoggerTest.cs" />
     <Compile Include="NeedsCheckerTest.cs" />
     <Compile Include="Collections\MessageQueueTest.cs" />
     <Compile Include="Logging\ExceptionMessageTest.cs" />
