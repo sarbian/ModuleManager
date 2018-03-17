@@ -88,7 +88,7 @@ namespace ModuleManager
             partDatabasePath = Path.Combine(KSPUtil.ApplicationRootPath, "PartDatabase.cfg");
             shaPath = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), "ModuleManager.ConfigSHA");
 
-            logger = new ModLogger("ModuleManager", Debug.logger);
+            logger = new ModLogger("ModuleManager", Debug.unityLogger);
         }
 
         private bool ready;
