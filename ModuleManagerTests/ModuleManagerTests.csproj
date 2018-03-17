@@ -50,6 +50,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Extensions\IBasicLoggerExtensionsTest.cs" />
     <Compile Include="Extensions\StringExtensionsTest.cs" />
     <Compile Include="Extensions\UrlConfigExtensionsTest.cs" />
     <Compile Include="NeedsCheckerTest.cs" />

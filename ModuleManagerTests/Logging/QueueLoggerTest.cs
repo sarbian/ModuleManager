@@ -19,30 +19,23 @@ namespace ModuleManagerTests.Logging
         }
 
         [Fact]
-        public void TestLog()
+        public void TestLog__Info()
         {
-            logger.Log(LogType.Log, "this is a log message");
-            queue.Received().Add(Arg.Is<NormalMessage>(m => m.logType == LogType.Log && m.message == "this is a log message"));
-        }
-
-        [Fact]
-        public void TestInfo()
-        {
-            logger.Info("useful information");
+            logger.Log(LogType.Log, "useful information");
             queue.Received().Add(Arg.Is<NormalMessage>(m => m.logType == LogType.Log && m.message == "useful information"));
         }
 
         [Fact]
-        public void TestWarning()
+        public void TestLog__Warning()
         {
-            logger.Warning("not to alarm you, but something might be wrong");
+            logger.Log(LogType.Warning, "not to alarm you, but something might be wrong");
             queue.Received().Add(Arg.Is<NormalMessage>(m => m.logType == LogType.Warning && m.message == "not to alarm you, but something might be wrong"));
         }
 
         [Fact]
-        public void TestError()
+        public void TestLog__Error()
         {
-            logger.Error("you broke everything");
+            logger.Log(LogType.Error, "you broke everything");
             queue.Received().Add(Arg.Is<NormalMessage>(m => m.logType == LogType.Error && m.message == "you broke everything"));
         }
 

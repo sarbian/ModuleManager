@@ -16,36 +16,27 @@ namespace ModuleManagerTests.Logging
             innerLogger = Substitute.For<ILogger>();
             logger = new ModLogger("MyMod", innerLogger);
         }
-        [Fact]
-        public void TestLog()
-        {
-            logger.Log(LogType.Log, "this is a log message");
-            logger.Log(LogType.Error, "this is another log message");
-
-            innerLogger.Received().Log(LogType.Log, "[MyMod] this is a log message");
-            innerLogger.Received().Log(LogType.Error, "[MyMod] this is another log message");
-        }
 
         [Fact]
-        public void TestInfo()
+        public void TestLog__Info()
         {
-            logger.Info("well hi there");
+            logger.Log(LogType.Log, "well hi there");
 
             innerLogger.Received().Log(LogType.Log, "[MyMod] well hi there");
         }
 
         [Fact]
-        public void TestWarning()
+        public void TestLog__Warning()
         {
-            logger.Warning("I'm warning you");
+            logger.Log(LogType.Warning, "I'm warning you");
 
             innerLogger.Received().Log(LogType.Warning, "[MyMod] I'm warning you");
         }
 
         [Fact]
-        public void TestError()
+        public void TestLog__Error()
         {
-            logger.Error("You have made a grave mistake");
+            logger.Log(LogType.Error, "You have made a grave mistake");
 
             innerLogger.Received().Log(LogType.Error, "[MyMod] You have made a grave mistake");
         }
