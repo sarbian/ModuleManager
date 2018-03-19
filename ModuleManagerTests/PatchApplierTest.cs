@@ -2,6 +2,7 @@
 using System.Linq;
 using Xunit;
 using NSubstitute;
+using UnityEngine;
 using TestUtils;
 using ModuleManager;
 using ModuleManager.Logging;
@@ -753,7 +754,7 @@ namespace ModuleManagerTests
             progress.Received(1).PatchApplied();
             progress.Received(4).ApplyingUpdate(config1, patch1);
 
-            logger.Received().Info("Looping on abc/def/@PART:HAS[~aaa[>10]] to abc/def/PART");
+            logger.Received().Log(LogType.Log, "Looping on abc/def/@PART:HAS[~aaa[>10]] to abc/def/PART");
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(1, allConfigs.Length);
@@ -796,14 +797,14 @@ namespace ModuleManagerTests
             progress.DidNotReceiveWithAnyArgs().Exception(null, null);
             progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
 
-            logger.DidNotReceiveWithAnyArgs().Error(null);
+            logger.DidNotReceive().Log(LogType.Error, Arg.Any<string>());
             logger.DidNotReceiveWithAnyArgs().Exception(null, null);
 
-            logger.Received().Warning("Invalid command encountered on a patch: abc/def/%PART");
-            logger.Received().Warning("Invalid command encountered on a patch: abc/def/|PART");
-            logger.Received().Warning("Invalid command encountered on a patch: abc/def/#PART");
-            logger.Received().Warning("Invalid command encountered on a patch: abc/def/*PART");
-            logger.Received().Warning("Invalid command encountered on a patch: abc/def/&PART");
+            logger.Received().Log(LogType.Warning, "Invalid command encountered on a patch: abc/def/%PART");
+            logger.Received().Log(LogType.Warning, "Invalid command encountered on a patch: abc/def/|PART");
+            logger.Received().Log(LogType.Warning, "Invalid command encountered on a patch: abc/def/#PART");
+            logger.Received().Log(LogType.Warning, "Invalid command encountered on a patch: abc/def/*PART");
+            logger.Received().Log(LogType.Warning, "Invalid command encountered on a patch: abc/def/&PART");
 
             UrlDir.UrlConfig[] allConfigs = databaseRoot.AllConfigs.ToArray();
             Assert.Equal(1, allConfigs.Length);
@@ -840,8 +841,8 @@ namespace ModuleManagerTests
 
             progress.Received().Error(patch1, "Error - when applying copy abc/def/+PART to abc/def/PART - the copy needs to have a different name than the parent (use @name = xxx)");
 
-            logger.DidNotReceiveWithAnyArgs().Warning(null);
-            logger.DidNotReceiveWithAnyArgs().Error(null);
+            logger.DidNotReceive().Log(LogType.Warning, Arg.Any<string>());
+            logger.DidNotReceive().Log(LogType.Error, Arg.Any<string>());
             logger.DidNotReceiveWithAnyArgs().Exception(null, null);
 
             progress.Received(1).PatchApplied();
@@ -863,8 +864,8 @@ namespace ModuleManagerTests
             progress.DidNotReceiveWithAnyArgs().Exception(null, null);
             progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
 
-            logger.DidNotReceiveWithAnyArgs().Warning(null);
-            logger.DidNotReceiveWithAnyArgs().Error(null);
+            logger.DidNotReceive().Log(LogType.Warning, Arg.Any<string>());
+            logger.DidNotReceive().Log(LogType.Error, Arg.Any<string>());
             logger.DidNotReceiveWithAnyArgs().Exception(null, null);
         }
 

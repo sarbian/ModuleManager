@@ -7,9 +7,6 @@ namespace ModuleManager.Logging
     public interface IBasicLogger
     {
         void Log(LogType logType, string message);
-        void Info(string message);
-        void Warning(string message);
-        void Error(string message);
         void Exception(string message, Exception exception);
     }
 }

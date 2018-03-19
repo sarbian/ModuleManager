@@ -40,6 +40,7 @@
     <Compile Include="Command.cs" />
     <Compile Include="CommandParser.cs" />
     <Compile Include="Extensions\ConfigNodeExtensions.cs" />
+    <Compile Include="Extensions\IBasicLoggerExtensions.cs" />
     <Compile Include="Extensions\NodeStackExtensions.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />
     <Compile Include="Extensions\UrlConfigExtensions.cs" />
@@ -51,6 +52,7 @@
     <Compile Include="Logging\NormalMessage.cs" />
     <Compile Include="Logging\QueueLogger.cs" />
     <Compile Include="Collections\MessageQueue.cs" />
+    <Compile Include="Logging\UnityLogger.cs" />
     <Compile Include="MMPatchLoader.cs" />
     <Compile Include="ModuleManager.cs" />
     <Compile Include="ModListGenerator.cs" />
