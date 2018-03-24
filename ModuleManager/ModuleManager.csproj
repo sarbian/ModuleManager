@@ -47,6 +47,7 @@
     <Compile Include="Extensions\UrlConfigExtensions.cs" />
     <Compile Include="FatalErrorHandler.cs" />
     <Compile Include="Logging\ExceptionMessage.cs" />
+    <Compile Include="Logging\StreamLogger.cs" />
     <Compile Include="Logging\IBasicLogger.cs" />
     <Compile Include="Logging\ILogMessage.cs" />
     <Compile Include="Logging\ModLogger.cs" />
