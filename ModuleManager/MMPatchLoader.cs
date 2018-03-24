@@ -55,8 +55,6 @@ namespace ModuleManager
         private string configSha;
         private Dictionary<string, string> filesSha = new Dictionary<string, string>();
 
-        private bool useCache = false;
-
         private static readonly List<ModuleManagerPostPatchCallback> postPatchCallbacks = new List<ModuleManagerPostPatchCallback>();
 
         private const float yieldInterval = 1f/30f; // Patch at ~30fps
@@ -127,15 +125,15 @@ namespace ModuleManager
             status = "Checking Cache";
             logger.Info(status);
             yield return null;
-            
+
+            bool useCache = false;
             try
             {
-                IsCacheUpToDate();
+                useCache = IsCacheUpToDate();
             }
             catch (Exception ex)
             {
                 logger.Exception("Exception in IsCacheUpToDate", ex);
-                useCache = false;
             }
 
 #if DEBUG
@@ -422,7 +420,7 @@ namespace ModuleManager
             configs[0].config.Save(physicsPath);
         }
 
-        private void IsCacheUpToDate()
+        private bool IsCacheUpToDate()
         {
             Stopwatch sw = new Stopwatch();
             sw.Start();
@@ -471,7 +469,7 @@ namespace ModuleManager
             logger.Info("SHA generated in " + ((float)sw.ElapsedMilliseconds / 1000).ToString("F3") + "s");
             logger.Info("      SHA = " + configSha);
 
-            useCache = false;
+            bool useCache = false;
             if (File.Exists(shaPath))
             {
                 ConfigNode shaConfigNode = ConfigNode.Load(shaPath);
@@ -492,6 +490,7 @@ namespace ModuleManager
                     logger.Info("useCache = " + useCache);
                 }
             }
+            return useCache;
         }
 
         private bool CheckFilesChange(UrlDir.UrlFile[] files, ConfigNode shaConfigNode)
