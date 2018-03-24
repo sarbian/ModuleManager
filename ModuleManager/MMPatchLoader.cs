@@ -57,8 +57,6 @@ namespace ModuleManager
 
         private bool useCache = false;
 
-        private readonly Stopwatch patchSw = new Stopwatch();
-
         private static readonly List<ModuleManagerPostPatchCallback> postPatchCallbacks = new List<ModuleManagerPostPatchCallback>();
 
         private const float yieldInterval = 1f/30f; // Patch at ~30fps
@@ -95,12 +93,6 @@ namespace ModuleManager
 
         public override bool IsReady()
         {
-            //return false;
-            if (ready)
-            {
-                patchSw.Stop();
-                logger.Info("Ran in " + ((float)patchSw.ElapsedMilliseconds / 1000).ToString("F3") + "s");
-            }
             return ready;
         }
 
@@ -113,9 +105,6 @@ namespace ModuleManager
 
         public override void StartLoad()
         {
-            patchSw.Reset();
-            patchSw.Start();
-
             ready = false;
 
             // DB check used to track the now fixed TextureReplacer corruption
@@ -132,6 +121,9 @@ namespace ModuleManager
 
         private IEnumerator ProcessPatch()
         {
+            Stopwatch patchSw = new Stopwatch();
+            patchSw.Start();
+
             status = "Checking Cache";
             logger.Info(status);
             yield return null;
@@ -389,6 +381,9 @@ namespace ModuleManager
                 ModuleManager.OutputAllConfigs();
 
             yield return null;
+
+            patchSw.Stop();
+            logger.Info("Ran in " + ((float)patchSw.ElapsedMilliseconds / 1000).ToString("F3") + "s");
 
             ready = true;
         }
