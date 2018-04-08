@@ -712,10 +712,7 @@ namespace ModuleManager
         #region Applying Patches
 
         // Name is group 1, index is group 2, vector related filed is group 3, vector separator is group 4, operator is group 5
-        private static Regex parseValue = new Regex(@"([\w\&\-\.\?\*+/^!\(\) ]+(?:,[^*\d][\w\&\-\.\?\*\(\) ]*)*)(?:,(-?[0-9\*]+))?(?:\[((?:[0-9\*]+)+)(?:,(.))?\])?(?:\s*([+\-*/^!]))?");
-
-        // Path is group 1, operator is group 5
-        private static Regex parseAssign = new Regex(@"(.*)(?:\s)+([+\-*/^!])?");
+        private static Regex parseValue = new Regex(@"([\w\&\-\.\?\*+/^!\(\) ]+(?:,[^*\d][\w\&\-\.\?\*\(\) ]*)*)(?:,(-?[0-9\*]+))?(?:\[((?:[0-9\*]+)+)(?:,(.))?\])?");
 
         // ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original, then returns the patched ConfigNode.
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
@@ -737,17 +734,10 @@ namespace ModuleManager
 
                 Command cmd = CommandParser.Parse(modVal.name, out string valName);
 
+                Operator op = OperatorParser.Parse(valName, out valName);
+
                 if (cmd == Command.Special)
                 {
-                    Match assignMatch = parseAssign.Match(valName);
-                    if (!assignMatch.Success)
-                    {
-                        context.progress.Error(context.patchUrl, "Error - Cannot parse value assigning command: " + valName);
-                        continue;
-                    }
-
-                    valName = assignMatch.Groups[1].Value;
-
                     ConfigNode.Value val = RecurseVariableSearch(valName, nodeStack.Push(mod), context);
 
                     if (val == null)
@@ -756,30 +746,30 @@ namespace ModuleManager
                         continue;
                     }
                     
-                    if (assignMatch.Groups[2].Success)
+                    if (op != Operator.Assign)
                     {
                         if (double.TryParse(modVal.value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double s) 
                             && double.TryParse(val.value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double os))
                         {
-                            switch (assignMatch.Groups[2].Value[0])
+                            switch (op)
                             {
-                                case '*':
+                                case Operator.Multiply:
                                     val.value = (os * s).ToString(CultureInfo.InvariantCulture);
                                     break;
 
-                                case '/':
+                                case Operator.Divide:
                                     val.value = (os / s).ToString(CultureInfo.InvariantCulture);
                                     break;
 
-                                case '+':
+                                case Operator.Add:
                                     val.value = (os + s).ToString(CultureInfo.InvariantCulture);
                                     break;
 
-                                case '-':
+                                case Operator.Subtract:
                                     val.value = (os - s).ToString(CultureInfo.InvariantCulture);
                                     break;
 
-                                case '!':
+                                case Operator.Exponentiate:
                                     val.value = Math.Pow(os, s).ToString(CultureInfo.InvariantCulture);
                                     break;
                             }
@@ -840,10 +830,6 @@ namespace ModuleManager
                 for (int i=0; i<newNode.CountValues; i++)
                     if (newNode.values[i].name == valName)
                         valCount++;
-
-                char op = ' ';
-                if (match.Groups[5].Success)
-                    op = match.Groups[5].Value[0];
 
                 string varValue;
                 switch (cmd)
@@ -1582,7 +1568,7 @@ namespace ModuleManager
             ref string valName,
             string value,
             ConfigNode newNode,
-            char op,
+            Operator op,
             int index,
             out ConfigNode.Value origVal,
             PatchContext context,
@@ -1611,9 +1597,9 @@ namespace ModuleManager
             {
                 value = backupValue;
                 oValue = strArray[posIndex];
-                if (op != ' ')
+                if (op != Operator.Assign)
                 {
-                    if (op == '^')
+                    if (op == Operator.RegexReplace)
                     {
                         try
                         {
@@ -1643,23 +1629,23 @@ namespace ModuleManager
                     {
                         switch (op)
                         {
-                            case '*':
+                            case Operator.Multiply:
                                 value = (os * s).ToString(CultureInfo.InvariantCulture);
                                 break;
 
-                            case '/':
+                            case Operator.Divide:
                                 value = (os / s).ToString(CultureInfo.InvariantCulture);
                                 break;
 
-                            case '+':
+                            case Operator.Add:
                                 value = (os + s).ToString(CultureInfo.InvariantCulture);
                                 break;
 
-                            case '-':
+                            case Operator.Subtract:
                                 value = (os - s).ToString(CultureInfo.InvariantCulture);
                                 break;
 
-                            case '!':
+                            case Operator.Exponentiate:
                                 value = Math.Pow(os, s).ToString(CultureInfo.InvariantCulture);
                                 break;
                         }
