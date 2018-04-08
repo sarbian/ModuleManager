@@ -59,6 +59,7 @@
     <Compile Include="Logging\ExceptionMessageTest.cs" />
     <Compile Include="Logging\NormalMessageTest.cs" />
     <Compile Include="Logging\QueueLoggerTest.cs" />
+    <Compile Include="OperatorParserTest.cs" />
     <Compile Include="PatchApplierTest.cs" />
     <Compile Include="PatchListTest.cs" />
     <Compile Include="Collections\ArrayEnumeratorTest.cs" />
