@@ -1796,7 +1796,7 @@ namespace ModuleManager
         public static bool WildcardMatchValues(ConfigNode node, string type, string value)
         {
             double val = 0;
-            bool compare = value.Length > 1 && (value[0] == '<' || value[0] == '>');
+            bool compare = value != null && value.Length > 1 && (value[0] == '<' || value[0] == '>');
             compare = compare && double.TryParse(value.Substring(1), NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out val);
 
             string[] values = node.GetValues(type);
