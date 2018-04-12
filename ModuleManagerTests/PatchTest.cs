@@ -72,5 +72,63 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig("abc/def", new ConfigNode("NODE"));
             Assert.Throws<ArgumentNullException>(() => new Patch(urlConfig, Command.Edit, null));
         }
+        
+        [Fact]
+        public void TestNodeMatcher()
+        {
+            UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig("abc/def", new ConfigNode("NODE[blah]:HAS[@FOO[bar*],#something[else]]"));
+            Patch patch = new Patch(urlConfig, Command.Edit, urlConfig.config);
+            INodeMatcher matcher = patch.nodeMatcher;
+
+            Assert.True(matcher.IsMatch(new TestConfigNode("NODE")
+            {
+                { "name", "blah" },
+                { "something", "else" },
+                new TestConfigNode("FOO")
+                {
+                    { "name", "barbar" },
+                },
+            }));
+
+            Assert.False(matcher.IsMatch(new TestConfigNode("NODE")
+            {
+                { "name", "blah" },
+            }));
+
+            Assert.False(matcher.IsMatch(new TestConfigNode("NODE")
+            {
+                { "name", "blah" },
+                { "something", "else" },
+            }));
+
+            Assert.False(matcher.IsMatch(new TestConfigNode("NODE")
+            {
+                { "name", "blah" },
+                new TestConfigNode("FOO")
+                {
+                    { "name", "barbar" },
+                },
+            }));
+
+            Assert.False(matcher.IsMatch(new TestConfigNode("NODE")
+            {
+                { "name", "bleh" },
+                { "something", "else" },
+                new TestConfigNode("FOO")
+                {
+                    { "name", "barbar" },
+                },
+            }));
+
+            Assert.False(matcher.IsMatch(new TestConfigNode("NADE")
+            {
+                { "name", "blah" },
+                { "something", "else" },
+                new TestConfigNode("FOO")
+                {
+                    { "name", "barbar" },
+                },
+            }));
+        }
     }
 }

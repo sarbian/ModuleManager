@@ -83,14 +83,14 @@ namespace ModuleManager
                         {
                             foreach (UrlDir.UrlConfig url in file.configs)
                             {
-                                if (!IsMatch(url, type, patterns, condition)) continue;
+                                if (!patch.nodeMatcher.IsMatch(url.config)) continue;
                                 if (loop) logger.Info($"Looping on {patch.urlConfig.SafeUrl()} to {url.SafeUrl()}");
 
                                 do
                                 {
                                     progress.ApplyingUpdate(url, patch.urlConfig);
                                     url.config = MMPatchLoader.ModifyNode(new NodeStack(url.config), patch.node, context);
-                                } while (loop && IsMatch(url, type, patterns, condition));
+                                } while (loop && patch.nodeMatcher.IsMatch(url.config));
 
                                 if (loop) url.config.RemoveNodes("MM_PATCH_LOOP");
                             }
@@ -102,7 +102,7 @@ namespace ModuleManager
                             for (int i = 0; i < count; i++)
                             {
                                 UrlDir.UrlConfig url = file.configs[i];
-                                if (!IsMatch(url, type, patterns, condition)) continue;
+                                if (!patch.nodeMatcher.IsMatch(url.config)) continue;
 
                                 ConfigNode clone = MMPatchLoader.ModifyNode(new NodeStack(url.config), patch.node, context);
                                 if (url.config.HasValue("name") && url.config.GetValue("name") == clone.GetValue("name"))
@@ -123,7 +123,7 @@ namespace ModuleManager
                             {
                                 UrlDir.UrlConfig url = file.configs[i];
 
-                                if (IsMatch(url, type, patterns, condition))
+                                if (patch.nodeMatcher.IsMatch(url.config))
                                 {
                                     progress.ApplyingDelete(url, patch.urlConfig);
                                     file.configs.RemoveAt(i);
@@ -155,30 +155,6 @@ namespace ModuleManager
                     }
                 }
             }
-        }
-
-        private static bool IsMatch(UrlDir.UrlConfig url, string type, string[] namePatterns, string constraints)
-        {
-            if (url.type != type) return false;
-
-            if (namePatterns != null)
-            {
-                if (url.name == url.type) return false;
-
-                bool match = false;
-                foreach (string pattern in namePatterns)
-                {
-                    if (MMPatchLoader.WildcardMatch(url.name, pattern))
-                    {
-                        match = true;
-                        break;
-                    }
-                }
-
-                if (!match) return false;
-            }
-
-            return MMPatchLoader.CheckConstraints(url.config, constraints);
         }
     }
 }
