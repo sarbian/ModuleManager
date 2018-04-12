@@ -753,6 +753,12 @@ namespace ModuleManagerTests
                 Assert.Same(originalNode.nodes[i], patch.node.nodes[i]);
             }
 
+            if (expectedNodeName == "NODE")
+                AssertNodeMatcher__Bare(patch.nodeMatcher);
+            else if (expectedNodeName == "NODE[foo]:HAS[#bar]")
+                AssertNodeMatcher__Name__Has(patch.nodeMatcher);
+            else
+                throw new NotImplementedException();
         }
 
         private void AssertNoErrors()
@@ -767,6 +773,53 @@ namespace ModuleManagerTests
             progress.DidNotReceiveWithAnyArgs().NeedsUnsatisfiedBefore(null);
             progress.DidNotReceiveWithAnyArgs().NeedsUnsatisfiedFor(null);
             progress.DidNotReceiveWithAnyArgs().NeedsUnsatisfiedAfter(null);
+        }
+
+        private void AssertNodeMatcher__Bare(INodeMatcher matcher)
+        {
+            Assert.True(matcher.IsMatch(new ConfigNode("NODE")));
+
+            Assert.True(matcher.IsMatch(new TestConfigNode("NODE")
+            {
+                { "name", "boo" },
+                { "bar", "baz" },
+            }));
+
+            Assert.False(matcher.IsMatch(new ConfigNode("NADE")));
+        }
+
+        private void AssertNodeMatcher__Name__Has(INodeMatcher matcher)
+        {
+            Assert.True(matcher.IsMatch(new TestConfigNode("NODE")
+            {
+                { "name", "foo" },
+                { "bar", "baz" },
+            }));
+
+            Assert.False(matcher.IsMatch(new TestConfigNode("NODE")
+            {
+                { "name", "foo" },
+            }));
+
+            Assert.False(matcher.IsMatch(new TestConfigNode("NODE")
+            {
+                { "name", "boo" },
+                { "bar", "baz" },
+            }));
+
+            Assert.False(matcher.IsMatch(new ConfigNode("NODE")));
+
+            Assert.False(matcher.IsMatch(new TestConfigNode("NADE")
+            {
+                { "name", "foo" },
+                { "bar", "baz" },
+            }));
+
+            Assert.False(matcher.IsMatch(new TestConfigNode("NODE")
+            {
+                { "name", "boo" },
+                { "bar", "baz" },
+            }));
         }
     }
 }

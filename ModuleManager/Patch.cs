@@ -7,6 +7,7 @@ namespace ModuleManager
         public readonly UrlDir.UrlConfig urlConfig;
         public readonly Command command;
         public readonly ConfigNode node;
+        public readonly INodeMatcher nodeMatcher;
 
         public Patch(UrlDir.UrlConfig urlConfig, Command command, ConfigNode node)
         {
@@ -16,6 +17,8 @@ namespace ModuleManager
             this.urlConfig = urlConfig ?? throw new ArgumentNullException(nameof(urlConfig));
             this.command = command;
             this.node = node ?? throw new ArgumentNullException(nameof(node));
+
+            nodeMatcher = new NodeMatcher(node.name);
         }
     }
 }
