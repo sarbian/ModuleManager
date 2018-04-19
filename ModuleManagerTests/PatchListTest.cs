@@ -137,7 +137,7 @@ namespace ModuleManagerTests
                 Assert.True(patchList.HasMod(""));
             });
 
-            Assert.Equal("can't be empty\r\nParameter name: mod", ex.Message);
+            Assert.Contains("can't be empty", ex.Message);
             Assert.Equal("mod", ex.ParamName);
         }
 
@@ -171,7 +171,7 @@ namespace ModuleManagerTests
                 patchList.AddBeforePatch("", Substitute.For<IPatch>());
             });
 
-            Assert.Equal("can't be empty\r\nParameter name: mod", ex.Message);
+            Assert.Contains("can't be empty", ex.Message);
             Assert.Equal("mod", ex.ParamName);
         }
 
@@ -216,7 +216,7 @@ namespace ModuleManagerTests
                 patchList.AddForPatch("", Substitute.For<IPatch>());
             });
 
-            Assert.Equal("can't be empty\r\nParameter name: mod", ex.Message);
+            Assert.Contains("can't be empty", ex.Message);
             Assert.Equal("mod", ex.ParamName);
         }
 
@@ -261,7 +261,7 @@ namespace ModuleManagerTests
                 patchList.AddAfterPatch("", Substitute.For<IPatch>());
             });
 
-            Assert.Equal("can't be empty\r\nParameter name: mod", ex.Message);
+            Assert.Contains("can't be empty", ex.Message);
             Assert.Equal("mod", ex.ParamName);
         }
 
