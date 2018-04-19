@@ -1,7 +1,10 @@
 ﻿using System;
+using System.Linq;
 using Xunit;
+using NSubstitute;
 using TestUtils;
 using ModuleManager;
+using ModuleManager.Patches;
 
 namespace ModuleManagerTests
 {
@@ -48,11 +51,11 @@ namespace ModuleManagerTests
         [Fact]
         public void Test__Add__Enumerator()
         {
-            Patch[] patches =
+            IPatch[] patches =
             {
-                CreatePatch(Command.Edit, new ConfigNode()),
-                CreatePatch(Command.Copy, new ConfigNode()),
-                CreatePatch(Command.Delete, new ConfigNode()),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
             };
 
             Pass pass = new Pass("blah")
@@ -62,12 +65,13 @@ namespace ModuleManagerTests
                 patches[2],
             };
 
-            Assert.Equal(patches, pass);
-        }
+            IPatch[] passPatches = pass.ToArray();
+            Assert.Equal(patches.Length, passPatches.Length);
 
-        private Patch CreatePatch(Command command, ConfigNode node)
-        {
-            return new Patch(new UrlDir.UrlConfig(file, node), command, node);
+            for (int i = 0; i < patches.Length; i++)
+            {
+                Assert.Same(patches[i], passPatches[i]);
+            }
         }
     }
 }

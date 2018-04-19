@@ -3,18 +3,19 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using ModuleManager.Collections;
+using ModuleManager.Patches;
 
 namespace ModuleManager
 {
     public interface IPatchList : IEnumerable<IPass>
     {
         bool HasMod(string mod);
-        void AddFirstPatch(Patch patch);
-        void AddLegacyPatch(Patch patch);
-        void AddBeforePatch(string mod, Patch patch);
-        void AddForPatch(string mod, Patch patch);
-        void AddAfterPatch(string mod, Patch patch);
-        void AddFinalPatch(Patch patch);
+        void AddFirstPatch(IPatch patch);
+        void AddLegacyPatch(IPatch patch);
+        void AddBeforePatch(string mod, IPatch patch);
+        void AddForPatch(string mod, IPatch patch);
+        void AddAfterPatch(string mod, IPatch patch);
+        void AddFinalPatch(IPatch patch);
     }
 
     public class PatchList : IPatchList
@@ -37,9 +38,9 @@ namespace ModuleManager
                 afterPass = new Pass($":AFTER[{this.name}]");
             }
 
-            public void AddBeforePatch(Patch patch) => beforePass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
-            public void AddForPatch(Patch patch) => forPass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
-            public void AddAfterPatch(Patch patch) => afterPass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
+            public void AddBeforePatch(IPatch patch) => beforePass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
+            public void AddForPatch(IPatch patch) => forPass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
+            public void AddAfterPatch(IPatch patch) => afterPass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
         }
 
         private class ModPassCollection : IEnumerable<ModPass>
@@ -97,35 +98,35 @@ namespace ModuleManager
             return modPasses.HasMod(mod);
         }
 
-        public void AddFirstPatch(Patch patch)
+        public void AddFirstPatch(IPatch patch)
         {
             firstPatches.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
         }
 
-        public void AddLegacyPatch(Patch patch)
+        public void AddLegacyPatch(IPatch patch)
         {
             legacyPatches.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
         }
 
-        public void AddBeforePatch(string mod, Patch patch)
+        public void AddBeforePatch(string mod, IPatch patch)
         {
             EnsureMod(mod);
             modPasses[mod].AddBeforePatch(patch ?? throw new ArgumentNullException(nameof(patch)));
         }
 
-        public void AddForPatch(string mod, Patch patch)
+        public void AddForPatch(string mod, IPatch patch)
         {
             EnsureMod(mod);
             modPasses[mod].AddForPatch(patch ?? throw new ArgumentNullException(nameof(patch)));
         }
 
-        public void AddAfterPatch(string mod, Patch patch)
+        public void AddAfterPatch(string mod, IPatch patch)
         {
             EnsureMod(mod);
             modPasses[mod].AddAfterPatch(patch ?? throw new ArgumentNullException(nameof(patch)));
         }
 
-        public void AddFinalPatch(Patch patch)
+        public void AddFinalPatch(IPatch patch)
         {
             finalPatches.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
         }

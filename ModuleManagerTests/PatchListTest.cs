@@ -2,8 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using Xunit;
+using NSubstitute;
 using TestUtils;
 using ModuleManager;
+using ModuleManager.Patches;
 
 namespace ModuleManagerTests
 {
@@ -24,24 +26,24 @@ namespace ModuleManagerTests
         [Fact]
         public void Test__Lifecycle()
         {
-            Patch patch01 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch02 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch03 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch04 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch05 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch06 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch07 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch08 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch09 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch10 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch11 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch12 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch13 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch14 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch15 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch16 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch17 = CreatePatch(Command.Edit, new ConfigNode("blah"));
-            Patch patch18 = CreatePatch(Command.Edit, new ConfigNode("blah"));
+            IPatch patch01 = Substitute.For<IPatch>();
+            IPatch patch02 = Substitute.For<IPatch>();
+            IPatch patch03 = Substitute.For<IPatch>();
+            IPatch patch04 = Substitute.For<IPatch>();
+            IPatch patch05 = Substitute.For<IPatch>();
+            IPatch patch06 = Substitute.For<IPatch>();
+            IPatch patch07 = Substitute.For<IPatch>();
+            IPatch patch08 = Substitute.For<IPatch>();
+            IPatch patch09 = Substitute.For<IPatch>();
+            IPatch patch10 = Substitute.For<IPatch>();
+            IPatch patch11 = Substitute.For<IPatch>();
+            IPatch patch12 = Substitute.For<IPatch>();
+            IPatch patch13 = Substitute.For<IPatch>();
+            IPatch patch14 = Substitute.For<IPatch>();
+            IPatch patch15 = Substitute.For<IPatch>();
+            IPatch patch16 = Substitute.For<IPatch>();
+            IPatch patch17 = Substitute.For<IPatch>();
+            IPatch patch18 = Substitute.For<IPatch>();
 
             patchList.AddFirstPatch(patch01);
             patchList.AddFirstPatch(patch02);
@@ -155,7 +157,7 @@ namespace ModuleManagerTests
         {
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                patchList.AddBeforePatch(null, CreatePatch(Command.Edit, new ConfigNode()));
+                patchList.AddBeforePatch(null, Substitute.For<IPatch>());
             });
 
             Assert.Equal("mod", ex.ParamName);
@@ -166,7 +168,7 @@ namespace ModuleManagerTests
         {
             ArgumentException ex = Assert.Throws<ArgumentException>(delegate
             {
-                patchList.AddBeforePatch("", CreatePatch(Command.Edit, new ConfigNode()));
+                patchList.AddBeforePatch("", Substitute.For<IPatch>());
             });
 
             Assert.Equal("can't be empty\r\nParameter name: mod", ex.Message);
@@ -189,7 +191,7 @@ namespace ModuleManagerTests
         {
             KeyNotFoundException ex = Assert.Throws<KeyNotFoundException>(delegate
             {
-                patchList.AddBeforePatch("mod3", CreatePatch(Command.Edit, new ConfigNode()));
+                patchList.AddBeforePatch("mod3", Substitute.For<IPatch>());
             });
 
             Assert.Equal("Mod 'mod3' not found", ex.Message);
@@ -200,7 +202,7 @@ namespace ModuleManagerTests
         {
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                patchList.AddForPatch(null, CreatePatch(Command.Edit, new ConfigNode()));
+                patchList.AddForPatch(null, Substitute.For<IPatch>());
             });
 
             Assert.Equal("mod", ex.ParamName);
@@ -211,7 +213,7 @@ namespace ModuleManagerTests
         {
             ArgumentException ex = Assert.Throws<ArgumentException>(delegate
             {
-                patchList.AddForPatch("", CreatePatch(Command.Edit, new ConfigNode()));
+                patchList.AddForPatch("", Substitute.For<IPatch>());
             });
 
             Assert.Equal("can't be empty\r\nParameter name: mod", ex.Message);
@@ -234,7 +236,7 @@ namespace ModuleManagerTests
         {
             KeyNotFoundException ex = Assert.Throws<KeyNotFoundException>(delegate
             {
-                patchList.AddForPatch("mod3", CreatePatch(Command.Edit, new ConfigNode()));
+                patchList.AddForPatch("mod3", Substitute.For<IPatch>());
             });
 
             Assert.Equal("Mod 'mod3' not found", ex.Message);
@@ -245,7 +247,7 @@ namespace ModuleManagerTests
         {
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                patchList.AddAfterPatch(null, CreatePatch(Command.Edit, new ConfigNode()));
+                patchList.AddAfterPatch(null, Substitute.For<IPatch>());
             });
 
             Assert.Equal("mod", ex.ParamName);
@@ -256,7 +258,7 @@ namespace ModuleManagerTests
         {
             ArgumentException ex = Assert.Throws<ArgumentException>(delegate
             {
-                patchList.AddAfterPatch("", CreatePatch(Command.Edit, new ConfigNode()));
+                patchList.AddAfterPatch("", Substitute.For<IPatch>());
             });
 
             Assert.Equal("can't be empty\r\nParameter name: mod", ex.Message);
@@ -279,7 +281,7 @@ namespace ModuleManagerTests
         {
             KeyNotFoundException ex = Assert.Throws<KeyNotFoundException>(delegate
             {
-                patchList.AddAfterPatch("mod3", CreatePatch(Command.Edit, new ConfigNode()));
+                patchList.AddAfterPatch("mod3", Substitute.For<IPatch>());
             });
 
             Assert.Equal("Mod 'mod3' not found", ex.Message);
@@ -294,11 +296,6 @@ namespace ModuleManagerTests
             });
 
             Assert.Equal("patch", ex.ParamName);
-        }
-
-        private Patch CreatePatch(Command command, ConfigNode node)
-        {
-            return new Patch(new UrlDir.UrlConfig(file, node), command, node);
         }
     }
 }

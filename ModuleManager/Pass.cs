@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using ModuleManager.Patches;
 
 namespace ModuleManager
 {
-    public interface IPass : IEnumerable<Patch>
+    public interface IPass : IEnumerable<IPatch>
     {
         string Name { get; }
     }
@@ -12,7 +13,7 @@ namespace ModuleManager
     public class Pass : IPass
     {
         private readonly string name;
-        private readonly List<Patch> patches = new List<Patch>(0);
+        private readonly List<IPatch> patches = new List<IPatch>(0);
 
         public Pass(string name)
         {
@@ -22,10 +23,10 @@ namespace ModuleManager
 
         public string Name => name;
 
-        public void Add(Patch patch) => patches.Add(patch);
+        public void Add(IPatch patch) => patches.Add(patch);
 
-        public List<Patch>.Enumerator GetEnumerator() => patches.GetEnumerator();
-        IEnumerator<Patch> IEnumerable<Patch>.GetEnumerator() => GetEnumerator();
+        public List<IPatch>.Enumerator GetEnumerator() => patches.GetEnumerator();
+        IEnumerator<IPatch> IEnumerable<IPatch>.GetEnumerator() => GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }
