@@ -36,7 +36,7 @@ namespace ModuleManagerTests
                 new Pass("");
             });
 
-            Assert.Equal("can't be empty\r\nParameter name: name", ex.Message);
+            Assert.Contains("can't be empty", ex.Message);
             Assert.Equal("name", ex.ParamName);
         }
 

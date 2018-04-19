@@ -145,7 +145,7 @@ namespace ModuleManagerTests.Patches
             });
 
             Assert.Equal("name", ex.ParamName);
-            Assert.Equal("can't be empty\r\nParameter name: name", ex.Message);
+            Assert.Contains("can't be empty", ex.Message);
         }
 
         [Fact]
@@ -157,7 +157,7 @@ namespace ModuleManagerTests.Patches
             });
 
             Assert.Equal("command", ex.ParamName);
-            Assert.Equal("invalid command for a root node: Replace\r\nParameter name: command", ex.Message);
+            Assert.Contains("invalid command for a root node: Replace", ex.Message);
         }
 
         [Fact]
@@ -169,7 +169,7 @@ namespace ModuleManagerTests.Patches
             });
 
             Assert.Equal("command", ex.ParamName);
-            Assert.Equal("invalid command for a root node: Create\r\nParameter name: command", ex.Message);
+            Assert.Contains("invalid command for a root node: Create", ex.Message);
         }
 
         [Fact]
@@ -181,7 +181,7 @@ namespace ModuleManagerTests.Patches
             });
 
             Assert.Equal("command", ex.ParamName);
-            Assert.Equal("invalid command for a root node: Rename\r\nParameter name: command", ex.Message);
+            Assert.Contains("invalid command for a root node: Rename", ex.Message);
         }
 
         [Fact]
@@ -193,7 +193,7 @@ namespace ModuleManagerTests.Patches
             });
 
             Assert.Equal("command", ex.ParamName);
-            Assert.Equal("invalid command for a root node: Paste\r\nParameter name: command", ex.Message);
+            Assert.Contains("invalid command for a root node: Paste", ex.Message);
         }
 
         [Fact]
@@ -205,7 +205,7 @@ namespace ModuleManagerTests.Patches
             });
 
             Assert.Equal("command", ex.ParamName);
-            Assert.Equal("invalid command for a root node: Special\r\nParameter name: command", ex.Message);
+            Assert.Contains("invalid command for a root node: Special", ex.Message);
         }
 
         private void AssertNodeMatcher(INodeMatcher matcher)

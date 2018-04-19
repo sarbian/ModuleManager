@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using Xunit;
 using TestUtils;
 using ModuleManager;
@@ -32,7 +29,7 @@ namespace ModuleManagerTests
             });
 
             Assert.Equal("nodeName", ex.ParamName);
-            Assert.Equal("can't be empty\r\nParameter name: nodeName", ex.Message);
+            Assert.Contains("can't be empty", ex.Message);
         }
 
         [Fact]
