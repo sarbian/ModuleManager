@@ -5,6 +5,7 @@ using NSubstitute;
 using TestUtils;
 using ModuleManager;
 using ModuleManager.Logging;
+using ModuleManager.Patches;
 using ModuleManager.Progress;
 
 namespace ModuleManagerTests
@@ -94,8 +95,8 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig patchConfig3 = CreateConfig("@NODE:First");
             UrlDir.UrlConfig patchConfig4 = CreateConfig("@NODE:first");
 
-            List<Patch> patches = new List<Patch>();
-            patchList.AddFirstPatch(Arg.Do<Patch>(patch => patches.Add(patch)));
+            List<IPatch> patches = new List<IPatch>();
+            patchList.AddFirstPatch(Arg.Do<IPatch>(patch => patches.Add(patch)));
 
             extractor.ExtractPatch(patchConfig1);
             extractor.ExtractPatch(patchConfig2);
@@ -107,10 +108,10 @@ namespace ModuleManagerTests
             Assert.Empty(root.AllConfigs);
 
             Assert.Equal(4, patches.Count);
-            AssertPatchCorrect(patches[0], patchConfig1, Command.Edit, "NODE[foo]:HAS[#bar]");
-            AssertPatchCorrect(patches[1], patchConfig2, Command.Edit, "NODE");
-            AssertPatchCorrect(patches[2], patchConfig3, Command.Edit, "NODE");
-            AssertPatchCorrect(patches[3], patchConfig4, Command.Edit, "NODE");
+            AssertPatchCorrect<EditPatch>(patches[0], patchConfig1, AssertNodeMatcher__Name__Has);
+            AssertPatchCorrect<EditPatch>(patches[1], patchConfig2, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<EditPatch>(patches[2], patchConfig3, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<EditPatch>(patches[3], patchConfig4, AssertNodeMatcher__Bare);
 
             Received.InOrder(delegate
             {
@@ -139,8 +140,8 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig patchConfig1 = CreateConfig("@NODE[foo]:HAS[#bar]");
             UrlDir.UrlConfig patchConfig2 = CreateConfig("@NODE");
 
-            List<Patch> patches = new List<Patch>();
-            patchList.AddLegacyPatch(Arg.Do<Patch>(patch => patches.Add(patch)));
+            List<IPatch> patches = new List<IPatch>();
+            patchList.AddLegacyPatch(Arg.Do<IPatch>(patch => patches.Add(patch)));
 
             extractor.ExtractPatch(patchConfig1);
             extractor.ExtractPatch(patchConfig2);
@@ -150,8 +151,8 @@ namespace ModuleManagerTests
             Assert.Empty(root.AllConfigs);
 
             Assert.Equal(2, patches.Count);
-            AssertPatchCorrect(patches[0], patchConfig1, Command.Edit, "NODE[foo]:HAS[#bar]");
-            AssertPatchCorrect(patches[1], patchConfig2, Command.Edit, "NODE");
+            AssertPatchCorrect<EditPatch>(patches[0], patchConfig1, AssertNodeMatcher__Name__Has);
+            AssertPatchCorrect<EditPatch>(patches[1], patchConfig2, AssertNodeMatcher__Bare);
 
             Received.InOrder(delegate
             {
@@ -180,8 +181,8 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig patchConfig3 = CreateConfig("@NODE:Before[mod1]");
             UrlDir.UrlConfig patchConfig4 = CreateConfig("@NODE:before[MOD1]");
 
-            List<Patch> patches = new List<Patch>();
-            patchList.AddBeforePatch("mod1", Arg.Do<Patch>(patch => patches.Add(patch)));
+            List<IPatch> patches = new List<IPatch>();
+            patchList.AddBeforePatch("mod1", Arg.Do<IPatch>(patch => patches.Add(patch)));
 
             extractor.ExtractPatch(patchConfig1);
             extractor.ExtractPatch(patchConfig2);
@@ -193,10 +194,10 @@ namespace ModuleManagerTests
             Assert.Empty(root.AllConfigs);
 
             Assert.Equal(4, patches.Count);
-            AssertPatchCorrect(patches[0], patchConfig1, Command.Edit, "NODE[foo]:HAS[#bar]");
-            AssertPatchCorrect(patches[1], patchConfig2, Command.Edit, "NODE");
-            AssertPatchCorrect(patches[2], patchConfig3, Command.Edit, "NODE");
-            AssertPatchCorrect(patches[3], patchConfig4, Command.Edit, "NODE");
+            AssertPatchCorrect<EditPatch>(patches[0], patchConfig1, AssertNodeMatcher__Name__Has);
+            AssertPatchCorrect<EditPatch>(patches[1], patchConfig2, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<EditPatch>(patches[2], patchConfig3, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<EditPatch>(patches[3], patchConfig4, AssertNodeMatcher__Bare);
 
             Received.InOrder(delegate
             {
@@ -267,8 +268,8 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig patchConfig3 = CreateConfig("@NODE:For[mod1]");
             UrlDir.UrlConfig patchConfig4 = CreateConfig("@NODE:for[MOD1]");
 
-            List<Patch> patches = new List<Patch>();
-            patchList.AddForPatch("mod1", Arg.Do<Patch>(patch => patches.Add(patch)));
+            List<IPatch> patches = new List<IPatch>();
+            patchList.AddForPatch("mod1", Arg.Do<IPatch>(patch => patches.Add(patch)));
 
             extractor.ExtractPatch(patchConfig1);
             extractor.ExtractPatch(patchConfig2);
@@ -280,10 +281,10 @@ namespace ModuleManagerTests
             Assert.Empty(root.AllConfigs);
 
             Assert.Equal(4, patches.Count);
-            AssertPatchCorrect(patches[0], patchConfig1, Command.Edit, "NODE[foo]:HAS[#bar]");
-            AssertPatchCorrect(patches[1], patchConfig2, Command.Edit, "NODE");
-            AssertPatchCorrect(patches[2], patchConfig3, Command.Edit, "NODE");
-            AssertPatchCorrect(patches[3], patchConfig4, Command.Edit, "NODE");
+            AssertPatchCorrect<EditPatch>(patches[0], patchConfig1, AssertNodeMatcher__Name__Has);
+            AssertPatchCorrect<EditPatch>(patches[1], patchConfig2, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<EditPatch>(patches[2], patchConfig3, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<EditPatch>(patches[3], patchConfig4, AssertNodeMatcher__Bare);
 
 
             Received.InOrder(delegate
@@ -355,8 +356,8 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig patchConfig3 = CreateConfig("@NODE:After[mod1]");
             UrlDir.UrlConfig patchConfig4 = CreateConfig("@NODE:after[MOD1]");
 
-            List<Patch> patches = new List<Patch>();
-            patchList.AddAfterPatch("mod1", Arg.Do<Patch>(patch => patches.Add(patch)));
+            List<IPatch> patches = new List<IPatch>();
+            patchList.AddAfterPatch("mod1", Arg.Do<IPatch>(patch => patches.Add(patch)));
 
             extractor.ExtractPatch(patchConfig1);
             extractor.ExtractPatch(patchConfig2);
@@ -366,10 +367,10 @@ namespace ModuleManagerTests
             AssertNoErrors();
 
             Assert.Equal(4, patches.Count);
-            AssertPatchCorrect(patches[0], patchConfig1, Command.Edit, "NODE[foo]:HAS[#bar]");
-            AssertPatchCorrect(patches[1], patchConfig2, Command.Edit, "NODE");
-            AssertPatchCorrect(patches[2], patchConfig3, Command.Edit, "NODE");
-            AssertPatchCorrect(patches[3], patchConfig4, Command.Edit, "NODE");
+            AssertPatchCorrect<EditPatch>(patches[0], patchConfig1, AssertNodeMatcher__Name__Has);
+            AssertPatchCorrect<EditPatch>(patches[1], patchConfig2, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<EditPatch>(patches[2], patchConfig3, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<EditPatch>(patches[3], patchConfig4, AssertNodeMatcher__Bare);
 
             Assert.Empty(root.AllConfigs);
 
@@ -440,8 +441,8 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig patchConfig3 = CreateConfig("@NODE:Final");
             UrlDir.UrlConfig patchConfig4 = CreateConfig("@NODE:final");
 
-            List<Patch> patches = new List<Patch>();
-            patchList.AddFinalPatch(Arg.Do<Patch>(patch => patches.Add(patch)));
+            List<IPatch> patches = new List<IPatch>();
+            patchList.AddFinalPatch(Arg.Do<IPatch>(patch => patches.Add(patch)));
 
             extractor.ExtractPatch(patchConfig1);
             extractor.ExtractPatch(patchConfig2);
@@ -453,10 +454,10 @@ namespace ModuleManagerTests
             Assert.Empty(root.AllConfigs);
 
             Assert.Equal(4, patches.Count);
-            AssertPatchCorrect(patches[0], patchConfig1, Command.Edit, "NODE[foo]:HAS[#bar]");
-            AssertPatchCorrect(patches[1], patchConfig2, Command.Edit, "NODE");
-            AssertPatchCorrect(patches[2], patchConfig3, Command.Edit, "NODE");
-            AssertPatchCorrect(patches[3], patchConfig4, Command.Edit, "NODE");
+            AssertPatchCorrect<EditPatch>(patches[0], patchConfig1, AssertNodeMatcher__Name__Has);
+            AssertPatchCorrect<EditPatch>(patches[1], patchConfig2, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<EditPatch>(patches[2], patchConfig3, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<EditPatch>(patches[3], patchConfig4, AssertNodeMatcher__Bare);
 
             Received.InOrder(delegate
             {
@@ -660,8 +661,8 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig config09 = CreateConfig("#NODE:FOR[mod1]");
             UrlDir.UrlConfig config10 = CreateConfig("*NODE:FOR[mod1]");
 
-            List<Patch> patches = new List<Patch>();
-            patchList.AddForPatch("mod1", Arg.Do<Patch>(patch => patches.Add(patch)));
+            List<IPatch> patches = new List<IPatch>();
+            patchList.AddForPatch("mod1", Arg.Do<IPatch>(patch => patches.Add(patch)));
 
             extractor.ExtractPatch(config01);
             extractor.ExtractPatch(config02);
@@ -680,11 +681,11 @@ namespace ModuleManagerTests
             Assert.Empty(root.AllConfigs);
 
             Assert.Equal(5, patches.Count);
-            AssertPatchCorrect(patches[0], config01, Command.Edit, "NODE");
-            AssertPatchCorrect(patches[1], config02, Command.Copy, "NODE");
-            AssertPatchCorrect(patches[2], config03, Command.Copy, "NODE");
-            AssertPatchCorrect(patches[3], config04, Command.Delete, "NODE");
-            AssertPatchCorrect(patches[4], config05, Command.Delete, "NODE");
+            AssertPatchCorrect<EditPatch>(patches[0], config01, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<CopyPatch>(patches[1], config02, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<CopyPatch>(patches[2], config03, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<DeletePatch>(patches[3], config04, AssertNodeMatcher__Bare);
+            AssertPatchCorrect<DeletePatch>(patches[4], config05, AssertNodeMatcher__Bare);
             progress.Received().PatchAdded();
 
             Received.InOrder(delegate
@@ -731,34 +732,12 @@ namespace ModuleManagerTests
             return UrlBuilder.CreateConfig(node, file);
         }
 
-        private void AssertPatchCorrect(Patch patch, UrlDir.UrlConfig originalUrl, Command expectedCommand, string expectedNodeName)
+        private void AssertPatchCorrect<T>(IPatch patch, UrlDir.UrlConfig originalUrl, Action<INodeMatcher> assertNodeMatcher) where T : IPatch
         {
-            Assert.Same(originalUrl, patch.urlConfig);
-            Assert.Equal(expectedCommand, patch.command);
-            Assert.Equal(expectedNodeName, patch.node.name);
+            Assert.IsType<T>(patch);
+            Assert.Same(originalUrl, patch.UrlConfig);
 
-            ConfigNode originalNode = originalUrl.config;
-
-            Assert.Equal(originalNode.id, patch.node.id);
-            Assert.Equal(originalNode.values.Count, patch.node.values.Count);
-            Assert.Equal(originalNode.nodes.Count, patch.node.nodes.Count);
-
-            for (int i = 0; i < originalNode.values.Count; i++)
-            {
-                Assert.Same(originalNode.values[i], patch.node.values[i]);
-            }
-
-            for (int i = 0; i < originalNode.nodes.Count; i++)
-            {
-                Assert.Same(originalNode.nodes[i], patch.node.nodes[i]);
-            }
-
-            if (expectedNodeName == "NODE")
-                AssertNodeMatcher__Bare(patch.nodeMatcher);
-            else if (expectedNodeName == "NODE[foo]:HAS[#bar]")
-                AssertNodeMatcher__Name__Has(patch.nodeMatcher);
-            else
-                throw new NotImplementedException();
+            assertNodeMatcher(patch.NodeMatcher);
         }
 
         private void AssertNoErrors()

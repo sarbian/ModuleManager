@@ -2,6 +2,7 @@
 using System.Text.RegularExpressions;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
+using ModuleManager.Patches;
 using ModuleManager.Progress;
 
 namespace ModuleManager
@@ -122,7 +123,7 @@ namespace ModuleManager
                 urlConfig.parent.configs.Remove(urlConfig);
 
                 Match theMatch = null;
-                Action<Patch> addPatch = null;
+                Action<IPatch> addPatch = null;
 
                 if (firstMatch.Success)
                 {
@@ -184,11 +185,7 @@ namespace ModuleManager
                 else
                     newName = name.Remove(theMatch.Index, theMatch.Length);
 
-                ConfigNode node = new ConfigNode(newName) { id = urlConfig.config.id };
-                node.ShallowCopyFrom(urlConfig.config);
-                Patch patch = new Patch(urlConfig, command, node);
-
-                addPatch(patch);
+                addPatch(PatchCompiler.CompilePatch(urlConfig, command, newName));
                 progress.PatchAdded();
             }
             catch(Exception e)

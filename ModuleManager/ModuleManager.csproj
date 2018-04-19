@@ -61,9 +61,13 @@
     <Compile Include="Operator.cs" />
     <Compile Include="OperatorParser.cs" />
     <Compile Include="Pass.cs" />
-    <Compile Include="Patch.cs" />
     <Compile Include="PatchApplier.cs" />
     <Compile Include="PatchContext.cs" />
+    <Compile Include="Patches\CopyPatch.cs" />
+    <Compile Include="Patches\DeletePatch.cs" />
+    <Compile Include="Patches\EditPatch.cs" />
+    <Compile Include="Patches\IPatch.cs" />
+    <Compile Include="Patches\PatchCompiler.cs" />
     <Compile Include="PatchExtractor.cs" />
     <Compile Include="PatchList.cs" />
     <Compile Include="Progress\ProgressCounter.cs" />
