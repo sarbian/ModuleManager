@@ -733,8 +733,12 @@ namespace ModuleManager
                 #endif
 
                 Command cmd = CommandParser.Parse(modVal.name, out string valName);
-
-                Operator op = OperatorParser.Parse(valName, out valName);
+                
+                Operator op;
+                if (valName.Length > 2 && valName[valName.Length - 2] == ',')
+                    op = Operator.Assign;
+                else
+                    op = OperatorParser.Parse(valName, out valName);
 
                 if (cmd == Command.Special)
                 {
