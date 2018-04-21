@@ -7,6 +7,7 @@ namespace TestUtils
 {
     public static class UrlBuilder
     {
+        private static readonly FieldInfo UrlDir__field__type;
         private static readonly FieldInfo UrlDir__field__name;
         private static readonly FieldInfo UrlDir__field__root;
         private static readonly FieldInfo UrlDir__field__parent;
@@ -18,9 +19,11 @@ namespace TestUtils
         static UrlBuilder()
         {
             FieldInfo[] UrlDirFields = typeof(UrlDir).GetFields(BindingFlags.Instance | BindingFlags.NonPublic);
+            FieldInfo[] UrlDirFields__DirectoryType = UrlDirFields.Where(field => field.FieldType == typeof(UrlDir.DirectoryType)).ToArray();
             FieldInfo[] UrlDirFields__string = UrlDirFields.Where(field => field.FieldType == typeof(string)).ToArray();
             FieldInfo[] UrlDirFields__UrlDir = UrlDirFields.Where(field => field.FieldType == typeof(UrlDir)).ToArray();
 
+            UrlDir__field__type = UrlDirFields__DirectoryType[0];
             UrlDir__field__name = UrlDirFields__string[0];
             UrlDir__field__root = UrlDirFields__UrlDir[0];
             UrlDir__field__parent = UrlDirFields__UrlDir[1];
@@ -65,6 +68,29 @@ namespace TestUtils
             }
 
             return current;
+        }
+
+        public static UrlDir CreateGameData(UrlDir root = null)
+        {
+            if (root == null)
+            {
+                root = CreateRoot();
+            }
+            else
+            {
+                UrlDir potentialGameData = root.children.FirstOrDefault(dir => dir.type == UrlDir.DirectoryType.GameData && dir.name == "");
+                if (potentialGameData != null) return potentialGameData;
+            }
+
+            UrlDir gameData = CreateRoot();
+            UrlDir__field__name.SetValue(gameData, "");
+            UrlDir__field__type.SetValue(gameData, UrlDir.DirectoryType.GameData);
+            UrlDir__field__root.SetValue(gameData, root);
+            UrlDir__field__parent.SetValue(gameData, root);
+
+            root.children.Add(gameData);
+
+            return gameData;
         }
 
         public static UrlDir.UrlFile CreateFile(string path, UrlDir parent = null)
