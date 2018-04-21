@@ -7,13 +7,13 @@ namespace TestUtils
 {
     public static class UrlBuilder
     {
-        private static FieldInfo UrlDir__field__name;
-        private static FieldInfo UrlDir__field__root;
-        private static FieldInfo UrlDir__field__parent;
+        private static readonly FieldInfo UrlDir__field__name;
+        private static readonly FieldInfo UrlDir__field__root;
+        private static readonly FieldInfo UrlDir__field__parent;
 
-        private static FieldInfo UrlFile__field__name;
-        private static FieldInfo UrlFile__field__fileType;
-        private static FieldInfo UrlFile__field__fileExtension;
+        private static readonly FieldInfo UrlFile__field__name;
+        private static readonly FieldInfo UrlFile__field__fileType;
+        private static readonly FieldInfo UrlFile__field__fileExtension;
 
         static UrlBuilder()
         {

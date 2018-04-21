@@ -13,11 +13,11 @@ namespace ModuleManagerTests
 {
     public class NeedsCheckerTest
     {
-        private UrlDir root;
-        private UrlDir.UrlFile file;
+        private readonly UrlDir root;
+        private readonly UrlDir.UrlFile file;
 
-        private IPatchProgress progress;
-        private IBasicLogger logger;
+        private readonly IPatchProgress progress;
+        private readonly IBasicLogger logger;
 
         public NeedsCheckerTest()
         {
