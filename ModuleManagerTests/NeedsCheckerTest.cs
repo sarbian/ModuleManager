@@ -14,6 +14,7 @@ namespace ModuleManagerTests
     public class NeedsCheckerTest
     {
         private readonly UrlDir root;
+        private readonly UrlDir gameData;
         private readonly UrlDir.UrlFile file;
 
         private readonly IPatchProgress progress;
@@ -22,7 +23,8 @@ namespace ModuleManagerTests
         public NeedsCheckerTest()
         {
             root = UrlBuilder.CreateRoot();
-            file = UrlBuilder.CreateFile("abc/def.cfg", root);
+            gameData = UrlBuilder.CreateGameData(root);
+            file = UrlBuilder.CreateFile("abc/def.cfg", gameData);
 
             progress = Substitute.For<IPatchProgress>();
             logger = Substitute.For<IBasicLogger>();
@@ -451,6 +453,56 @@ abc/def/SOME_NODE:NEEDS[mod3]
             progress.Received().Exception(config2, expected, e);
 
             Assert.Equal(new[] { config1, config3 }, root.AllConfigs);
+        }
+
+        [Fact]
+        public void TestCheckNeeds__Directory()
+        {
+            string[] modList = { "mod1", "mod/2" };
+            
+            UrlBuilder.CreateDir("ghi/jkl", gameData);
+
+            UrlDir.UrlConfig config01 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE01:NEEDS[/abc]"), file);
+            UrlDir.UrlConfig config02 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE02:NEEDS[abc/]"), file);
+            UrlDir.UrlConfig config03 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE03:NEEDS[/abc/]"), file);
+            UrlDir.UrlConfig config04 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE04:NEEDS[ghi/jkl]"), file);
+            UrlDir.UrlConfig config05 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE05:NEEDS[/ghi/jkl]"), file);
+            UrlDir.UrlConfig config06 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE06:NEEDS[ghi/jkl/]"), file);
+            UrlDir.UrlConfig config07 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE07:NEEDS[mod1&ghi/jkl]"), file);
+            UrlDir.UrlConfig config08 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE08:NEEDS[mod3|ghi/jkl]"), file);
+            UrlDir.UrlConfig config09 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE09:NEEDS[abc/&ghi/jkl]"), file);
+            UrlDir.UrlConfig config10 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE10:NEEDS[mod/2]"), file);
+
+            UrlDir.UrlConfig config11 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE11:NEEDS[abc]"), file);
+            UrlDir.UrlConfig config12 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE12:needs[mod3&ghi/jkl]"), file);
+            UrlDir.UrlConfig config13 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE13:NEEDS[Ghi/jkl]"), file);
+            UrlDir.UrlConfig config14 = UrlBuilder.CreateConfig(new ConfigNode("SOME_NODE14:NEEDS[mno/pqr]"), file);
+
+            NeedsChecker.CheckNeeds(root, modList, progress, logger);
+
+            progress.DidNotReceiveWithAnyArgs().Exception(null, null);
+            progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
+            progress.DidNotReceiveWithAnyArgs().Error(null, null);
+
+            UrlDir.UrlConfig[] configs = root.AllConfigs.ToArray();
+            Assert.Equal(10, configs.Length);
+            
+            AssertUrlCorrect("SOME_NODE01", config01, configs[0]);
+            AssertUrlCorrect("SOME_NODE02", config02, configs[1]);
+            AssertUrlCorrect("SOME_NODE03", config03, configs[2]);
+            AssertUrlCorrect("SOME_NODE04", config04, configs[3]);
+            AssertUrlCorrect("SOME_NODE05", config05, configs[4]);
+            AssertUrlCorrect("SOME_NODE06", config06, configs[5]);
+            AssertUrlCorrect("SOME_NODE07", config07, configs[6]);
+            AssertUrlCorrect("SOME_NODE08", config08, configs[7]);
+            AssertUrlCorrect("SOME_NODE09", config09, configs[8]);
+            AssertUrlCorrect("SOME_NODE09", config09, configs[8]);
+            AssertUrlCorrect("SOME_NODE10", config10, configs[9]);
+
+            progress.Received().NeedsUnsatisfiedRoot(config11);
+            progress.Received().NeedsUnsatisfiedRoot(config12);
+            progress.Received().NeedsUnsatisfiedRoot(config13);
+            progress.Received().NeedsUnsatisfiedRoot(config14);
         }
 
         [Fact]
