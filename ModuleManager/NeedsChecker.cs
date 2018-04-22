@@ -12,6 +12,8 @@ namespace ModuleManager
     {
         public static void CheckNeeds(UrlDir gameDatabaseRoot, IEnumerable<string> mods, IPatchProgress progress, IBasicLogger logger)
         {
+            UrlDir gameData = gameDatabaseRoot.children.First(dir => dir.type == UrlDir.DirectoryType.GameData && dir.name == "");
+
             foreach (UrlDir.UrlConfig mod in gameDatabaseRoot.AllConfigs.ToArray())
             {
                 UrlDir.UrlConfig currentMod = mod;
@@ -29,7 +31,7 @@ namespace ModuleManager
                     {
                         string type = currentMod.type;
 
-                        if (CheckNeeds(ref type, mods))
+                        if (CheckNeeds(ref type, mods, gameData))
                         {
 
                             ConfigNode copy = new ConfigNode(type);
@@ -52,7 +54,7 @@ namespace ModuleManager
 
                     // Recursively check the contents
                     PatchContext context = new PatchContext(newMod, gameDatabaseRoot, logger, progress);
-                    CheckNeeds(new NodeStack(newMod.config), context, mods);
+                    CheckNeeds(new NodeStack(newMod.config), context, mods, gameData);
                 }
                 catch (Exception ex)
                 {
@@ -77,7 +79,7 @@ namespace ModuleManager
             }
         }
 
-        private static void CheckNeeds(NodeStack stack, PatchContext context, IEnumerable<string> mods)
+        private static void CheckNeeds(NodeStack stack, PatchContext context, IEnumerable<string> mods, UrlDir gameData)
         {
             ConfigNode original = stack.value;
             for (int i = 0; i < original.values.Count; ++i)
@@ -86,7 +88,7 @@ namespace ModuleManager
                 string valname = val.name;
                 try
                 {
-                    if (CheckNeeds(ref valname, mods))
+                    if (CheckNeeds(ref valname, mods, gameData))
                     {
                         val.name = valname;
                     }
@@ -122,10 +124,10 @@ namespace ModuleManager
 
                 try
                 {
-                    if (CheckNeeds(ref nodeName, mods))
+                    if (CheckNeeds(ref nodeName, mods, gameData))
                     {
                         node.name = nodeName;
-                        CheckNeeds(stack.Push(node), context, mods);
+                        CheckNeeds(stack.Push(node), context, mods, gameData);
                     }
                     else
                     {
@@ -150,7 +152,7 @@ namespace ModuleManager
         /// <summary>
         /// Returns true if needs are satisfied.
         /// </summary>
-        private static bool CheckNeeds(ref string name, IEnumerable<string> mods)
+        private static bool CheckNeeds(ref string name, IEnumerable<string> mods, UrlDir gameData)
         {
             if (name == null)
                 return true;
@@ -159,7 +161,7 @@ namespace ModuleManager
             if (idxStart < 0)
                 return true;
             int idxEnd = name.IndexOf(']', idxStart + 7);
-            string needsString = name.Substring(idxStart + 7, idxEnd - idxStart - 7).ToUpper();
+            string needsString = name.Substring(idxStart + 7, idxEnd - idxStart - 7);
 
             name = name.Substring(0, idxStart) + name.Substring(idxEnd + 1);
 
@@ -174,7 +176,24 @@ namespace ModuleManager
 
                     bool not = orDependency[0] == '!';
                     string toFind = not ? orDependency.Substring(1) : orDependency;
-                    bool found = mods.Contains(toFind, StringComparer.OrdinalIgnoreCase);
+
+                    bool found = mods.Contains(toFind.ToUpper(), StringComparer.OrdinalIgnoreCase);
+                    if (!found && toFind.Contains('/'))
+                    {
+                        string[] splits = toFind.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+
+                        found = true;
+                        UrlDir current = gameData;
+                        for (int i = 0; i < splits.Length; i++)
+                        {
+                            current = current.children.FirstOrDefault(dir => dir.name == splits[i]);
+                            if (current == null)
+                            {
+                                found = false;
+                                break;
+                            }
+                        }
+                    }
 
                     if (not == !found)
                     {

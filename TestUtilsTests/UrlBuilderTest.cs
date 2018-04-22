@@ -136,6 +136,45 @@ namespace TestUtilsTests
         }
 
         [Fact]
+        public void TestCreateGameData()
+        {
+            UrlDir gameData = UrlBuilder.CreateGameData();
+
+            Assert.Equal("", gameData.name);
+            Assert.Equal("", gameData.url);
+            Assert.Equal(UrlDir.DirectoryType.GameData, gameData.type);
+            UrlDir root = Assert.IsType<UrlDir>(gameData.root);
+            Assert.Same(root, gameData.parent);
+            Assert.Equal("root", root.name);
+            Assert.Null(root.parent);
+            Assert.Same(root, root.root);
+            Assert.Contains(gameData, root.children);
+        }
+
+        [Fact]
+        public void TestCreateGameData__SpecifyRoot()
+        {
+            UrlDir root = UrlBuilder.CreateRoot();
+            UrlDir gameData = UrlBuilder.CreateGameData(root);
+
+            Assert.Equal("", gameData.name);
+            Assert.Equal("", gameData.url);
+            Assert.Equal(UrlDir.DirectoryType.GameData, gameData.type);
+            Assert.Same(root, gameData.parent);
+            Assert.Contains(gameData, root.children);
+        }
+
+        [Fact]
+        public void TestCreateGameData__SpecifyRoot__GameDataAlreadyExists()
+        {
+            UrlDir root = UrlBuilder.CreateRoot();
+            UrlDir gameData1 = UrlBuilder.CreateGameData(root);
+            UrlDir gameData2 = UrlBuilder.CreateGameData(root);
+
+            Assert.Same(gameData1, gameData2);
+        }
+
+        [Fact]
         public void TestCreateFile()
         {
             UrlDir.UrlFile file = UrlBuilder.CreateFile("someFile.txt");
