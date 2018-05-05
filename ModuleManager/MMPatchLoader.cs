@@ -443,11 +443,7 @@ namespace ModuleManager
                 
                 // hash the file content
                 byte[] contentBytes = File.ReadAllBytes(files[i].fullPath);
-                if (i == files.Length - 1)
-                    sha.TransformFinalBlock(contentBytes, 0, contentBytes.Length);
-                else
-                    sha.TransformBlock(contentBytes, 0, contentBytes.Length, contentBytes, 0);
-
+                sha.TransformBlock(contentBytes, 0, contentBytes.Length, contentBytes, 0);
                 
                 filesha.ComputeHash(contentBytes);
                 if (!filesSha.ContainsKey(files[i].url))
@@ -467,6 +463,9 @@ namespace ModuleManager
                 byte[] pathBytes = Encoding.UTF8.GetBytes(path);
                 sha.TransformBlock(pathBytes, 0, pathBytes.Length, pathBytes, 0);
             }
+
+            byte[] godsFinalMessageToHisCreatiom = Encoding.UTF8.GetBytes("We apologize for the inconvenience.");
+            sha.TransformFinalBlock(godsFinalMessageToHisCreatiom, 0, godsFinalMessageToHisCreatiom.Length);
 
             configSha = BitConverter.ToString(sha.Hash);
             sha.Clear();
