@@ -13,6 +13,11 @@ namespace ModuleManager
                 valueName = string.Empty;
                 return Operator.Assign;
             }
+            else if (name.Length == 1 || (name[name.Length - 2] != ' ' && name[name.Length - 2] != '\t'))
+            {
+                valueName = name;
+                return Operator.Assign;
+            }
 
             Operator ret;
             switch (name[name.Length - 1])

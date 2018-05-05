@@ -88,5 +88,23 @@ namespace ModuleManagerTests
             Assert.Equal(Operator.RegexReplace, op);
             Assert.Equal("some_stuff,1[2, ]", result);
         }
+
+        [Fact]
+        public void TestParse__NoSpaceMeansNoOp()
+        {
+            Operator op = OperatorParser.Parse("some_stuff*", out string result);
+
+            Assert.Equal(Operator.Assign, op);
+            Assert.Equal("some_stuff*", result);
+        }
+
+        [Fact]
+        public void TestParse__SingleCharacterNotOp()
+        {
+            Operator op = OperatorParser.Parse("*", out string result);
+
+            Assert.Equal(Operator.Assign, op);
+            Assert.Equal("*", result);
+        }
     }
 }
