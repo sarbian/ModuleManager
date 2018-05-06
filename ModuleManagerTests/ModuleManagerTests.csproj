@@ -60,8 +60,14 @@
     <Compile Include="Logging\ExceptionMessageTest.cs" />
     <Compile Include="Logging\NormalMessageTest.cs" />
     <Compile Include="Logging\QueueLoggerTest.cs" />
+    <Compile Include="NodeMatcherTest.cs" />
     <Compile Include="OperatorParserTest.cs" />
+    <Compile Include="PassTest.cs" />
     <Compile Include="PatchApplierTest.cs" />
+    <Compile Include="Patches\DeletePatchTest.cs" />
+    <Compile Include="Patches\CopyPatchTest.cs" />
+    <Compile Include="Patches\EditPatchTest.cs" />
+    <Compile Include="Patches\PatchCompilerTest.cs" />
     <Compile Include="PatchListTest.cs" />
     <Compile Include="Collections\ArrayEnumeratorTest.cs" />
     <Compile Include="Collections\ImmutableStackTest.cs" />

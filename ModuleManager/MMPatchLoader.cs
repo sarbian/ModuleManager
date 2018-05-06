@@ -55,10 +55,6 @@ namespace ModuleManager
         private string configSha;
         private Dictionary<string, string> filesSha = new Dictionary<string, string>();
 
-        private bool useCache = false;
-
-        private readonly Stopwatch patchSw = new Stopwatch();
-
         private static readonly List<ModuleManagerPostPatchCallback> postPatchCallbacks = new List<ModuleManagerPostPatchCallback>();
 
         private const float yieldInterval = 1f/30f; // Patch at ~30fps
@@ -95,12 +91,6 @@ namespace ModuleManager
 
         public override bool IsReady()
         {
-            //return false;
-            if (ready)
-            {
-                patchSw.Stop();
-                logger.Info("Ran in " + ((float)patchSw.ElapsedMilliseconds / 1000).ToString("F3") + "s");
-            }
             return ready;
         }
 
@@ -113,9 +103,6 @@ namespace ModuleManager
 
         public override void StartLoad()
         {
-            patchSw.Reset();
-            patchSw.Start();
-
             ready = false;
 
             // DB check used to track the now fixed TextureReplacer corruption
@@ -132,18 +119,21 @@ namespace ModuleManager
 
         private IEnumerator ProcessPatch()
         {
+            Stopwatch patchSw = new Stopwatch();
+            patchSw.Start();
+
             status = "Checking Cache";
             logger.Info(status);
             yield return null;
-            
+
+            bool useCache = false;
             try
             {
-                IsCacheUpToDate();
+                useCache = IsCacheUpToDate();
             }
             catch (Exception ex)
             {
                 logger.Exception("Exception in IsCacheUpToDate", ex);
-                useCache = false;
             }
 
 #if DEBUG
@@ -185,7 +175,16 @@ namespace ModuleManager
 
                 yield return null;
 
-                PatchList patchList = PatchExtractor.SortAndExtractPatches(GameDatabase.Instance.root, mods, progress);
+                // PatchList patchList = PatchExtractor.SortAndExtractPatches(GameDatabase.Instance.root, mods, progress);
+
+                PatchList patchList = new PatchList(mods);
+                PatchExtractor extractor = new PatchExtractor(patchList, progress, logger);
+
+                // Have to convert to an array because we will be removing patches
+                foreach (UrlDir.UrlConfig urlConfig in GameDatabase.Instance.root.AllConfigs.ToArray())
+                {
+                    extractor.ExtractPatch(urlConfig);
+                }
 
                 #endregion
 
@@ -390,6 +389,9 @@ namespace ModuleManager
 
             yield return null;
 
+            patchSw.Stop();
+            logger.Info("Ran in " + ((float)patchSw.ElapsedMilliseconds / 1000).ToString("F3") + "s");
+
             ready = true;
         }
 
@@ -427,7 +429,7 @@ namespace ModuleManager
             configs[0].config.Save(physicsPath);
         }
 
-        private void IsCacheUpToDate()
+        private bool IsCacheUpToDate()
         {
             Stopwatch sw = new Stopwatch();
             sw.Start();
@@ -476,7 +478,7 @@ namespace ModuleManager
             logger.Info("SHA generated in " + ((float)sw.ElapsedMilliseconds / 1000).ToString("F3") + "s");
             logger.Info("      SHA = " + configSha);
 
-            useCache = false;
+            bool useCache = false;
             if (File.Exists(shaPath))
             {
                 ConfigNode shaConfigNode = ConfigNode.Load(shaPath);
@@ -497,6 +499,7 @@ namespace ModuleManager
                     logger.Info("useCache = " + useCache);
                 }
             }
+            return useCache;
         }
 
         private bool CheckFilesChange(UrlDir.UrlFile[] files, ConfigNode shaConfigNode)
@@ -1796,7 +1799,7 @@ namespace ModuleManager
         public static bool WildcardMatchValues(ConfigNode node, string type, string value)
         {
             double val = 0;
-            bool compare = value.Length > 1 && (value[0] == '<' || value[0] == '>');
+            bool compare = value != null && value.Length > 1 && (value[0] == '<' || value[0] == '>');
             compare = compare && double.TryParse(value.Substring(1), NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out val);
 
             string[] values = node.GetValues(type);
