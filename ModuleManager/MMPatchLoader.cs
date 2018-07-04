@@ -258,6 +258,11 @@ namespace ModuleManager
 
                 #region Saving Cache
 
+                foreach (KeyValuePair<string, int> item in progress.Counter.warningFiles)
+                {
+                    logger.Warning(item.Value + " warning" + (item.Value > 1 ? "s" : "") + " related to GameData/" + item.Key);
+                }
+
                 if (progress.Counter.errors > 0 || progress.Counter.exceptions > 0)
                 {
                     foreach (KeyValuePair<string, int> item in progress.Counter.errorFiles)
@@ -692,6 +697,9 @@ namespace ModuleManager
             progressFraction = progress.ProgressFraction;
 
             status = "ModuleManager: " + progress.Counter.patchedNodes + " patch" + (progress.Counter.patchedNodes != 1 ? "es" : "") + " applied";
+
+            if (progress.Counter.warnings > 0)
+                status += ", found <color=yellow>" + progress.Counter.warnings + " warning" + (progress.Counter.warnings != 1 ? "s" : "") + "</yellow>";
 
             if (progress.Counter.errors > 0)
                 status += ", found <color=orange>" + progress.Counter.errors + " error" + (progress.Counter.errors != 1 ? "s" : "") + "</color>";

@@ -9,6 +9,7 @@ namespace ModuleManager.Progress
 
         float ProgressFraction { get; }
 
+        void Warning(UrlDir.UrlConfig url, string message);
         void Error(UrlDir.UrlConfig url, string message);
         void Exception(string message, Exception exception);
         void Exception(UrlDir.UrlConfig url, string message, Exception exception);
