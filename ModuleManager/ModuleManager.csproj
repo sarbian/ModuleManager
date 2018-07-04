@@ -75,6 +75,9 @@
     <Compile Include="Properties\Resources.Designer.cs" />
     <Compile Include="Progress\IPatchProgress.cs" />
     <Compile Include="Progress\PatchProgress.cs" />
+    <Compile Include="Tags\Tag.cs" />
+    <Compile Include="Tags\TagList.cs" />
+    <Compile Include="Tags\TagListParser.cs" />
     <Compile Include="Threading\ITaskStatus.cs" />
     <Compile Include="Threading\TaskStatus.cs" />
     <Compile Include="Threading\TaskStatusWrapper.cs" />
