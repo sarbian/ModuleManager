@@ -12,7 +12,7 @@ namespace ModuleManager.Progress
         public readonly Counter errors = new Counter();
         public readonly Counter exceptions = new Counter();
         public readonly Counter needsUnsatisfied = new Counter();
-        
+
         public readonly Dictionary<String, int> errorFiles = new Dictionary<string, int>();
     }
 }
