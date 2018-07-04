@@ -79,6 +79,9 @@
     <Compile Include="PatchExtractorTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Progress\PatchProgressTest.cs" />
+    <Compile Include="Tags\TagListParserTest.cs" />
+    <Compile Include="Tags\TagListTest.cs" />
+    <Compile Include="Tags\TagTest.cs" />
     <Compile Include="Threading\TaskStatusTest.cs" />
     <Compile Include="Threading\BackgroundTaskTest.cs" />
     <Compile Include="Utils\CounterTest.cs" />
