@@ -220,6 +220,25 @@ namespace ModuleManagerTests
         }
 
         [Fact]
+        public void TestWarning()
+        {
+            UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig("abc/def", new ConfigNode("SOME_NODE"));
+            UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig("abc/def", new ConfigNode("SOME_OTHER_NODE"));
+
+            Assert.Equal(0, progress.Counter.warnings);
+
+            progress.Warning(config1, "I'm warning you");
+            Assert.Equal(1, progress.Counter.warnings);
+            Assert.Equal(1, progress.Counter.warningFiles["abc/def.cfg"]);
+            logger.Received().Log(LogType.Warning, "I'm warning you");
+
+            progress.Warning(config2, "You should probably pay attention to this");
+            Assert.Equal(2, progress.Counter.warnings);
+            Assert.Equal(2, progress.Counter.warningFiles["abc/def.cfg"]);
+            logger.Received().Log(LogType.Warning, "You should probably pay attention to this");
+        }
+
+        [Fact]
         public void TestError()
         {
             UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig("abc/def", new ConfigNode("SOME_NODE"));

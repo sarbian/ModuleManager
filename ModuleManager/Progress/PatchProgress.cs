@@ -95,6 +95,13 @@ namespace ModuleManager.Progress
             Counter.needsUnsatisfied.Increment();
         }
 
+        public void Warning(UrlDir.UrlConfig url, string message)
+        {
+            Counter.warnings.Increment();
+            logger.Warning(message);
+            RecordWarningFile(url);
+        }
+
         public void Error(UrlDir.UrlConfig url, string message)
         {
             Counter.errors.Increment();
@@ -112,6 +119,18 @@ namespace ModuleManager.Progress
         {
             Exception(message, exception);
             RecordErrorFile(url);
+        }
+
+        private void RecordWarningFile(UrlDir.UrlConfig url)
+        {
+            string key = url.parent.url + "." + url.parent.fileExtension;
+            if (key[0] == '/')
+                key = key.Substring(1);
+
+            if (Counter.warningFiles.ContainsKey(key))
+                Counter.warningFiles[key] += 1;
+            else
+                Counter.warningFiles[key] = 1;
         }
 
         private void RecordErrorFile(UrlDir.UrlConfig url)
