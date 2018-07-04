@@ -6,296 +6,164 @@ using NSubstitute;
 using TestUtils;
 using ModuleManager;
 using ModuleManager.Patches;
+using ModuleManager.Patches.PassSpecifiers;
+using ModuleManager.Progress;
 
 namespace ModuleManagerTests
 {
     public class PatchListTest
     {
-        private UrlDir databaseRoot;
-        private UrlDir.UrlFile file;
-        private PatchList patchList;
-
-        public PatchListTest()
+        [Fact]
+        public void TestConstructor__ModListNull()
         {
-            databaseRoot = UrlBuilder.CreateRoot();
-            file = UrlBuilder.CreateFile("abc/def.cfg", databaseRoot);
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                new PatchList(null, new IPatch[0], Substitute.For<IPatchProgress>());
+            });
 
-            patchList = new PatchList(new[] { "mod1", "mod2" });
+            Assert.Equal("modList", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestConstructor__PatchesNull()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                new PatchList(new string[0], null, Substitute.For<IPatchProgress>());
+            });
+
+            Assert.Equal("patches", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestConstructor__ProgressNull()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                new PatchList(new string[0], new IPatch[0], null);
+            });
+
+            Assert.Equal("progress", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestConstructor__UnknownMod()
+        {
+            IPatch patch = Substitute.For<IPatch>();
+            UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig("abc/def", new ConfigNode("NODE"));
+            patch.PassSpecifier.Returns(new BeforePassSpecifier("mod3", urlConfig));
+            IPatchProgress progress = Substitute.For<IPatchProgress>();
+
+            KeyNotFoundException ex = Assert.Throws<KeyNotFoundException>(delegate
+            {
+                new PatchList(new[] { "mod1", "mod2" }, new[] { patch }, progress);
+            });
+
+            Assert.Equal("Mod 'mod3' not found", ex.Message);
+
+            progress.DidNotReceive().PatchAdded();
+        }
+
+        [Fact]
+        public void TestConstructor__UnknownPassSpecifier()
+        {
+            IPatch patch = Substitute.For<IPatch>();
+            UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig("abc/def", new ConfigNode("NODE"));
+            IPassSpecifier passSpecifier = Substitute.For<IPassSpecifier>();
+            passSpecifier.Descriptor.Returns(":SOMEPASS");
+            patch.PassSpecifier.Returns(passSpecifier);
+            IPatchProgress progress = Substitute.For<IPatchProgress>();
+
+            NotImplementedException ex = Assert.Throws<NotImplementedException>(delegate
+            {
+                new PatchList(new string[0], new[] { patch }, progress);
+            });
+
+            Assert.Equal("Don't know what to do with pass specifier: :SOMEPASS", ex.Message);
+
+            progress.DidNotReceive().PatchAdded();
         }
 
         [Fact]
         public void Test__Lifecycle()
         {
-            IPatch patch01 = Substitute.For<IPatch>();
-            IPatch patch02 = Substitute.For<IPatch>();
-            IPatch patch03 = Substitute.For<IPatch>();
-            IPatch patch04 = Substitute.For<IPatch>();
-            IPatch patch05 = Substitute.For<IPatch>();
-            IPatch patch06 = Substitute.For<IPatch>();
-            IPatch patch07 = Substitute.For<IPatch>();
-            IPatch patch08 = Substitute.For<IPatch>();
-            IPatch patch09 = Substitute.For<IPatch>();
-            IPatch patch10 = Substitute.For<IPatch>();
-            IPatch patch11 = Substitute.For<IPatch>();
-            IPatch patch12 = Substitute.For<IPatch>();
-            IPatch patch13 = Substitute.For<IPatch>();
-            IPatch patch14 = Substitute.For<IPatch>();
-            IPatch patch15 = Substitute.For<IPatch>();
-            IPatch patch16 = Substitute.For<IPatch>();
-            IPatch patch17 = Substitute.For<IPatch>();
-            IPatch patch18 = Substitute.For<IPatch>();
+            IPatch[] patches = new IPatch[]
+            {
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+            };
 
-            patchList.AddFirstPatch(patch01);
-            patchList.AddFirstPatch(patch02);
-            patchList.AddLegacyPatch(patch03);
-            patchList.AddLegacyPatch(patch04);
-            patchList.AddBeforePatch("mod1", patch05);
-            patchList.AddBeforePatch("MOD1", patch06);
-            patchList.AddForPatch("mod1", patch07);
-            patchList.AddForPatch("MOD1", patch08);
-            patchList.AddAfterPatch("mod1", patch09);
-            patchList.AddAfterPatch("MOD1", patch10);
-            patchList.AddBeforePatch("mod2", patch11);
-            patchList.AddBeforePatch("MOD2", patch12);
-            patchList.AddForPatch("mod2", patch13);
-            patchList.AddForPatch("MOD2", patch14);
-            patchList.AddAfterPatch("mod2", patch15);
-            patchList.AddAfterPatch("MOD2", patch16);
-            patchList.AddFinalPatch(patch17);
-            patchList.AddFinalPatch(patch18);
+            UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig("abc/def", new ConfigNode("NODE"));
+
+            patches[00].PassSpecifier.Returns(new FirstPassSpecifier());
+            patches[01].PassSpecifier.Returns(new FirstPassSpecifier());
+            patches[02].PassSpecifier.Returns(new LegacyPassSpecifier());
+            patches[03].PassSpecifier.Returns(new LegacyPassSpecifier());
+            patches[04].PassSpecifier.Returns(new BeforePassSpecifier("mod1", urlConfig));
+            patches[05].PassSpecifier.Returns(new BeforePassSpecifier("MOD1", urlConfig));
+            patches[06].PassSpecifier.Returns(new ForPassSpecifier("mod1", urlConfig));
+            patches[07].PassSpecifier.Returns(new ForPassSpecifier("MOD1", urlConfig));
+            patches[08].PassSpecifier.Returns(new AfterPassSpecifier("mod1", urlConfig));
+            patches[09].PassSpecifier.Returns(new AfterPassSpecifier("MOD1", urlConfig));
+            patches[10].PassSpecifier.Returns(new BeforePassSpecifier("mod2", urlConfig));
+            patches[11].PassSpecifier.Returns(new BeforePassSpecifier("MOD2", urlConfig));
+            patches[12].PassSpecifier.Returns(new ForPassSpecifier("mod2", urlConfig));
+            patches[13].PassSpecifier.Returns(new ForPassSpecifier("MOD2", urlConfig));
+            patches[14].PassSpecifier.Returns(new AfterPassSpecifier("mod2", urlConfig));
+            patches[15].PassSpecifier.Returns(new AfterPassSpecifier("MOD2", urlConfig));
+            patches[16].PassSpecifier.Returns(new FinalPassSpecifier());
+            patches[17].PassSpecifier.Returns(new FinalPassSpecifier());
+
+            IPatchProgress progress = Substitute.For<IPatchProgress>();
+
+            PatchList patchList = new PatchList(new[] { "mod1", "mod2" }, patches, progress);
 
             IPass[] passes = patchList.ToArray();
             
             Assert.Equal(":FIRST", passes[0].Name);
-            Assert.Equal(new[] { patch01, patch02 }, passes[0]);
+            Assert.Equal(new[] { patches[0], patches[1] }, passes[0]);
 
             Assert.Equal(":LEGACY (default)", passes[1].Name);
-            Assert.Equal(new[] { patch03, patch04 }, passes[1]);
+            Assert.Equal(new[] { patches[2], patches[3] }, passes[1]);
 
             Assert.Equal(":BEFORE[MOD1]", passes[2].Name);
-            Assert.Equal(new[] { patch05, patch06 }, passes[2]);
+            Assert.Equal(new[] { patches[4], patches[5] }, passes[2]);
 
             Assert.Equal(":FOR[MOD1]", passes[3].Name);
-            Assert.Equal(new[] { patch07, patch08 }, passes[3]);
+            Assert.Equal(new[] { patches[6], patches[7] }, passes[3]);
 
             Assert.Equal(":AFTER[MOD1]", passes[4].Name);
-            Assert.Equal(new[] { patch09, patch10 }, passes[4]);
+            Assert.Equal(new[] { patches[8], patches[9] }, passes[4]);
 
             Assert.Equal(":BEFORE[MOD2]", passes[5].Name);
-            Assert.Equal(new[] { patch11, patch12 }, passes[5]);
+            Assert.Equal(new[] { patches[10], patches[11] }, passes[5]);
 
             Assert.Equal(":FOR[MOD2]", passes[6].Name);
-            Assert.Equal(new[] { patch13, patch14 }, passes[6]);
+            Assert.Equal(new[] { patches[12], patches[13] }, passes[6]);
 
             Assert.Equal(":AFTER[MOD2]", passes[7].Name);
-            Assert.Equal(new[] { patch15, patch16 }, passes[7]);
+            Assert.Equal(new[] { patches[14], patches[15] }, passes[7]);
 
             Assert.Equal(":FINAL", passes[8].Name);
-            Assert.Equal(new[] { patch17, patch18 }, passes[8]);
-        }
+            Assert.Equal(new[] { patches[16], patches[17] }, passes[8]);
 
-        [Fact]
-        public void TestHasMod__True()
-        {
-            patchList = new PatchList(new[] { "mod1", "Mod2", "MOD3" });
-
-            Assert.True(patchList.HasMod("mod1"));
-            Assert.True(patchList.HasMod("Mod1"));
-            Assert.True(patchList.HasMod("MOD1"));
-            Assert.True(patchList.HasMod("mod2"));
-            Assert.True(patchList.HasMod("Mod2"));
-            Assert.True(patchList.HasMod("MOD2"));
-            Assert.True(patchList.HasMod("mod3"));
-            Assert.True(patchList.HasMod("Mod3"));
-            Assert.True(patchList.HasMod("MOD3"));
-        }
-
-        [Fact]
-        public void TestHasMod__False()
-        {
-            Assert.False(patchList.HasMod("mod3"));
-            Assert.False(patchList.HasMod("Mod3"));
-            Assert.False(patchList.HasMod("MOD3"));
-        }
-
-        [Fact]
-        public void TestHasMod__Null()
-        {
-            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
-            {
-                Assert.True(patchList.HasMod(null));
-            });
-
-            Assert.Equal("mod", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestHasMod__Blank()
-        {
-            ArgumentException ex = Assert.Throws<ArgumentException>(delegate
-            {
-                Assert.True(patchList.HasMod(""));
-            });
-
-            Assert.Contains("can't be empty", ex.Message);
-            Assert.Equal("mod", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestAddLegacyPatch__Null()
-        {
-            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
-            {
-                patchList.AddLegacyPatch(null);
-            });
-
-            Assert.Equal("patch", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestAddBeforePatch__ModNull()
-        {
-            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
-            {
-                patchList.AddBeforePatch(null, Substitute.For<IPatch>());
-            });
-
-            Assert.Equal("mod", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestAddBeforePatch__ModBlank()
-        {
-            ArgumentException ex = Assert.Throws<ArgumentException>(delegate
-            {
-                patchList.AddBeforePatch("", Substitute.For<IPatch>());
-            });
-
-            Assert.Contains("can't be empty", ex.Message);
-            Assert.Equal("mod", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestAddBeforePatch__PatchNull()
-        {
-            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
-            {
-                patchList.AddBeforePatch("mod1", null);
-            });
-
-            Assert.Equal("patch", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestAddBeforePatch__ModDoesNotExist()
-        {
-            KeyNotFoundException ex = Assert.Throws<KeyNotFoundException>(delegate
-            {
-                patchList.AddBeforePatch("mod3", Substitute.For<IPatch>());
-            });
-
-            Assert.Equal("Mod 'mod3' not found", ex.Message);
-        }
-
-        [Fact]
-        public void TestAddForPatch__ModNull()
-        {
-            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
-            {
-                patchList.AddForPatch(null, Substitute.For<IPatch>());
-            });
-
-            Assert.Equal("mod", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestAddForPatch__ModBlank()
-        {
-            ArgumentException ex = Assert.Throws<ArgumentException>(delegate
-            {
-                patchList.AddForPatch("", Substitute.For<IPatch>());
-            });
-
-            Assert.Contains("can't be empty", ex.Message);
-            Assert.Equal("mod", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestAddForPatch__PatchNull()
-        {
-            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
-            {
-                patchList.AddForPatch("mod1", null);
-            });
-
-            Assert.Equal("patch", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestAddForPatch__ModDoesNotExist()
-        {
-            KeyNotFoundException ex = Assert.Throws<KeyNotFoundException>(delegate
-            {
-                patchList.AddForPatch("mod3", Substitute.For<IPatch>());
-            });
-
-            Assert.Equal("Mod 'mod3' not found", ex.Message);
-        }
-
-        [Fact]
-        public void TestAddAfterPatch__ModNull()
-        {
-            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
-            {
-                patchList.AddAfterPatch(null, Substitute.For<IPatch>());
-            });
-
-            Assert.Equal("mod", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestAddAfterPatch__ModBlank()
-        {
-            ArgumentException ex = Assert.Throws<ArgumentException>(delegate
-            {
-                patchList.AddAfterPatch("", Substitute.For<IPatch>());
-            });
-
-            Assert.Contains("can't be empty", ex.Message);
-            Assert.Equal("mod", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestAddAfterPatch__PatchNull()
-        {
-            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
-            {
-                patchList.AddAfterPatch("mod1", null);
-            });
-
-            Assert.Equal("patch", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestAddAddafterPatch__ModDoesNotExist()
-        {
-            KeyNotFoundException ex = Assert.Throws<KeyNotFoundException>(delegate
-            {
-                patchList.AddAfterPatch("mod3", Substitute.For<IPatch>());
-            });
-
-            Assert.Equal("Mod 'mod3' not found", ex.Message);
-        }
-
-        [Fact]
-        public void TestAddFinalPatch__Null()
-        {
-            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
-            {
-                patchList.AddFinalPatch(null);
-            });
-
-            Assert.Equal("patch", ex.ParamName);
+            progress.Received(patches.Length).PatchAdded();
         }
     }
 }

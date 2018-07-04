@@ -2,29 +2,32 @@
 
 namespace ModuleManager.Patches
 {
-    public static class PatchCompiler
+    public interface IPatchCompiler
     {
-        public static IPatch CompilePatch(UrlDir.UrlConfig urlConfig, Command command, string name)
+        IPatch CompilePatch(ProtoPatch protoPatch);
+    }
+
+    public class PatchCompiler : IPatchCompiler
+    {
+        public IPatch CompilePatch(ProtoPatch protoPatch)
         {
-            if (urlConfig == null) throw new ArgumentNullException(nameof(urlConfig));
-            if (name == null) throw new ArgumentNullException(nameof(name));
-            if (name == string.Empty) throw new ArgumentException("can't be empty", nameof(name));
+            if (protoPatch == null) throw new ArgumentNullException(nameof(protoPatch));
 
-            INodeMatcher nodeMatcher = new NodeMatcher(name);
+            INodeMatcher nodeMatcher = new NodeMatcher(protoPatch.nodeType, protoPatch.nodeName, protoPatch.has);
 
-            switch (command)
+            switch (protoPatch.command)
             {
                 case Command.Edit:
-                    return new EditPatch(urlConfig, nodeMatcher);
+                    return new EditPatch(protoPatch.urlConfig, nodeMatcher, protoPatch.passSpecifier);
 
                 case Command.Copy:
-                    return new CopyPatch(urlConfig, nodeMatcher);
+                    return new CopyPatch(protoPatch.urlConfig, nodeMatcher, protoPatch.passSpecifier);
 
                 case Command.Delete:
-                    return new DeletePatch(urlConfig, nodeMatcher);
+                    return new DeletePatch(protoPatch.urlConfig, nodeMatcher, protoPatch.passSpecifier);
 
                 default:
-                    throw new ArgumentException("invalid command for a root node: " + command, nameof(command));
+                    throw new ArgumentException("has an invalid command for a root node: " + protoPatch.command, nameof(protoPatch));
             }
         }
     }

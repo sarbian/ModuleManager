@@ -1,6 +1,7 @@
 ﻿using System;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
+using ModuleManager.Patches.PassSpecifiers;
 using ModuleManager.Progress;
 
 namespace ModuleManager.Patches
@@ -9,11 +10,13 @@ namespace ModuleManager.Patches
     {
         public UrlDir.UrlConfig UrlConfig { get; }
         public INodeMatcher NodeMatcher { get; }
+        public IPassSpecifier PassSpecifier { get; }
 
-        public DeletePatch(UrlDir.UrlConfig urlConfig, INodeMatcher nodeMatcher)
+        public DeletePatch(UrlDir.UrlConfig urlConfig, INodeMatcher nodeMatcher, IPassSpecifier passSpecifier)
         {
             UrlConfig = urlConfig ?? throw new ArgumentNullException(nameof(urlConfig));
             NodeMatcher = nodeMatcher ?? throw new ArgumentNullException(nameof(nodeMatcher));
+            PassSpecifier = passSpecifier ?? throw new ArgumentNullException(nameof(passSpecifier));
         }
 
         public void Apply(UrlDir.UrlFile file, IPatchProgress progress, IBasicLogger logger)

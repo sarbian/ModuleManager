@@ -1,212 +1,129 @@
 ﻿using System;
-using System.Text.RegularExpressions;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
 using ModuleManager.Patches;
 using ModuleManager.Progress;
+using ModuleManager.Tags;
 
 namespace ModuleManager
 {
     public class PatchExtractor
     {
-        private static readonly Regex firstRegex = new Regex(@":FIRST", RegexOptions.IgnoreCase);
-        private static readonly Regex finalRegex = new Regex(@":FINAL", RegexOptions.IgnoreCase);
-        private static readonly Regex beforeRegex = new Regex(@":BEFORE(?:\[([^\[\]]+)\])?", RegexOptions.IgnoreCase);
-        private static readonly Regex forRegex = new Regex(@":FOR(?:\[([^\[\]]+)\])?", RegexOptions.IgnoreCase);
-        private static readonly Regex afterRegex = new Regex(@":AFTER(?:\[([^\[\]]+)\])?", RegexOptions.IgnoreCase);
-
-        private readonly IPatchList patchList;
         private readonly IPatchProgress progress;
         private readonly IBasicLogger logger;
+        private readonly INeedsChecker needsChecker;
+        private readonly ITagListParser tagListParser;
+        private readonly IProtoPatchBuilder protoPatchBuilder;
+        private readonly IPatchCompiler patchCompiler;
 
-        public PatchExtractor(IPatchList patchList, IPatchProgress progress, IBasicLogger logger)
+        public PatchExtractor(
+            IPatchProgress progress,
+            IBasicLogger logger,
+            INeedsChecker needsChecker,
+            ITagListParser tagListParser,
+            IProtoPatchBuilder protoPatchBuilder,
+            IPatchCompiler patchCompiler
+        )
         {
-            this.patchList = patchList ?? throw new ArgumentNullException(nameof(patchList));
             this.progress = progress ?? throw new ArgumentNullException(nameof(progress));
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            this.needsChecker = needsChecker ?? throw new ArgumentNullException(nameof(needsChecker));
+            this.tagListParser = tagListParser ?? throw new ArgumentNullException(nameof(tagListParser));
+            this.protoPatchBuilder = protoPatchBuilder ?? throw new ArgumentNullException(nameof(protoPatchBuilder));
+            this.patchCompiler = patchCompiler ?? throw new ArgumentNullException(nameof(patchCompiler));
         }
 
-        public void ExtractPatch(UrlDir.UrlConfig urlConfig)
+        public IPatch ExtractPatch(UrlDir.UrlConfig urlConfig)
         {
+            if (urlConfig == null) throw new ArgumentNullException(nameof(urlConfig));
+
             try
             {
+                int index = urlConfig.parent.configs.IndexOf(urlConfig);
+                urlConfig.parent.configs.RemoveAt(index);
+
                 if (!urlConfig.type.IsBracketBalanced())
                 {
                     progress.Error(urlConfig, "Error - node name does not have balanced brackets (or a space - if so replace with ?):\n" + urlConfig.SafeUrl());
-                    urlConfig.parent.configs.Remove(urlConfig);
-                    return;
+                    return null;
                 }
 
                 Command command = CommandParser.Parse(urlConfig.type, out string name);
-
-                Match firstMatch = firstRegex.Match(name);
-                Match finalMatch = finalRegex.Match(name);
-                Match beforeMatch = beforeRegex.Match(name);
-                Match forMatch = forRegex.Match(name);
-                Match afterMatch = afterRegex.Match(name);
-
-                int matchCount = 0;
-
-                if (firstMatch.Success) matchCount++;
-                if (finalMatch.Success) matchCount++;
-                if (beforeMatch.Success) matchCount++;
-                if (forMatch.Success) matchCount++;
-                if (afterMatch.Success) matchCount++;
-
-                if (firstMatch.NextMatch().Success) matchCount++;
-                if (finalMatch.NextMatch().Success) matchCount++;
-                if (beforeMatch.NextMatch().Success) matchCount++;
-                if (forMatch.NextMatch().Success) matchCount++;
-                if (afterMatch.NextMatch().Success) matchCount++;
-
-                bool error = false;
-
-                if (command == Command.Insert && matchCount > 0)
-                {
-                    progress.Error(urlConfig, $"Error - pass specifier detected on an insert node (not a patch): {urlConfig.SafeUrl()}");
-                    error = true;
-                }
-                else if (command == Command.Replace)
+                
+                if (command == Command.Replace)
                 {
                     progress.Error(urlConfig, $"Error - replace command (%) is not valid on a root node: {urlConfig.SafeUrl()}");
-                    error = true;
+                    return null;
                 }
                 else if (command == Command.Create)
                 {
                     progress.Error(urlConfig, $"Error - create command (&) is not valid on a root node: {urlConfig.SafeUrl()}");
-                    error = true;
+                    return null;
                 }
                 else if (command == Command.Rename)
                 {
                     progress.Error(urlConfig, $"Error - rename command (|) is not valid on a root node: {urlConfig.SafeUrl()}");
-                    error = true;
+                    return null;
                 }
                 else if (command == Command.Paste)
                 {
                     progress.Error(urlConfig, $"Error - paste command (#) is not valid on a root node: {urlConfig.SafeUrl()}");
-                    error = true;
+                    return null;
                 }
                 else if (command == Command.Special)
                 {
                     progress.Error(urlConfig, $"Error - special command (*) is not valid on a root node: {urlConfig.SafeUrl()}");
-                    error = true;
+                    return null;
                 }
 
-                if (matchCount > 1)
+                ITagList tagList;
+                try
                 {
-                    progress.Error(urlConfig, $"Error - more than one pass specifier on a node: {urlConfig.SafeUrl()}");
-                    error = true;
+                    tagList = tagListParser.Parse(name);
                 }
-                if (beforeMatch.Success && !beforeMatch.Groups[1].Success)
+                catch (FormatException ex)
                 {
-                    progress.Error(urlConfig, "Error - malformed :BEFORE patch specifier detected: " + urlConfig.SafeUrl());
-                    error = true;
-                }
-                if (forMatch.Success && !forMatch.Groups[1].Success)
-                {
-                    progress.Error(urlConfig, "Error - malformed :FOR patch specifier detected: " + urlConfig.SafeUrl());
-                    error = true;
-                }
-                if (afterMatch.Success && !afterMatch.Groups[1].Success)
-                {
-                    progress.Error(urlConfig, "Error - malformed :AFTER patch specifier detected: " + urlConfig.SafeUrl());
-                    error = true;
-                }
-                if (error)
-                {
-                    urlConfig.parent.configs.Remove(urlConfig);
-                    return;
+                    progress.Error(urlConfig, $"Cannot parse node name as tag list: {ex.Message}\non: {urlConfig.SafeUrl()}");
+                    return null;
                 }
 
-                if (command == Command.Insert) return;
+                ProtoPatch protoPatch = protoPatchBuilder.Build(urlConfig, command, tagList);
 
-                urlConfig.parent.configs.Remove(urlConfig);
+                if (protoPatch == null)
+                {
+                    return null;
+                }
 
-                Match theMatch = null;
-                Action<IPatch> addPatch = null;
-
-                if (firstMatch.Success)
+                if (protoPatch.needs != null && !needsChecker.CheckNeedsExpression(protoPatch.needs))
                 {
-                    theMatch = firstMatch;
-                    addPatch = patchList.AddFirstPatch;
+                    progress.NeedsUnsatisfiedRoot(urlConfig);
+                    return null;
                 }
-                else if (finalMatch.Success)
+                else if (!protoPatch.passSpecifier.CheckNeeds(needsChecker, progress))
                 {
-                    theMatch = finalMatch;
-                    addPatch = patchList.AddFinalPatch;
+                    return null;
                 }
-                else if (beforeMatch.Success)
+                
+                if (command == Command.Insert)
                 {
-                    if (CheckMod(beforeMatch, patchList, out string theMod))
-                    {
-                        theMatch = beforeMatch;
-                        addPatch = p => patchList.AddBeforePatch(theMod, p);
-                    }
-                    else
-                    {
-                        progress.NeedsUnsatisfiedBefore(urlConfig);
-                        return;
-                    }
-                }
-                else if (forMatch.Success)
-                {
-                    if (CheckMod(forMatch, patchList, out string theMod))
-                    {
-                        theMatch = forMatch;
-                        addPatch = p => patchList.AddForPatch(theMod, p);
-                    }
-                    else
-                    {
-                        progress.NeedsUnsatisfiedFor(urlConfig);
-                        return;
-                    }
-                }
-                else if (afterMatch.Success)
-                {
-                    if (CheckMod(afterMatch, patchList, out string theMod))
-                    {
-                        theMatch = afterMatch;
-                        addPatch = p => patchList.AddAfterPatch(theMod, p);
-                    }
-                    else
-                    {
-                        progress.NeedsUnsatisfiedAfter(urlConfig);
-                        return;
-                    }
+                    ConfigNode newNode = urlConfig.config.DeepCopy();
+                    newNode.name = protoPatch.nodeType;
+                    newNode.id = urlConfig.config.id;
+                    needsChecker.CheckNeedsRecursive(newNode, urlConfig);
+                    urlConfig.parent.configs.Insert(index, new UrlDir.UrlConfig(urlConfig.parent, newNode));
+                    return null;
                 }
                 else
                 {
-                    addPatch = patchList.AddLegacyPatch;
+                    needsChecker.CheckNeedsRecursive(urlConfig.config, urlConfig);
+                    return patchCompiler.CompilePatch(protoPatch);
                 }
-
-                string newName;
-                if (theMatch == null)
-                    newName = name;
-                else
-                    newName = name.Remove(theMatch.Index, theMatch.Length);
-
-                addPatch(PatchCompiler.CompilePatch(urlConfig, command, newName));
-                progress.PatchAdded();
             }
             catch(Exception e)
             {
-                progress.Exception(urlConfig, $"Exception while parsing pass for config: {urlConfig.SafeUrl()}", e);
-
-                try
-                {
-                    urlConfig.parent.configs.Remove(urlConfig);
-                }
-                catch (Exception ex)
-                {
-                    logger.Exception("Exception while attempting to clean up bad config", ex);
-                }
+                progress.Exception(urlConfig, $"Exception while attempting to create patch from config: {urlConfig.SafeUrl()}", e);
+                return null;
             }
-        }
-
-        private static bool CheckMod(Match match, IPatchList patchList, out string theMod)
-        {
-            theMod = match.Groups[1].Value.Trim().ToLower();
-            return patchList.HasMod(theMod);
         }
     }
 }

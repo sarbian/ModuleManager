@@ -2,6 +2,7 @@
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
+using ModuleManager.Patches.PassSpecifiers;
 using ModuleManager.Progress;
 
 namespace ModuleManager.Patches
@@ -12,11 +13,13 @@ namespace ModuleManager.Patches
 
         public UrlDir.UrlConfig UrlConfig { get; }
         public INodeMatcher NodeMatcher { get; }
+        public IPassSpecifier PassSpecifier { get; }
 
-        public EditPatch(UrlDir.UrlConfig urlConfig, INodeMatcher nodeMatcher)
+        public EditPatch(UrlDir.UrlConfig urlConfig, INodeMatcher nodeMatcher, IPassSpecifier passSpecifier)
         {
             UrlConfig = urlConfig ?? throw new ArgumentNullException(nameof(urlConfig));
             NodeMatcher = nodeMatcher ?? throw new ArgumentNullException(nameof(nodeMatcher));
+            PassSpecifier = passSpecifier ?? throw new ArgumentNullException(nameof(passSpecifier));
 
             loop = urlConfig.config.HasNode("MM_PATCH_LOOP");
         }
