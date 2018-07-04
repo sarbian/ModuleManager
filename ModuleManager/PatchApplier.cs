@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using ModuleManager.Logging;
 using ModuleManager.Extensions;
@@ -11,31 +12,26 @@ namespace ModuleManager
     {
         private readonly IBasicLogger logger;
         private readonly IPatchProgress progress;
-        
-        private readonly IPatchList patchList;
-
-        private readonly UrlDir.UrlFile[] allConfigFiles;
 
         public string Activity { get; private set; }
 
-        public PatchApplier(IPatchList patchList, UrlDir databaseRoot, IPatchProgress progress, IBasicLogger logger)
+        public PatchApplier(IPatchProgress progress, IBasicLogger logger)
         {
-            this.patchList = patchList;
-            this.progress = progress;
-            this.logger = logger;
-
-            allConfigFiles = databaseRoot.AllConfigFiles.ToArray();
+            this.progress = progress ?? throw new ArgumentNullException(nameof(progress));
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public void ApplyPatches()
+        public void ApplyPatches(IEnumerable<UrlDir.UrlFile> configFiles, IEnumerable<IPass> patches)
         {
-            foreach (IPass pass in patchList)
+            if (configFiles == null) throw new ArgumentNullException(nameof(configFiles));
+            if (patches == null) throw new ArgumentNullException(nameof(patches));
+            foreach (IPass pass in patches)
             {
-                ApplyPatches(pass);
+                ApplyPatches(configFiles, pass);
             }
         }
 
-        private void ApplyPatches(IPass pass)
+        private void ApplyPatches(IEnumerable<UrlDir.UrlFile> configFiles, IPass pass)
         {
             logger.Info(pass.Name + " pass");
             Activity = "ModuleManager " + pass.Name;
@@ -44,7 +40,7 @@ namespace ModuleManager
             {
                 try
                 {
-                    foreach (UrlDir.UrlFile file in allConfigFiles)
+                    foreach (UrlDir.UrlFile file in configFiles)
                     {
                         patch.Apply(file, progress, logger);
                     }
@@ -53,15 +49,7 @@ namespace ModuleManager
                 catch (Exception e)
                 {
                     progress.Exception(patch.UrlConfig, "Exception while processing node : " + patch.UrlConfig.SafeUrl(), e);
-
-                    try
-                    {
-                        logger.Error("Processed node was\n" + patch.UrlConfig.PrettyPrint());
-                    }
-                    catch (Exception ex2)
-                    {
-                        logger.Exception("Exception while attempting to print a node", ex2);
-                    }
+                    logger.Error("Processed node was\n" + patch.UrlConfig.PrettyPrint());
                 }
             }
         }

@@ -16,47 +16,19 @@ namespace ModuleManager
         private string[] namePatterns = null;
         private string constraints = "";
 
-        public NodeMatcher(string nodeName)
+        public NodeMatcher(string type, string name, string constraints)
         {
-            if (nodeName == null) throw new ArgumentNullException(nameof(nodeName));
-            if (nodeName == "") throw new ArgumentException("can't be empty", nameof(nodeName));
-            if (!nodeName.IsBracketBalanced()) throw new FormatException("node name is not bracket balanced: " + nodeName);
-            string name = nodeName;
+            if (type == string.Empty) throw new ArgumentException("can't be empty", nameof(type));
+            this.type = type ?? throw new ArgumentNullException(nameof(type));
 
-            int indexOfHas = name.IndexOf(":HAS[", StringComparison.InvariantCultureIgnoreCase);
-            
-            if (indexOfHas == 0)
-            {
-                throw new FormatException("node name cannot begin with :HAS : " + nodeName);
-            }
-            else if (indexOfHas > 0)
-            {
-                int closingBracketIndex = name.LastIndexOf(']', name.Length - 1, name.Length - indexOfHas - 1);
-                // Really shouldn't happen if we're bracket balanced but just in case
-                if (closingBracketIndex == -1) throw new FormatException("Malformed :HAS[] block detected: " + nodeName);
+            if (name == string.Empty) throw new ArgumentException("can't be empty (null allowed)", nameof(name));
+            if (constraints == string.Empty) throw new ArgumentException("can't be empty (null allowed)", nameof(constraints));
 
-                constraints = name.Substring(indexOfHas + 5, closingBracketIndex - indexOfHas - 5);
-                name = name.Substring(0, indexOfHas);
-            }
-
-            int bracketIndex = name.IndexOf('[');
-            if (bracketIndex == 0)
+            if (name != null) namePatterns = name.Split(',', '|');
+            if (constraints != null)
             {
-                throw new FormatException("node name cannot begin with a bracket: " + nodeName);
-            }
-            else if (bracketIndex > 0)
-            {
-                int closingBracketIndex = name.LastIndexOf(']', name.Length - 1, name.Length - bracketIndex - 1);
-                // Really shouldn't happen if we're bracket balanced but just in case
-                if (closingBracketIndex == -1) throw new FormatException("Malformed brackets detected: " + nodeName);
-                string patterns = name.Substring(bracketIndex + 1, closingBracketIndex - bracketIndex - 1);
-                namePatterns = patterns.Split(',', '|');
-                type = name.Substring(0, bracketIndex);
-            }
-            else
-            {
-                type = name;
-                namePatterns = null;
+                if (!constraints.IsBracketBalanced()) throw new ArgumentException("is not bracket balanced: " + constraints, nameof(constraints));
+                this.constraints = constraints;
             }
         }
 

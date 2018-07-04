@@ -15,7 +15,9 @@ using Debug = UnityEngine.Debug;
 using ModuleManager.Logging;
 using ModuleManager.Extensions;
 using ModuleManager.Collections;
+using ModuleManager.Tags;
 using ModuleManager.Threading;
+using ModuleManager.Patches;
 using ModuleManager.Progress;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
@@ -156,35 +158,24 @@ namespace ModuleManager
 
                 LoadPhysicsConfig();
 
-                #region Check Needs
-
-
-
-                // Do filtering with NEEDS
-                status = "Checking NEEDS.";
-                logger.Info(status);
-                yield return null;
-                NeedsChecker.CheckNeeds(GameDatabase.Instance.root, mods, progress, logger);
-
-                #endregion Check Needs
-
                 #region Sorting Patches
 
-                status = "Sorting patches";
+                status = "Extracting patches";
                 logger.Info(status);
 
                 yield return null;
 
-                // PatchList patchList = PatchExtractor.SortAndExtractPatches(GameDatabase.Instance.root, mods, progress);
-
-                PatchList patchList = new PatchList(mods);
-                PatchExtractor extractor = new PatchExtractor(patchList, progress, logger);
+                UrlDir gameData = GameDatabase.Instance.root.children.First(dir => dir.type == UrlDir.DirectoryType.GameData && dir.name == "");
+                INeedsChecker needsChecker = new NeedsChecker(mods, gameData, progress, logger);
+                ITagListParser tagListParser = new TagListParser();
+                IProtoPatchBuilder protoPatchBuilder = new ProtoPatchBuilder(progress);
+                IPatchCompiler patchCompiler = new PatchCompiler();
+                PatchExtractor extractor = new PatchExtractor(progress, logger, needsChecker, tagListParser, protoPatchBuilder, patchCompiler);
 
                 // Have to convert to an array because we will be removing patches
-                foreach (UrlDir.UrlConfig urlConfig in GameDatabase.Instance.root.AllConfigs.ToArray())
-                {
-                    extractor.ExtractPatch(urlConfig);
-                }
+                UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
+                IEnumerable<IPatch> extractedPatches = allConfigs.Select(urlConfig => extractor.ExtractPatch(urlConfig));
+                PatchList patchList = new PatchList(mods, extractedPatches.Where(patch => patch != null), progress);
 
                 #endregion
 
@@ -198,11 +189,14 @@ namespace ModuleManager
                 MessageQueue<ILogMessage> logQueue = new MessageQueue<ILogMessage>();
                 IBasicLogger patchLogger = new QueueLogger(logQueue);
                 IPatchProgress threadPatchProgress = new PatchProgress(progress, patchLogger);
-                PatchApplier applier = new PatchApplier(patchList, GameDatabase.Instance.root, threadPatchProgress, patchLogger);
+                PatchApplier applier = new PatchApplier(threadPatchProgress, patchLogger);
 
                 logger.Info("Starting patch thread");
 
-                ITaskStatus patchThread = BackgroundTask.Start(applier.ApplyPatches);
+                ITaskStatus patchThread = BackgroundTask.Start(delegate
+                {
+                    applier.ApplyPatches(GameDatabase.Instance.root.AllConfigFiles.ToArray(), patchList);
+                });
 
                 float nextYield = Time.realtimeSinceStartup + yieldInterval;
 

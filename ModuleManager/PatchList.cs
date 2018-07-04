@@ -4,21 +4,12 @@ using System.Collections.Generic;
 using System.Linq;
 using ModuleManager.Collections;
 using ModuleManager.Patches;
+using ModuleManager.Patches.PassSpecifiers;
+using ModuleManager.Progress;
 
 namespace ModuleManager
 {
-    public interface IPatchList : IEnumerable<IPass>
-    {
-        bool HasMod(string mod);
-        void AddFirstPatch(IPatch patch);
-        void AddLegacyPatch(IPatch patch);
-        void AddBeforePatch(string mod, IPatch patch);
-        void AddForPatch(string mod, IPatch patch);
-        void AddAfterPatch(string mod, IPatch patch);
-        void AddFinalPatch(IPatch patch);
-    }
-
-    public class PatchList : IPatchList
+    public class PatchList : IEnumerable<IPass>
     {
         private class ModPass
         {
@@ -82,54 +73,53 @@ namespace ModuleManager
 
         private readonly ModPassCollection modPasses;
 
-        public PatchList(IEnumerable<string> modList)
+        public PatchList(IEnumerable<string> modList, IEnumerable<IPatch> patches, IPatchProgress progress)
         {
-            modPasses = new ModPassCollection(modList);
+            modPasses = new ModPassCollection(modList ?? throw new ArgumentNullException(nameof(modList)));
+            if (patches == null) throw new ArgumentNullException(nameof(patches));
+            if (progress == null) throw new ArgumentNullException(nameof(progress));
+
+            foreach (IPatch patch in patches)
+            {
+                if (patch.PassSpecifier is FirstPassSpecifier)
+                {
+                    firstPatches.Add(patch);
+                }
+                else if (patch.PassSpecifier is LegacyPassSpecifier)
+                {
+                    legacyPatches.Add(patch);
+                }
+                else if (patch.PassSpecifier is BeforePassSpecifier beforePassSpecifier)
+                {
+                    EnsureMod(beforePassSpecifier.mod);
+                    modPasses[beforePassSpecifier.mod].AddBeforePatch(patch);
+                }
+                else if (patch.PassSpecifier is ForPassSpecifier forPassSpecifier)
+                {
+                    EnsureMod(forPassSpecifier.mod);
+                    modPasses[forPassSpecifier.mod].AddForPatch(patch);
+                }
+                else if (patch.PassSpecifier is AfterPassSpecifier afterPassSpecifier)
+                {
+                    EnsureMod(afterPassSpecifier.mod);
+                    modPasses[afterPassSpecifier.mod].AddAfterPatch(patch);
+                }
+                else if (patch.PassSpecifier is FinalPassSpecifier)
+                {
+                    finalPatches.Add(patch);
+                }
+                else
+                {
+                    throw new NotImplementedException("Don't know what to do with pass specifier: " + patch.PassSpecifier.Descriptor);
+                }
+
+                progress.PatchAdded();
+            }
         }
 
         public ArrayEnumerator<IPass> GetEnumerator() => new ArrayEnumerator<IPass>(EnumeratePasses());
         IEnumerator<IPass> IEnumerable<IPass>.GetEnumerator() => GetEnumerator();
         IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        public bool HasMod(string mod)
-        {
-            if (mod == null) throw new ArgumentNullException(nameof(mod));
-            if (mod == string.Empty) throw new ArgumentException("can't be empty", nameof(mod));
-            return modPasses.HasMod(mod);
-        }
-
-        public void AddFirstPatch(IPatch patch)
-        {
-            firstPatches.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
-        }
-
-        public void AddLegacyPatch(IPatch patch)
-        {
-            legacyPatches.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
-        }
-
-        public void AddBeforePatch(string mod, IPatch patch)
-        {
-            EnsureMod(mod);
-            modPasses[mod].AddBeforePatch(patch ?? throw new ArgumentNullException(nameof(patch)));
-        }
-
-        public void AddForPatch(string mod, IPatch patch)
-        {
-            EnsureMod(mod);
-            modPasses[mod].AddForPatch(patch ?? throw new ArgumentNullException(nameof(patch)));
-        }
-
-        public void AddAfterPatch(string mod, IPatch patch)
-        {
-            EnsureMod(mod);
-            modPasses[mod].AddAfterPatch(patch ?? throw new ArgumentNullException(nameof(patch)));
-        }
-
-        public void AddFinalPatch(IPatch patch)
-        {
-            finalPatches.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
-        }
 
         private IPass[] EnumeratePasses()
         {
@@ -154,7 +144,7 @@ namespace ModuleManager
         {
             if (mod == null) throw new ArgumentNullException(nameof(mod));
             if (mod == string.Empty) throw new ArgumentException("can't be empty", nameof(mod));
-            if (!HasMod(mod)) throw new KeyNotFoundException($"Mod '{mod}' not found");
+            if (!modPasses.HasMod(mod)) throw new KeyNotFoundException($"Mod '{mod}' not found");
         }
     }
 }

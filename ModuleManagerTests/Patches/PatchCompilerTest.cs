@@ -5,6 +5,7 @@ using TestUtils;
 using ModuleManager;
 using ModuleManager.Logging;
 using ModuleManager.Patches;
+using ModuleManager.Patches.PassSpecifiers;
 using ModuleManager.Progress;
 
 namespace ModuleManagerTests.Patches
@@ -14,18 +15,27 @@ namespace ModuleManagerTests.Patches
         private readonly IPatchProgress progress = Substitute.For<IPatchProgress>();
         private readonly IBasicLogger logger = Substitute.For<IBasicLogger>();
         private readonly UrlDir.UrlFile file = UrlBuilder.CreateFile("abc/def.cfg");
+        private readonly PatchCompiler patchCompiler = new PatchCompiler();
 
         [Fact]
         public void TestCompilePatch__Edit()
         {
-            UrlDir.UrlConfig patchUrlConfig = UrlBuilder.CreateConfig("ghi/jkl", new TestConfigNode("@NODE")
-            {
-                { "@bar", "bleh" },
-            });
+            ProtoPatch protoPatch = new ProtoPatch(
+                UrlBuilder.CreateConfig("ghi/jkl", new TestConfigNode("@NODE")
+                {
+                    { "@bar", "bleh" },
+                }),
+                Command.Edit,
+                "NODE",
+                "foo",
+                null,
+                "#bar",
+                Substitute.For<IPassSpecifier>()
+            );
 
-            EditPatch patch = Assert.IsType<EditPatch>(PatchCompiler.CompilePatch(patchUrlConfig, Command.Edit, "NODE[foo]:HAS[#bar]"));
+            EditPatch patch = Assert.IsType<EditPatch>(patchCompiler.CompilePatch(protoPatch));
 
-            Assert.Same(patchUrlConfig, patch.UrlConfig);
+            Assert.Same(protoPatch.urlConfig, patch.UrlConfig);
             AssertNodeMatcher(patch.NodeMatcher);
 
             UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig(new TestConfigNode("NODE")
@@ -38,7 +48,7 @@ namespace ModuleManagerTests.Patches
 
             AssertNoErrors();
 
-            progress.Received().ApplyingUpdate(urlConfig, patchUrlConfig);
+            progress.Received().ApplyingUpdate(urlConfig, protoPatch.urlConfig);
 
             Assert.Equal(1, file.configs.Count);
             Assert.NotSame(urlConfig, file.configs[0]);
@@ -52,15 +62,23 @@ namespace ModuleManagerTests.Patches
         [Fact]
         public void TestCompilePatch__Copy()
         {
-            UrlDir.UrlConfig patchUrlConfig = UrlBuilder.CreateConfig("ghi/jkl", new TestConfigNode("+NODE")
-            {
-                { "@name", "boo" },
-                { "@bar", "bleh" },
-            });
+            ProtoPatch protoPatch = new ProtoPatch(
+                UrlBuilder.CreateConfig("ghi/jkl", new TestConfigNode("+NODE")
+                {
+                    { "@name", "boo" },
+                    { "@bar", "bleh" },
+                }),
+                Command.Copy,
+                "NODE",
+                "foo",
+                null,
+                "#bar",
+                Substitute.For<IPassSpecifier>()
+            );
 
-            CopyPatch patch = Assert.IsType<CopyPatch>(PatchCompiler.CompilePatch(patchUrlConfig, Command.Copy, "NODE[foo]:HAS[#bar]"));
+            CopyPatch patch = Assert.IsType<CopyPatch>(patchCompiler.CompilePatch(protoPatch));
 
-            Assert.Same(patchUrlConfig, patch.UrlConfig);
+            Assert.Same(protoPatch.urlConfig, patch.UrlConfig);
             AssertNodeMatcher(patch.NodeMatcher);
 
             UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig(new TestConfigNode("NODE")
@@ -73,7 +91,7 @@ namespace ModuleManagerTests.Patches
 
             AssertNoErrors();
 
-            progress.Received().ApplyingCopy(urlConfig, patchUrlConfig);
+            progress.Received().ApplyingCopy(urlConfig, protoPatch.urlConfig);
 
             Assert.Equal(2, file.configs.Count);
             Assert.Same(urlConfig, file.configs[0]);
@@ -92,11 +110,19 @@ namespace ModuleManagerTests.Patches
         [Fact]
         public void TestCompilePatch__Delete()
         {
-            UrlDir.UrlConfig patchUrlConfig = UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("-NODE"));
+            ProtoPatch protoPatch = new ProtoPatch(
+                UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("-NODE")),
+                Command.Delete,
+                "NODE",
+                "foo",
+                null,
+                "#bar",
+                Substitute.For<IPassSpecifier>()
+            );
 
-            DeletePatch patch = Assert.IsType<DeletePatch>(PatchCompiler.CompilePatch(patchUrlConfig, Command.Delete, "NODE[foo]:HAS[#bar]"));
+            DeletePatch patch = Assert.IsType<DeletePatch>(patchCompiler.CompilePatch(protoPatch));
 
-            Assert.Same(patchUrlConfig, patch.UrlConfig);
+            Assert.Same(protoPatch.urlConfig, patch.UrlConfig);
             AssertNodeMatcher(patch.NodeMatcher);
 
             UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig(new TestConfigNode("NODE")
@@ -109,102 +135,129 @@ namespace ModuleManagerTests.Patches
 
             AssertNoErrors();
 
-            progress.Received().ApplyingDelete(urlConfig, patchUrlConfig);
+            progress.Received().ApplyingDelete(urlConfig, protoPatch.urlConfig);
 
             Assert.Equal(0, file.configs.Count);
         }
 
         [Fact]
-        public void TestCompilePatch__NullUrlConfig()
+        public void TestCompilePatch__NullProtoPatch()
         {
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                PatchCompiler.CompilePatch(null, Command.Edit, "NODE[foo]:HAS[#bar]");
+                patchCompiler.CompilePatch(null);
             });
 
-            Assert.Equal("urlConfig", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestCompilePatch__NullName()
-        {
-            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
-            {
-                PatchCompiler.CompilePatch(UrlBuilder.CreateConfig(new ConfigNode(), file), Command.Edit, null);
-            });
-
-            Assert.Equal("name", ex.ParamName);
-        }
-
-        [Fact]
-        public void TestCompilePatch__BlankName()
-        {
-            ArgumentException ex = Assert.Throws<ArgumentException>(delegate
-            {
-                PatchCompiler.CompilePatch(UrlBuilder.CreateConfig(new ConfigNode(), file), Command.Edit, "");
-            });
-
-            Assert.Equal("name", ex.ParamName);
-            Assert.Contains("can't be empty", ex.Message);
+            Assert.Equal("protoPatch", ex.ParamName);
         }
 
         [Fact]
         public void TestCompilePatch__InvalidCommand__Replace()
         {
+            ProtoPatch protoPatch = new ProtoPatch(
+                UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode()),
+                Command.Replace,
+                "NODE",
+                "foo",
+                null,
+                "#bar",
+                Substitute.For<IPassSpecifier>()
+            );
+
             ArgumentException ex = Assert.Throws<ArgumentException>(delegate
             {
-                PatchCompiler.CompilePatch(UrlBuilder.CreateConfig(new ConfigNode(), file), Command.Replace, "NODE[foo]:HAS[#bar]");
+                patchCompiler.CompilePatch(protoPatch);
             });
 
-            Assert.Equal("command", ex.ParamName);
+            Assert.Equal("protoPatch", ex.ParamName);
             Assert.Contains("invalid command for a root node: Replace", ex.Message);
         }
 
         [Fact]
         public void TestCompilePatch__InvalidCommand__Create()
         {
+            ProtoPatch protoPatch = new ProtoPatch(
+                UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode()),
+                Command.Create,
+                "NODE",
+                "foo",
+                null,
+                "#bar",
+                Substitute.For<IPassSpecifier>()
+            );
+
             ArgumentException ex = Assert.Throws<ArgumentException>(delegate
             {
-                PatchCompiler.CompilePatch(UrlBuilder.CreateConfig(new ConfigNode(), file), Command.Create, "NODE[foo]:HAS[#bar]");
+                patchCompiler.CompilePatch(protoPatch);
             });
 
-            Assert.Equal("command", ex.ParamName);
+            Assert.Equal("protoPatch", ex.ParamName);
             Assert.Contains("invalid command for a root node: Create", ex.Message);
         }
 
         [Fact]
         public void TestCompilePatch__InvalidCommand__Rename()
         {
+            ProtoPatch protoPatch = new ProtoPatch(
+                UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode()),
+                Command.Rename,
+                "NODE",
+                "foo",
+                null,
+                "#bar",
+                Substitute.For<IPassSpecifier>()
+            );
+
             ArgumentException ex = Assert.Throws<ArgumentException>(delegate
             {
-                PatchCompiler.CompilePatch(UrlBuilder.CreateConfig(new ConfigNode(), file), Command.Rename, "NODE[foo]:HAS[#bar]");
+                patchCompiler.CompilePatch(protoPatch);
             });
 
-            Assert.Equal("command", ex.ParamName);
+            Assert.Equal("protoPatch", ex.ParamName);
             Assert.Contains("invalid command for a root node: Rename", ex.Message);
         }
 
         [Fact]
         public void TestCompilePatch__InvalidCommand__Paste()
         {
+            ProtoPatch protoPatch = new ProtoPatch(
+                UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode()),
+                Command.Paste,
+                "NODE",
+                "foo",
+                null,
+                "#bar",
+                Substitute.For<IPassSpecifier>()
+            );
+
             ArgumentException ex = Assert.Throws<ArgumentException>(delegate
             {
-                PatchCompiler.CompilePatch(UrlBuilder.CreateConfig(new ConfigNode(), file), Command.Paste, "NODE[foo]:HAS[#bar]");
+                patchCompiler.CompilePatch(protoPatch);
             });
 
-            Assert.Equal("command", ex.ParamName);
+            Assert.Equal("protoPatch", ex.ParamName);
             Assert.Contains("invalid command for a root node: Paste", ex.Message);
         }
 
         [Fact]
         public void TestCompilePatch__InvalidCommand__Special()
         {
+            ProtoPatch protoPatch = new ProtoPatch(
+                UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode()),
+                Command.Special,
+                "NODE",
+                "foo",
+                null,
+                "#bar",
+                Substitute.For<IPassSpecifier>()
+            );
+
             ArgumentException ex = Assert.Throws<ArgumentException>(delegate
             {
-                PatchCompiler.CompilePatch(UrlBuilder.CreateConfig(new ConfigNode(), file), Command.Special, "NODE[foo]:HAS[#bar]");
+                patchCompiler.CompilePatch(protoPatch);
             });
 
-            Assert.Equal("command", ex.ParamName);
+            Assert.Equal("protoPatch", ex.ParamName);
             Assert.Contains("invalid command for a root node: Special", ex.Message);
         }
 

@@ -5,6 +5,7 @@ using TestUtils;
 using ModuleManager;
 using ModuleManager.Logging;
 using ModuleManager.Patches;
+using ModuleManager.Patches.PassSpecifiers;
 using ModuleManager.Progress;
 
 namespace ModuleManagerTests.Patches
@@ -16,7 +17,7 @@ namespace ModuleManagerTests.Patches
         {
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                new CopyPatch(null, Substitute.For<INodeMatcher>());
+                new CopyPatch(null, Substitute.For<INodeMatcher>(), Substitute.For<IPassSpecifier>());
             });
 
             Assert.Equal("urlConfig", ex.ParamName);
@@ -27,17 +28,28 @@ namespace ModuleManagerTests.Patches
         {
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                new CopyPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), null);
+                new CopyPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), null, Substitute.For<IPassSpecifier>());
             });
 
             Assert.Equal("nodeMatcher", ex.ParamName);
         }
 
         [Fact]
+        public void TestConstructor__passSpecifierNull()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                new CopyPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>(), null);
+            });
+
+            Assert.Equal("passSpecifier", ex.ParamName);
+        }
+
+        [Fact]
         public void TestUrlConfig()
         {
             UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig("abc/def", new ConfigNode());
-            CopyPatch patch = new CopyPatch(urlConfig, Substitute.For<INodeMatcher>());
+            CopyPatch patch = new CopyPatch(urlConfig, Substitute.For<INodeMatcher>(), Substitute.For<IPassSpecifier>());
 
             Assert.Same(urlConfig, patch.UrlConfig);
         }
@@ -46,9 +58,18 @@ namespace ModuleManagerTests.Patches
         public void TestNodeMatcher()
         {
             INodeMatcher nodeMatcher = Substitute.For<INodeMatcher>();
-            CopyPatch patch = new CopyPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), nodeMatcher);
+            CopyPatch patch = new CopyPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), nodeMatcher, Substitute.For<IPassSpecifier>());
 
             Assert.Same(nodeMatcher, patch.NodeMatcher);
+        }
+
+        [Fact]
+        public void TestPassSpecifier()
+        {
+            IPassSpecifier passSpecifier = Substitute.For<IPassSpecifier>();
+            CopyPatch patch = new CopyPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>(), passSpecifier);
+
+            Assert.Same(passSpecifier, patch.PassSpecifier);
         }
 
         [Fact]
@@ -80,7 +101,7 @@ namespace ModuleManagerTests.Patches
             {
                 { "@foo", "baz" },
                 { "pqr", "stw" },
-            }), nodeMatcher);
+            }), nodeMatcher, Substitute.For<IPassSpecifier>());
             
             IPatchProgress progress = Substitute.For<IPatchProgress>();
             IBasicLogger logger = Substitute.For<IBasicLogger>();
@@ -152,7 +173,7 @@ namespace ModuleManagerTests.Patches
                 { "@name", "001" },
                 { "@foo", "baz" },
                 { "pqr", "stw" },
-            }), nodeMatcher);
+            }), nodeMatcher, Substitute.For<IPassSpecifier>());
 
             IPatchProgress progress = Substitute.For<IPatchProgress>();
             IBasicLogger logger = Substitute.For<IBasicLogger>();
@@ -204,7 +225,7 @@ namespace ModuleManagerTests.Patches
             {
                 { "@foo", "baz" },
                 { "pqr", "stw" },
-            }), nodeMatcher);
+            }), nodeMatcher, Substitute.For<IPassSpecifier>());
 
             IPatchProgress progress = Substitute.For<IPatchProgress>();
             IBasicLogger logger = Substitute.For<IBasicLogger>();
@@ -233,7 +254,7 @@ namespace ModuleManagerTests.Patches
         [Fact]
         public void TestApply__FileNull()
         {
-            CopyPatch patch = new CopyPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>());
+            CopyPatch patch = new CopyPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>(), Substitute.For<IPassSpecifier>());
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
                 patch.Apply(null, Substitute.For<IPatchProgress>(), Substitute.For<IBasicLogger>());
@@ -245,7 +266,7 @@ namespace ModuleManagerTests.Patches
         [Fact]
         public void TestApply__ProgressNull()
         {
-            CopyPatch patch = new CopyPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>());
+            CopyPatch patch = new CopyPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>(), Substitute.For<IPassSpecifier>());
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
                 patch.Apply(UrlBuilder.CreateFile("abc/def.cfg"), null, Substitute.For<IBasicLogger>());
@@ -257,7 +278,7 @@ namespace ModuleManagerTests.Patches
         [Fact]
         public void TestApply__LoggerNull()
         {
-            CopyPatch patch = new CopyPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>());
+            CopyPatch patch = new CopyPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>(), Substitute.For<IPassSpecifier>());
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
                 patch.Apply(UrlBuilder.CreateFile("abc/def.cfg"), Substitute.For<IPatchProgress>(), null);

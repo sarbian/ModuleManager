@@ -134,38 +134,34 @@ namespace ModuleManagerTests
         public void TestNeedsUnsatisfiedNode()
         {
             UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig("abc/def", new ConfigNode("SOME_NODE"));
-            NodeStack stack1 = new NodeStack(config1.config).Push(new ConfigNode("SOME_CHILD_NODE"));
             UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("SOME_OTHER_NODE"));
-            NodeStack stack2 = new NodeStack(config2.config).Push(new ConfigNode("SOME_OTHER_CHILD_NODE"));
 
             Assert.Equal(0, progress.Counter.needsUnsatisfied);
 
-            progress.NeedsUnsatisfiedNode(config1, stack1);
+            progress.NeedsUnsatisfiedNode(config1, "SOME/NODE/PATH/SOME_CHILD_NODE");
             Assert.Equal(0, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting node in file abc/def subnode: SOME_NODE/SOME_CHILD_NODE as it can't satisfy its NEEDS");
+            logger.Received().Log(LogType.Log, "Deleting node in file abc/def subnode: SOME/NODE/PATH/SOME_CHILD_NODE as it can't satisfy its NEEDS");
 
-            progress.NeedsUnsatisfiedNode(config2, stack2);
+            progress.NeedsUnsatisfiedNode(config2, "SOME/NODE/PATH/SOME_OTHER_CHILD_NODE");
             Assert.Equal(0, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting node in file ghi/jkl subnode: SOME_OTHER_NODE/SOME_OTHER_CHILD_NODE as it can't satisfy its NEEDS");
+            logger.Received().Log(LogType.Log, "Deleting node in file ghi/jkl subnode: SOME/NODE/PATH/SOME_OTHER_CHILD_NODE as it can't satisfy its NEEDS");
         }
 
         [Fact]
         public void TestNeedsUnsatisfiedValue()
         {
             UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig("abc/def", new ConfigNode("SOME_NODE"));
-            NodeStack stack1 = new NodeStack(config1.config).Push(new ConfigNode("SOME_CHILD_NODE"));
             UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("SOME_OTHER_NODE"));
-            NodeStack stack2 = new NodeStack(config2.config).Push(new ConfigNode("SOME_OTHER_CHILD_NODE"));
 
             Assert.Equal(0, progress.Counter.needsUnsatisfied);
 
-            progress.NeedsUnsatisfiedValue(config1, stack1, "some_value");
+            progress.NeedsUnsatisfiedValue(config1, "SOME/NODE/PATH/some_value");
             Assert.Equal(0, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting value in file abc/def subnode: SOME_NODE/SOME_CHILD_NODE value: some_value as it can't satisfy its NEEDS");
+            logger.Received().Log(LogType.Log, "Deleting value in file abc/def value: SOME/NODE/PATH/some_value as it can't satisfy its NEEDS");
 
-            progress.NeedsUnsatisfiedValue(config2, stack2, "some_other_value");
+            progress.NeedsUnsatisfiedValue(config2, "SOME/NODE/PATH/some_other_value");
             Assert.Equal(0, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting value in file ghi/jkl subnode: SOME_OTHER_NODE/SOME_OTHER_CHILD_NODE value: some_other_value as it can't satisfy its NEEDS");
+            logger.Received().Log(LogType.Log, "Deleting value in file ghi/jkl value: SOME/NODE/PATH/some_other_value as it can't satisfy its NEEDS");
         }
 
         [Fact]

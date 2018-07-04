@@ -8,165 +8,41 @@ using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManager
 {
-    public static class NeedsChecker
+    public interface INeedsChecker
     {
-        public static void CheckNeeds(UrlDir gameDatabaseRoot, IEnumerable<string> mods, IPatchProgress progress, IBasicLogger logger)
+        bool CheckNeeds(string mod);
+        bool CheckNeedsExpression(string needsString);
+        void CheckNeedsRecursive(ConfigNode node, UrlDir.UrlConfig urlConfig);
+    }
+
+    public class NeedsChecker : INeedsChecker
+    {
+        private readonly IEnumerable<string> mods;
+        private readonly UrlDir gameData;
+        private readonly IPatchProgress progress;
+        private readonly IBasicLogger logger;
+
+        public NeedsChecker(IEnumerable<string> mods, UrlDir gameData, IPatchProgress progress, IBasicLogger logger)
         {
-            UrlDir gameData = gameDatabaseRoot.children.First(dir => dir.type == UrlDir.DirectoryType.GameData && dir.name == "");
-
-            foreach (UrlDir.UrlConfig mod in gameDatabaseRoot.AllConfigs.ToArray())
-            {
-                UrlDir.UrlConfig currentMod = mod;
-                try
-                {
-                    if (mod.config.name == null)
-                    {
-                        progress.Error(currentMod, "Error - Node in file " + currentMod.parent.url + " subnode: " + currentMod.type +
-                                " has config.name == null");
-                    }
-
-                    UrlDir.UrlConfig newMod;
-
-                    if (currentMod.type.IndexOf(":NEEDS[", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        string type = currentMod.type;
-
-                        if (CheckNeeds(ref type, mods, gameData))
-                        {
-
-                            ConfigNode copy = new ConfigNode(type);
-                            copy.ShallowCopyFrom(currentMod.config);
-                            int index = mod.parent.configs.IndexOf(currentMod);
-                            newMod = new UrlDir.UrlConfig(currentMod.parent, copy);
-                            mod.parent.configs[index] = newMod;
-                        }
-                        else
-                        {
-                            progress.NeedsUnsatisfiedRoot(currentMod);
-                            mod.parent.configs.Remove(currentMod);
-                            continue;
-                        }
-                    }
-                    else
-                    {
-                        newMod = currentMod;
-                    }
-
-                    // Recursively check the contents
-                    PatchContext context = new PatchContext(newMod, gameDatabaseRoot, logger, progress);
-                    CheckNeeds(new NodeStack(newMod.config), context, mods, gameData);
-                }
-                catch (Exception ex)
-                {
-                    try
-                    {
-                        mod.parent.configs.Remove(currentMod);
-                    }
-                    catch(Exception ex2)
-                    {
-                        logger.Exception("Exception while attempting to ensure config removed" ,ex2);
-                    }
-
-                    try
-                    {
-                        progress.Exception(mod, "Exception while checking needs on root node :\n" + mod.PrettyPrint(), ex);
-                    }
-                    catch (Exception ex2)
-                    {
-                        progress.Exception("Exception while attempting to log an exception", ex2);
-                    }
-                }
-            }
+            this.mods = mods ?? throw new ArgumentNullException(nameof(mods));
+            this.gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
+            this.progress = progress ?? throw new ArgumentNullException(nameof(progress));
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        private static void CheckNeeds(NodeStack stack, PatchContext context, IEnumerable<string> mods, UrlDir gameData)
+        public bool CheckNeeds(string mod)
         {
-            ConfigNode original = stack.value;
-            for (int i = 0; i < original.values.Count; ++i)
-            {
-                ConfigNode.Value val = original.values[i];
-                string valname = val.name;
-                try
-                {
-                    if (CheckNeeds(ref valname, mods, gameData))
-                    {
-                        val.name = valname;
-                    }
-                    else
-                    {
-                        original.values.Remove(val);
-                        i--;
-                        context.progress.NeedsUnsatisfiedValue(context.patchUrl, stack, val.name);
-                    }
-                }
-                catch (ArgumentOutOfRangeException e)
-                {
-                    context.progress.Exception("ArgumentOutOfRangeException in CheckNeeds for value \"" + val.name + "\"", e);
-                    throw;
-                }
-                catch (Exception e)
-                {
-                    context.progress.Exception("General Exception in CheckNeeds for value \"" + val.name + "\"", e);
-                    throw;
-                }
-            }
-
-            for (int i = 0; i < original.nodes.Count; ++i)
-            {
-                ConfigNode node = original.nodes[i];
-                string nodeName = node.name;
-
-                if (nodeName == null)
-                {
-                    context.progress.Error(context.patchUrl, "Error - Node in file " + context.patchUrl.SafeUrl() + " subnode: " + stack.GetPath() +
-                            " has config.name == null");
-                }
-
-                try
-                {
-                    if (CheckNeeds(ref nodeName, mods, gameData))
-                    {
-                        node.name = nodeName;
-                        CheckNeeds(stack.Push(node), context, mods, gameData);
-                    }
-                    else
-                    {
-                        original.nodes.Remove(node);
-                        i--;
-                        context.progress.NeedsUnsatisfiedNode(context.patchUrl, stack.Push(node));
-                    }
-                }
-                catch (ArgumentOutOfRangeException e)
-                {
-                    context.progress.Exception("ArgumentOutOfRangeException in CheckNeeds for node \"" + node.name + "\"", e);
-                    throw;
-                }
-                catch (Exception e)
-                {
-                    context.progress.Exception("General Exception " + e.GetType().Name + " for node \"" + node.name + "\"", e);
-                    throw;
-                }
-            }
+            if (mod == null) throw new ArgumentNullException(nameof(mod));
+            if (mod == string.Empty) throw new ArgumentException("can't be empty", nameof(mod));
+            return mods.Contains(mod, StringComparer.InvariantCultureIgnoreCase);
         }
 
-        /// <summary>
-        /// Returns true if needs are satisfied.
-        /// </summary>
-        private static bool CheckNeeds(ref string name, IEnumerable<string> mods, UrlDir gameData)
+        public bool CheckNeedsExpression(string needsExpression)
         {
-            if (name == null)
-                return true;
+            if (needsExpression == null) throw new ArgumentNullException(nameof(needsExpression));
+            if (needsExpression == string.Empty) throw new ArgumentException("can't be empty", nameof(needsExpression));
 
-            int idxStart = name.IndexOf(":NEEDS[", StringComparison.OrdinalIgnoreCase);
-            if (idxStart < 0)
-                return true;
-            int idxEnd = name.IndexOf(']', idxStart + 7);
-            string needsString = name.Substring(idxStart + 7, idxEnd - idxStart - 7);
-
-            name = name.Substring(0, idxStart) + name.Substring(idxEnd + 1);
-
-            // Check to see if all the needed dependencies are present.
-            foreach (string andDependencies in needsString.Split(',', '&'))
+            foreach (string andDependencies in needsExpression.Split(',', '&'))
             {
                 bool orMatch = false;
                 foreach (string orDependency in andDependencies.Split('|'))
@@ -177,23 +53,7 @@ namespace ModuleManager
                     bool not = orDependency[0] == '!';
                     string toFind = not ? orDependency.Substring(1) : orDependency;
 
-                    bool found = mods.Contains(toFind.ToUpper(), StringComparer.OrdinalIgnoreCase);
-                    if (!found && toFind.Contains('/'))
-                    {
-                        string[] splits = toFind.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-
-                        found = true;
-                        UrlDir current = gameData;
-                        for (int i = 0; i < splits.Length; i++)
-                        {
-                            current = current.children.FirstOrDefault(dir => dir.name == splits[i]);
-                            if (current == null)
-                            {
-                                found = false;
-                                break;
-                            }
-                        }
-                    }
+                    bool found = CheckNeedsWithDirectories(toFind);
 
                     if (not == !found)
                     {
@@ -206,6 +66,121 @@ namespace ModuleManager
             }
 
             return true;
+        }
+
+        public void CheckNeedsRecursive(ConfigNode node, UrlDir.UrlConfig urlConfig)
+        {
+            if (node == null) throw new ArgumentNullException(nameof(node));
+            if (urlConfig == null) throw new ArgumentNullException(nameof(urlConfig));
+            CheckNeedsRecursive(new NodeStack(node), urlConfig);
+        }
+
+        private bool CheckNeedsWithDirectories(string mod)
+        {
+            if (CheckNeeds(mod)) return true;
+            if (mod.Contains('/'))
+            {
+                string[] splits = mod.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+
+                bool result = true;
+                UrlDir current = gameData;
+                for (int i = 0; i < splits.Length; i++)
+                {
+                    current = current.children.FirstOrDefault(dir => dir.name == splits[i]);
+                    if (current == null)
+                    {
+                        result = false;
+                        break;
+                    }
+                }
+                return result;
+            }
+            return false;
+        }
+
+        private bool CheckNeedsName(ref string name)
+        {
+            if (name == null)
+                return true;
+
+            int idxStart = name.IndexOf(":NEEDS[", StringComparison.OrdinalIgnoreCase);
+            if (idxStart < 0)
+                return true;
+            int idxEnd = name.IndexOf(']', idxStart + 7);
+            string needsString = name.Substring(idxStart + 7, idxEnd - idxStart - 7);
+
+            name = name.Substring(0, idxStart) + name.Substring(idxEnd + 1);
+
+            return CheckNeedsExpression(needsString);
+        }
+
+        private void CheckNeedsRecursive(NodeStack nodeStack, UrlDir.UrlConfig urlConfig)
+        {
+            ConfigNode original = nodeStack.value;
+            for (int i = 0; i < original.values.Count; ++i)
+            {
+                ConfigNode.Value val = original.values[i];
+                string valname = val.name;
+                try
+                {
+                    if (CheckNeedsName(ref valname))
+                    {
+                        val.name = valname;
+                    }
+                    else
+                    {
+                        original.values.Remove(val);
+                        i--;
+                        progress.NeedsUnsatisfiedValue(urlConfig, nodeStack.GetPath() + '/' + val.name);
+                    }
+                }
+                catch (ArgumentOutOfRangeException e)
+                {
+                    progress.Exception("ArgumentOutOfRangeException in CheckNeeds for value \"" + val.name + "\"", e);
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    progress.Exception("General Exception in CheckNeeds for value \"" + val.name + "\"", e);
+                    throw;
+                }
+            }
+
+            for (int i = 0; i < original.nodes.Count; ++i)
+            {
+                ConfigNode node = original.nodes[i];
+                string nodeName = node.name;
+
+                if (nodeName == null)
+                {
+                    progress.Error(urlConfig, "Error - Node in file " + urlConfig.SafeUrl() + " subnode: " + nodeStack.GetPath() + " has config.name == null");
+                }
+
+                try
+                {
+                    if (CheckNeedsName(ref nodeName))
+                    {
+                        node.name = nodeName;
+                        CheckNeedsRecursive(nodeStack.Push(node), urlConfig);
+                    }
+                    else
+                    {
+                        original.nodes.Remove(node);
+                        i--;
+                        progress.NeedsUnsatisfiedNode(urlConfig, nodeStack.GetPath() + '/' + node.name);
+                    }
+                }
+                catch (ArgumentOutOfRangeException e)
+                {
+                    progress.Exception("ArgumentOutOfRangeException in CheckNeeds for node \"" + node.name + "\"", e);
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    progress.Exception("General Exception " + e.GetType().Name + " for node \"" + node.name + "\"", e);
+                    throw;
+                }
+            }
         }
     }
 }

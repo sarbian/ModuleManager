@@ -10,59 +10,62 @@ namespace ModuleManagerTests
         #region Constructor
 
         [Fact]
-        public void TestConstructor__Null()
+        public void TestConstructor__TypeNull()
         {
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                new NodeMatcher(null);
+                new NodeMatcher(null, null, null);
             });
 
-            Assert.Equal("nodeName", ex.ParamName);
+            Assert.Equal("type", ex.ParamName);
         }
 
         [Fact]
-        public void TestConstructor__Blank()
+        public void TestConstructor__TypeBlank()
         {
             ArgumentException ex = Assert.Throws<ArgumentException>(delegate
             {
-                new NodeMatcher("");
+                new NodeMatcher("", null, null);
             });
 
-            Assert.Equal("nodeName", ex.ParamName);
+            Assert.Equal("type", ex.ParamName);
             Assert.Contains("can't be empty", ex.Message);
         }
 
         [Fact]
-        public void TestConstructor__NotBracketBalanced()
+        public void TestConstructor__NameBlank()
         {
-            FormatException ex = Assert.Throws<FormatException>(delegate
+            ArgumentException ex = Assert.Throws<ArgumentException>(delegate
             {
-                new NodeMatcher("NODE[stuff");
+                new NodeMatcher("NODE", "", null);
             });
 
-            Assert.Equal("node name is not bracket balanced: NODE[stuff", ex.Message);
+            Assert.Equal("name", ex.ParamName);
+            Assert.Contains("can't be empty (null allowed)", ex.Message);
         }
 
         [Fact]
-        public void TestConstructor__StartsWithHas()
+        public void TestConstructor__ConstraintsBlank()
         {
-            FormatException ex = Assert.Throws<FormatException>(delegate
+            ArgumentException ex = Assert.Throws<ArgumentException>(delegate
             {
-                new NodeMatcher(":HAS[#blah]");
+                new NodeMatcher("NODE", null, "");
             });
 
-            Assert.Equal("node name cannot begin with :HAS : :HAS[#blah]", ex.Message);
+            Assert.Equal("constraints", ex.ParamName);
+            Assert.Contains("can't be empty (null allowed)", ex.Message);
         }
 
         [Fact]
-        public void TestConstructor__StartsWithBracket()
+        public void TestConstructor__ConstraintsNotBracketBalanced()
         {
-            FormatException ex = Assert.Throws<FormatException>(delegate
+            ArgumentException ex = Assert.Throws<ArgumentException>(delegate
             {
-                new NodeMatcher("[#blah]");
+                new NodeMatcher("NODE", null, "stuff[blah");
             });
 
-            Assert.Equal("node name cannot begin with a bracket: [#blah]", ex.Message);
+            Assert.Equal("constraints", ex.ParamName);
+            Assert.Contains("is not bracket balanced: stuff[blah", ex.Message);
         }
 
         #endregion
@@ -72,7 +75,7 @@ namespace ModuleManagerTests
         [Fact]
         public void TestIsMatch()
         {
-            NodeMatcher matcher = new NodeMatcher("NODE");
+            NodeMatcher matcher = new NodeMatcher("NODE", null, null);
 
             Assert.True(matcher.IsMatch(new ConfigNode("NODE")));
             Assert.False(matcher.IsMatch(new ConfigNode("PART")));
@@ -81,7 +84,7 @@ namespace ModuleManagerTests
         [Fact]
         public void TestIsMatch__Name()
         {
-            NodeMatcher matcher = new NodeMatcher("NODE[blah]");
+            NodeMatcher matcher = new NodeMatcher("NODE", "blah", null);
 
             Assert.True(matcher.IsMatch(new TestConfigNode("NODE")
             {
@@ -111,7 +114,7 @@ namespace ModuleManagerTests
         [Fact]
         public void TestIsMatch__Name__Wildcard()
         {
-            NodeMatcher matcher = new NodeMatcher("NODE[bl*h]");
+            NodeMatcher matcher = new NodeMatcher("NODE", "bl*h", null);
 
             Assert.True(matcher.IsMatch(new TestConfigNode("NODE")
             {
@@ -151,7 +154,7 @@ namespace ModuleManagerTests
         [Fact]
         public void TestIsMatch__Name__Multiple()
         {
-            NodeMatcher matcher = new NodeMatcher("NODE[blah|bleh|blih*]");
+            NodeMatcher matcher = new NodeMatcher("NODE", "blah|bleh|blih*", null);
 
             Assert.True(matcher.IsMatch(new TestConfigNode("NODE")
             {
@@ -206,7 +209,7 @@ namespace ModuleManagerTests
         [Fact]
         public void TestIsMatch__Constraints()
         {
-            NodeMatcher matcher = new NodeMatcher("NODE[blah]:HAS[@FOO[bar*],#something[else]]");
+            NodeMatcher matcher = new NodeMatcher("NODE", "blah", "@FOO[bar*],#something[else]");
 
             Assert.True(matcher.IsMatch(new TestConfigNode("NODE")
             {
@@ -262,7 +265,7 @@ namespace ModuleManagerTests
         [Fact]
         public void TestIsMatch__Constraints_Open()
         {
-            NodeMatcher matcher = new NodeMatcher("NODE[blah]:HAS[@FOO,#something]");
+            NodeMatcher matcher = new NodeMatcher("NODE", "blah", "@FOO,#something");
 
             Assert.True(matcher.IsMatch(new TestConfigNode("NODE")
             {
