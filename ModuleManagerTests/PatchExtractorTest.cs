@@ -130,7 +130,7 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig urlConfig = CreateConfig("@NODE_TYPE");
 
             ITagList tagList = Substitute.For<ITagList>();
-            tagListParser.Parse("NODE_TYPE").Returns(tagList);
+            tagListParser.Parse("NODE_TYPE", urlConfig).Returns(tagList);
 
             IPassSpecifier passSpecifier = Substitute.For<IPassSpecifier>();
             ProtoPatch protoPatch = new ProtoPatch(
@@ -166,7 +166,7 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig urlConfig = CreateConfig("@NODE_TYPE");
 
             ITagList tagList = Substitute.For<ITagList>();
-            tagListParser.Parse("NODE_TYPE").Returns(tagList);
+            tagListParser.Parse("NODE_TYPE", urlConfig).Returns(tagList);
 
             IPassSpecifier passSpecifier = Substitute.For<IPassSpecifier>();
             ProtoPatch protoPatch = new ProtoPatch(
@@ -202,7 +202,7 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig urlConfig = CreateConfig("@NODE_TYPE");
 
             ITagList tagList = Substitute.For<ITagList>();
-            tagListParser.Parse("NODE_TYPE").Returns(tagList);
+            tagListParser.Parse("NODE_TYPE", urlConfig).Returns(tagList);
 
             IPassSpecifier passSpecifier = Substitute.For<IPassSpecifier>();
             ProtoPatch protoPatch = new ProtoPatch(
@@ -237,7 +237,7 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig urlConfig = CreateConfig("@NODE_TYPE");
 
             ITagList tagList = Substitute.For<ITagList>();
-            tagListParser.Parse("NODE_TYPE").Returns(tagList);
+            tagListParser.Parse("NODE_TYPE", urlConfig).Returns(tagList);
 
             IPassSpecifier passSpecifier = Substitute.For<IPassSpecifier>();
             ProtoPatch protoPatch = new ProtoPatch(
@@ -272,7 +272,7 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig urlConfig = CreateConfig("NODE_TYPE");
 
             ITagList tagList = Substitute.For<ITagList>();
-            tagListParser.Parse("NODE_TYPE").Returns(tagList);
+            tagListParser.Parse("NODE_TYPE", urlConfig).Returns(tagList);
         
             IPassSpecifier passSpecifier = Substitute.For<IPassSpecifier>();
             ProtoPatch protoPatch = new ProtoPatch(
@@ -298,7 +298,7 @@ namespace ModuleManagerTests
 
             Received.InOrder(delegate
             {
-                tagListParser.Parse("NODE_TYPE");
+                tagListParser.Parse("NODE_TYPE", urlConfig);
                 protoPatchBuilder.Build(urlConfig, Command.Insert, tagList);
                 needsChecker.CheckNeedsExpression("needs");
                 passSpecifier.CheckNeeds(needsChecker, progress);
@@ -410,7 +410,7 @@ namespace ModuleManagerTests
         public void TestExtractPatch__TagListBadlyFormatted()
         {
             UrlDir.UrlConfig urlConfig = CreateConfig("badSomehow");
-            tagListParser.When(t => t.Parse("badSomehow")).Throw(new FormatException("badly formatted"));
+            tagListParser.When(t => t.Parse("badSomehow", urlConfig)).Throw(new FormatException("badly formatted"));
             Assert.Null(patchExtractor.ExtractPatch(urlConfig));
 
             Assert.Empty(root.AllConfigs);
@@ -435,7 +435,7 @@ namespace ModuleManagerTests
         {
             UrlDir.UrlConfig urlConfig = CreateConfig("NODE");
             Exception ex = new Exception();
-            tagListParser.When(t => t.Parse("NODE")).Throw(ex);
+            tagListParser.When(t => t.Parse("NODE", urlConfig)).Throw(ex);
             Assert.Null(patchExtractor.ExtractPatch(urlConfig));
 
             Assert.Empty(root.AllConfigs);

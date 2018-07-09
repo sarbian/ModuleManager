@@ -167,7 +167,7 @@ namespace ModuleManager
 
                 UrlDir gameData = GameDatabase.Instance.root.children.First(dir => dir.type == UrlDir.DirectoryType.GameData && dir.name == "");
                 INeedsChecker needsChecker = new NeedsChecker(mods, gameData, progress, logger);
-                ITagListParser tagListParser = new TagListParser();
+                ITagListParser tagListParser = new TagListParser(progress);
                 IProtoPatchBuilder protoPatchBuilder = new ProtoPatchBuilder(progress);
                 IPatchCompiler patchCompiler = new PatchCompiler();
                 PatchExtractor extractor = new PatchExtractor(progress, logger, needsChecker, tagListParser, protoPatchBuilder, patchCompiler);
