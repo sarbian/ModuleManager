@@ -79,7 +79,7 @@ namespace ModuleManager
                 ITagList tagList;
                 try
                 {
-                    tagList = tagListParser.Parse(name);
+                    tagList = tagListParser.Parse(name, urlConfig);
                 }
                 catch (FormatException ex)
                 {
