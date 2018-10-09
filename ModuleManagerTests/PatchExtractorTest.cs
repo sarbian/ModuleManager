@@ -186,14 +186,14 @@ namespace ModuleManagerTests
             AssertUrlCorrect("@NADE",                beforeMod2Configs[3], currentPatches[3]);
 
             currentPatches = list.modPasses["mod2"].forPatches;
-            Assert.Equal(forMod1Configs.Length, currentPatches.Count);
+            Assert.Equal(forMod2Configs.Length, currentPatches.Count);
             AssertUrlCorrect("@NODE",                forMod2Configs[0], currentPatches[0]);
             AssertUrlCorrect("@NODE[foo]:HAS[#bar]", forMod2Configs[1], currentPatches[1]);
             AssertUrlCorrect("@NADE",                forMod2Configs[2], currentPatches[2]);
             AssertUrlCorrect("@NADE",                forMod2Configs[3], currentPatches[3]);
 
             currentPatches = list.modPasses["mod2"].afterPatches;
-            Assert.Equal(afterMod1Configs.Length, currentPatches.Count);
+            Assert.Equal(afterMod2Configs.Length, currentPatches.Count);
             AssertUrlCorrect("@NODE",                afterMod2Configs[0], currentPatches[0]);
             AssertUrlCorrect("@NODE[foo]:HAS[#bar]", afterMod2Configs[1], currentPatches[1]);
             AssertUrlCorrect("@NADE",                afterMod2Configs[2], currentPatches[2]);
