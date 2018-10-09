@@ -21,8 +21,6 @@ namespace ModuleManager.Cats
         private float time = 5;
         private float trailTime = 0.5f;
 
-        private int frames = 1;
-
         // Use this for initialization
         void Start()
         {
