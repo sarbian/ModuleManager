@@ -18,10 +18,8 @@ namespace ModuleManager.Cats
 
         public float scale = 2;
 
-        private float time = 5;
-        private float trailTime = 0.5f;
-
-        private int frames = 1;
+        private const float time = 5;
+        private const float trailTime = time / 4;
 
         // Use this for initialization
         void Start()
@@ -34,8 +32,6 @@ namespace ModuleManager.Cats
             offsetY = Mathf.FloorToInt(0.2f * Screen.height);
 
             spos.z = -1;
-            
-            trailTime = time / 4;
 
             totalLenth = (int) (Screen.width / time * trail.time) + 150;
             trail.time = trailTime;
