@@ -1,5 +1,4 @@
 ﻿using System;
-using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManager.Progress
 {
