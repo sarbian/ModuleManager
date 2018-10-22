@@ -334,9 +334,6 @@ namespace ModuleManager
             while (!MMPatchLoader.Instance.IsReady())
                 yield return null;
 
-            PartResourceLibrary.Instance.LoadDefinitions();
-
-            PartUpgradeManager.Handler.FillUpgrades();
 
             if (dump)
                 OutputAllConfigs();
