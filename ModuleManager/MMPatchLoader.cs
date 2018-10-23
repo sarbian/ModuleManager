@@ -23,8 +23,6 @@ using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManager
 {
-    public delegate void ModuleManagerPostPatchCallback();
-
     [SuppressMessage("ReSharper", "StringLastIndexOfIsCultureSpecific.1")]
     [SuppressMessage("ReSharper", "StringIndexOfIsCultureSpecific.1")]
     public class MMPatchLoader : LoadingSystem
@@ -57,8 +55,6 @@ namespace ModuleManager
         private string configSha;
         private Dictionary<string, string> filesSha = new Dictionary<string, string>();
 
-        private static readonly List<ModuleManagerPostPatchCallback> postPatchCallbacks = new List<ModuleManagerPostPatchCallback>();
-
         private const float yieldInterval = 1f/30f; // Patch at ~30fps
 
         private IBasicLogger logger;
@@ -75,7 +71,6 @@ namespace ModuleManager
                 return;
             }
             Instance = this;
-            DontDestroyOnLoad(gameObject);
 
             cachePath = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), "ModuleManager.ConfigCache");
             techTreeFile = Path.Combine("GameData", "ModuleManager.TechTree");
@@ -115,8 +110,7 @@ namespace ModuleManager
 
         public static void AddPostPatchCallback(ModuleManagerPostPatchCallback callback)
         {
-            if (!postPatchCallbacks.Contains(callback))
-                postPatchCallbacks.Add(callback);
+            PostPatchLoader.AddPostPatchCallback(callback);
         }
 
         private IEnumerator ProcessPatch()
@@ -302,91 +296,6 @@ namespace ModuleManager
             }
 
             logger.Info(status + "\n" + errors);
-
-#if DEBUG
-            RunTestCases();
-#endif
-
-            // TODO : Remove if we ever get a way to load sooner
-            logger.Info("Reloading resources definitions");
-            PartResourceLibrary.Instance.LoadDefinitions();
-
-            logger.Info("Reloading Trait configs");
-            GameDatabase.Instance.ExperienceConfigs.LoadTraitConfigs();
-
-            logger.Info("Reloading Part Upgrades");
-            PartUpgradeManager.Handler.FillUpgrades();
-
-            foreach (ModuleManagerPostPatchCallback callback in postPatchCallbacks)
-            {
-                try
-                {
-                    callback();
-                }
-                catch (Exception e)
-                {
-                    logger.Exception("Exception while running a post patch callback", e);
-                }
-                yield return null;
-            }
-            yield return null;
-
-            // Call all "public static void ModuleManagerPostLoad()" on all class
-            foreach (Assembly ass in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    foreach (Type type in ass.GetTypes())
-                    {
-                        MethodInfo method = type.GetMethod("ModuleManagerPostLoad", BindingFlags.Public | BindingFlags.Static);
-                        
-                        if (method != null && method.GetParameters().Length == 0)
-                        {
-                            try
-                            {
-                                logger.Info("Calling " + ass.GetName().Name + "." + type.Name + "." + method.Name + "()");
-                                method.Invoke(null, null);
-                            }
-                            catch (Exception e)
-                            {
-                                logger.Exception("Exception while calling " + ass.GetName().Name + "." + type.Name + "." + method.Name + "()", e);
-                            }
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    logger.Exception("Post run call threw an exception in loading " + ass.FullName, e);
-                }
-            }
-
-            yield return null;
-
-            // Call "public void ModuleManagerPostLoad()" on all active MonoBehaviour instance
-            foreach (MonoBehaviour obj in FindObjectsOfType<MonoBehaviour>())
-            {
-                MethodInfo method = obj.GetType().GetMethod("ModuleManagerPostLoad", BindingFlags.Public | BindingFlags.Instance);
-
-                if (method != null && method.GetParameters().Length == 0)
-                {
-                    try
-                    {
-                        logger.Info("Calling " + obj.GetType().Name + "." + method.Name + "()");
-                        method.Invoke(obj, null);
-                    }
-                    catch (Exception e)
-                    {
-                        logger.Exception("Exception while calling " + obj.GetType().Name + "." + method.Name + "() :\n", e);
-                    }
-                }
-            }
-
-            yield return null;
-
-            if (ModuleManager.dumpPostPatch)
-                ModuleManager.OutputAllConfigs();
-
-            yield return null;
 
             patchSw.Stop();
             logger.Info("Ran in " + ((float)patchSw.ElapsedMilliseconds / 1000).ToString("F3") + "s");
@@ -1935,66 +1844,6 @@ namespace ModuleManager
             return v;
         }
 
-        private static bool CompareRecursive(ConfigNode expectNode, ConfigNode gotNode)
-        {
-            if (expectNode.values.Count != gotNode.values.Count || expectNode.nodes.Count != gotNode.nodes.Count)
-                return false;
-            for (int i = 0; i < expectNode.values.Count; ++i)
-            {
-                ConfigNode.Value eVal = expectNode.values[i];
-                ConfigNode.Value gVal = gotNode.values[i];
-                if (eVal.name != gVal.name || eVal.value != gVal.value)
-                    return false;
-            }
-            for (int i = 0; i < expectNode.nodes.Count; ++i)
-            {
-                ConfigNode eNode = expectNode.nodes[i];
-                ConfigNode gNode = gotNode.nodes[i];
-                if (!CompareRecursive(eNode, gNode))
-                    return false;
-            }
-            return true;
-        }
-
         #endregion Config Node Utilities
-
-        #region Tests
-
-        private void RunTestCases()
-        {
-            logger.Info("Running tests...");
-
-            // Do MM testcases
-            foreach (UrlDir.UrlConfig expect in GameDatabase.Instance.GetConfigs("MMTEST_EXPECT"))
-            {
-                // So for each of the expects, we expect all the configs before that node to match exactly.
-                UrlDir.UrlFile parent = expect.parent;
-                if (parent.configs.Count != expect.config.CountNodes + 1)
-                {
-                    logger.Error("Test " + parent.name + " failed as expected number of nodes differs expected:" +
-                        expect.config.CountNodes + " found: " + parent.configs.Count);
-                    for (int i = 0; i < parent.configs.Count; ++i)
-                        logger.Info(parent.configs[i].config.ToString());
-                    continue;
-                }
-                for (int i = 0; i < expect.config.CountNodes; ++i)
-                {
-                    ConfigNode gotNode = parent.configs[i].config;
-                    ConfigNode expectNode = expect.config.nodes[i];
-                    if (!CompareRecursive(expectNode, gotNode))
-                    {
-                        logger.Error("Test " + parent.name + "[" + i +
-                            "] failed as expected output and actual output differ.\nexpected:\n" + expectNode +
-                            "\nActually got:\n" + gotNode);
-                    }
-                }
-
-                // Purge the tests
-                parent.configs.Clear();
-            }
-            logger.Info("tests complete.");
-        }
-
-        #endregion Tests
     }
 }

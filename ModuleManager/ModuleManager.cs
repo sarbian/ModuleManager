@@ -121,13 +121,16 @@ namespace ModuleManager
                 // We could insert ModuleManager after GameDatabase to get it to run there
                 // and SaveGameFixer after PartLoader.
 
-                GameObject aGameObject = new GameObject("ModuleManager");
-                MMPatchLoader loader = aGameObject.AddComponent<MMPatchLoader>();
-
-                Log(string.Format("Adding ModuleManager to the loading screen {0}", list.Count));
-
                 int gameDatabaseIndex = list.FindIndex(s => s is GameDatabase);
-                list.Insert(gameDatabaseIndex + 1, loader);
+
+                GameObject aGameObject = new GameObject("ModuleManager");
+                DontDestroyOnLoad(aGameObject);
+
+                Log(string.Format("Adding patch loader to the loading screen {0}", list.Count));
+                list.Insert(gameDatabaseIndex + 1, aGameObject.AddComponent<MMPatchLoader>());
+
+                Log(string.Format("Adding post patch to the loading screen {0}", list.Count));
+                list.Insert(gameDatabaseIndex + 2, aGameObject.AddComponent<PostPatchLoader>());
 
                 // Workaround for 1.6.0 Editor bug after a PartDatabase rebuild.
                 if (Versioning.version_major == 1 && Versioning.version_minor == 6 && Versioning.Revision == 0)
@@ -334,6 +337,10 @@ namespace ModuleManager
             while (!MMPatchLoader.Instance.IsReady())
                 yield return null;
 
+            PostPatchLoader.Instance.StartLoad();
+
+            while (!PostPatchLoader.Instance.IsReady())
+                yield return null;
 
             if (dump)
                 OutputAllConfigs();
