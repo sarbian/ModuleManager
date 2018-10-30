@@ -128,6 +128,8 @@ namespace ModuleManager
 #endif
             yield return null;
 
+            IEnumerable<IProtoUrlConfig> databaseConfigs = null;
+
             if (!useCache)
             {
                 IPatchProgress progress = new PatchProgress(logger);
@@ -177,8 +179,6 @@ namespace ModuleManager
                 PatchApplier applier = new PatchApplier(threadPatchProgress, patchLogger);
 
                 logger.Info("Starting patch thread");
-
-                IEnumerable<IProtoUrlConfig> databaseConfigs = null;
 
                 ITaskStatus patchThread = BackgroundTask.Start(delegate
                 {
@@ -236,16 +236,6 @@ namespace ModuleManager
                     yield break;
                 }
 
-                foreach (UrlDir.UrlFile file in GameDatabase.Instance.root.AllConfigFiles)
-                {
-                    file.configs.Clear();
-                }
-
-                foreach (IProtoUrlConfig protoConfig in databaseConfigs)
-                {
-                    protoConfig.UrlFile.AddConfig(protoConfig.Node);
-                }
-
                 logger.Info("Done patching");
                 yield return null;
 
@@ -286,7 +276,7 @@ namespace ModuleManager
                     status = "Saving Cache";
                     logger.Info(status);
                     yield return null;
-                    CreateCache(progress.Counter.patchedNodes);
+                    CreateCache(databaseConfigs, progress.Counter.patchedNodes);
                 }
 
                 StatusUpdate(progress);
@@ -301,7 +291,17 @@ namespace ModuleManager
                 status = "Loading from Cache";
                 logger.Info(status);
                 yield return null;
-                LoadCache();
+                databaseConfigs = LoadCache();
+            }
+
+            foreach (UrlDir.UrlFile file in GameDatabase.Instance.root.AllConfigFiles)
+            {
+                file.configs.Clear();
+            }
+
+            foreach (IProtoUrlConfig protoConfig in databaseConfigs)
+            {
+                protoConfig.UrlFile.AddConfig(protoConfig.Node);
             }
 
             logger.Info(status + "\n" + errors);
@@ -476,7 +476,7 @@ namespace ModuleManager
         }
         
 
-        private void CreateCache(int patchedNodeCount)
+        private void CreateCache(IEnumerable<IProtoUrlConfig> databaseConfigs, int patchedNodeCount)
         {
             ConfigNode shaConfigNode = new ConfigNode();
             shaConfigNode.AddValue("SHA", configSha);
@@ -488,13 +488,11 @@ namespace ModuleManager
 
             cache.AddValue("patchedNodeCount", patchedNodeCount.ToString());
 
-            foreach (UrlDir.UrlConfig config in GameDatabase.Instance.root.AllConfigs)
+            foreach (IProtoUrlConfig urlConfig in databaseConfigs)
             {
                 ConfigNode node = cache.AddNode("UrlConfig");
-                node.AddValue("name", config.name);
-                node.AddValue("type", config.type);
-                node.AddValue("parentUrl", config.parent.url);
-                node.AddNode(config.config);
+                node.AddValue("parentUrl", urlConfig.UrlFile.url);
+                node.AddNode(urlConfig.Node);
             }
 
             foreach (var file in GameDatabase.Instance.root.AllConfigFiles)
@@ -567,15 +565,8 @@ namespace ModuleManager
             techNode.Save(techTreePath);
         }
 
-        private void LoadCache()
+        private IEnumerable<IProtoUrlConfig> LoadCache()
         {
-            // Clear the config DB
-            foreach (UrlDir.UrlFile files in GameDatabase.Instance.root.AllConfigFiles)
-            {
-                files.configs.Clear();
-            }
-
-            // And then load all the cached configs
             ConfigNode cache = ConfigNode.Load(cachePath);
             
             if (cache.HasValue("patchedNodeCount") && int.TryParse(cache.GetValue("patchedNodeCount"), out int patchedNodeCount))
@@ -587,16 +578,16 @@ namespace ModuleManager
             physicsUrlFile = new UrlDir.UrlFile(gameDataDir, new FileInfo(defaultPhysicsPath));
             gameDataDir.files.Add(physicsUrlFile);
 
+            List<IProtoUrlConfig> databaseConfigs = new List<IProtoUrlConfig>(cache.nodes.Count);
+
             foreach (ConfigNode node in cache.nodes)
             {
-                string name = node.GetValue("name");
-                string type = node.GetValue("type");
                 string parentUrl = node.GetValue("parentUrl");
 
                 UrlDir.UrlFile parent = GameDatabase.Instance.root.AllConfigFiles.FirstOrDefault(f => f.url == parentUrl);
                 if (parent != null)
                 {
-                    parent.AddConfig(node.nodes[0]);
+                    databaseConfigs.Add(new ProtoUrlConfig(parent, node.nodes[0]));
                 }
                 else
                 {
@@ -605,6 +596,8 @@ namespace ModuleManager
             }
             progressFraction = 1;
             logger.Info("Cache Loaded");
+
+            return databaseConfigs;
         }
 
         private void StatusUpdate(IPatchProgress progress)
