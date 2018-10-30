@@ -7,7 +7,9 @@ using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 using ModuleManager.Cats;
+using ModuleManager.Logging;
 
 namespace ModuleManager
 {
@@ -35,6 +37,8 @@ namespace ModuleManager
         public static bool dumpPostPatch = false;
 
         private PopupDialog menu;
+
+        private MMPatchRunner patchRunner;
 
         #endregion state
 
@@ -126,11 +130,11 @@ namespace ModuleManager
                 GameObject aGameObject = new GameObject("ModuleManager");
                 DontDestroyOnLoad(aGameObject);
 
-                Log(string.Format("Adding patch loader to the loading screen {0}", list.Count));
-                list.Insert(gameDatabaseIndex + 1, aGameObject.AddComponent<MMPatchLoader>());
-
                 Log(string.Format("Adding post patch to the loading screen {0}", list.Count));
-                list.Insert(gameDatabaseIndex + 2, aGameObject.AddComponent<PostPatchLoader>());
+                list.Insert(gameDatabaseIndex + 1, aGameObject.AddComponent<PostPatchLoader>());
+
+                patchRunner = new MMPatchRunner(new ModLogger("ModuleManager", new UnityLogger(Debug.unityLogger)));
+                StartCoroutine(patchRunner.Run());
 
                 // Workaround for 1.6.0 Editor bug after a PartDatabase rebuild.
                 if (Versioning.version_major == 1 && Versioning.version_minor == 6 && Versioning.Revision == 0)
@@ -266,27 +270,31 @@ namespace ModuleManager
 
             float offsetY = textPos;
             float h;
-            if (warning)
-            {
-                h = warning.text.Length > 0 ? warning.textBounds.size.y : 0;
-                offsetY = offsetY + h;
-                warning.rectTransform.localPosition = new Vector3(0, offsetY);
-            }
 
-            if (status)
+            if (patchRunner != null)
             {
-                status.text = MMPatchLoader.Instance.status;
-                h = status.text.Length > 0 ? status.textBounds.size.y: 0;
-                offsetY = offsetY + h;
-                status.transform.localPosition = new Vector3(0, offsetY);
-            }
+                if (warning)
+                {
+                    h = warning.text.Length > 0 ? warning.textBounds.size.y : 0;
+                    offsetY = offsetY + h;
+                    warning.rectTransform.localPosition = new Vector3(0, offsetY);
+                }
 
-            if (errors)
-            {
-                errors.text = MMPatchLoader.Instance.errors;
-                h = errors.text.Length > 0 ? errors.textBounds.size.y: 0;
-                offsetY = offsetY + h;
-                errors.transform.localPosition = new Vector3(0, offsetY);
+                if (status)
+                {
+                    status.text = patchRunner.Status;
+                    h = status.text.Length > 0 ? status.textBounds.size.y : 0;
+                    offsetY = offsetY + h;
+                    status.transform.localPosition = new Vector3(0, offsetY);
+                }
+
+                if (errors)
+                {
+                    errors.text = patchRunner.Errors;
+                    h = errors.text.Length > 0 ? errors.textBounds.size.y : 0;
+                    offsetY = offsetY + h;
+                    errors.transform.localPosition = new Vector3(0, offsetY);
+                }
             }
 
             if (reloading)
@@ -294,8 +302,6 @@ namespace ModuleManager
                 float percent = 0;
                 if (!GameDatabase.Instance.IsReady())
                     percent = GameDatabase.Instance.ProgressFraction();
-                else if (!MMPatchLoader.Instance.IsReady())
-                    percent = 1f + MMPatchLoader.Instance.ProgressFraction();
                 else if (!PartLoader.Instance.IsReady())
                     percent = 2f + PartLoader.Instance.ProgressFraction();
 
@@ -328,13 +334,13 @@ namespace ModuleManager
             GameDatabase.Instance.Recompile = true;
             GameDatabase.Instance.StartLoad();
 
+            yield return null;
+
+            patchRunner = new MMPatchRunner(new ModLogger("ModuleManager", new UnityLogger(Debug.unityLogger)));
+            StartCoroutine(patchRunner.Run());
+
             // wait for it to finish
             while (!GameDatabase.Instance.IsReady())
-                yield return null;
-
-            MMPatchLoader.Instance.StartLoad();
-
-            while (!MMPatchLoader.Instance.IsReady())
                 yield return null;
 
             PostPatchLoader.Instance.StartLoad();

@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -14,9 +13,7 @@ using Debug = UnityEngine.Debug;
 
 using ModuleManager.Logging;
 using ModuleManager.Extensions;
-using ModuleManager.Collections;
 using ModuleManager.Tags;
-using ModuleManager.Threading;
 using ModuleManager.Patches;
 using ModuleManager.Progress;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
@@ -27,15 +24,13 @@ namespace ModuleManager
 {
     [SuppressMessage("ReSharper", "StringLastIndexOfIsCultureSpecific.1")]
     [SuppressMessage("ReSharper", "StringIndexOfIsCultureSpecific.1")]
-    public class MMPatchLoader : LoadingSystem
+    public class MMPatchLoader
     {
         public string status = "";
 
         public string errors = "";
 
         public static bool keepPartDB = false;
-
-        private string activity = "Module Manager";
 
         private static readonly Dictionary<string, Regex> regexCache = new Dictionary<string, Regex>();
 
@@ -48,59 +43,23 @@ namespace ModuleManager
 
         private IBasicLogger logger;
 
-        private float progressFraction = 0;
-
-        public static MMPatchLoader Instance { get; private set; }
-
-        private void Awake()
-        {
-            if (Instance != null)
-            {
-                DestroyImmediate(this);
-                return;
-            }
-            Instance = this;
-
-            logger = new ModLogger("ModuleManager", new UnityLogger(Debug.unityLogger));
-        }
-
-        private bool ready;
-
-        public override bool IsReady()
-        {
-            return ready;
-        }
-
-        public override float ProgressFraction() => progressFraction;
-
-        public override string ProgressTitle()
-        {
-            return activity;
-        }
-
-        public override void StartLoad()
-        {
-            ready = false;
-
-            // DB check used to track the now fixed TextureReplacer corruption
-            //checkValues();
-
-            StartCoroutine(ProcessPatch());
-        }
-
         public static void AddPostPatchCallback(ModuleManagerPostPatchCallback callback)
         {
             PostPatchLoader.AddPostPatchCallback(callback);
         }
 
-        private IEnumerator ProcessPatch()
+        public MMPatchLoader(IBasicLogger logger)
+        {
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        public IEnumerable<IProtoUrlConfig> Run()
         {
             Stopwatch patchSw = new Stopwatch();
             patchSw.Start();
 
             status = "Checking Cache";
             logger.Info(status);
-            yield return null;
 
             bool useCache = false;
             try
@@ -115,7 +74,6 @@ namespace ModuleManager
 #if DEBUG
             //useCache = false;
 #endif
-            yield return null;
 
             IEnumerable<IProtoUrlConfig> databaseConfigs = null;
 
@@ -125,8 +83,6 @@ namespace ModuleManager
                 status = "Pre patch init";
                 logger.Info(status);
                 IEnumerable<string> mods = ModListGenerator.GenerateModList(progress, logger);
-
-                yield return null;
 
                 // If we don't use the cache then it is best to clean the PartDatabase.cfg
                 if (!keepPartDB && File.Exists(partDatabasePath))
@@ -138,8 +94,6 @@ namespace ModuleManager
 
                 status = "Extracting patches";
                 logger.Info(status);
-
-                yield return null;
 
                 UrlDir gameData = GameDatabase.Instance.root.children.First(dir => dir.type == UrlDir.DirectoryType.GameData && dir.name == "");
                 INeedsChecker needsChecker = new NeedsChecker(mods, gameData, progress, logger);
@@ -160,73 +114,30 @@ namespace ModuleManager
                 status = "Applying patches";
                 logger.Info(status);
 
-                yield return null;
+                IPass currentPass = null;
+                float nextUpdate = Time.realtimeSinceStartup + yieldInterval;
 
-                MessageQueue<ILogMessage> logQueue = new MessageQueue<ILogMessage>();
-                IBasicLogger patchLogger = new QueueLogger(logQueue);
-                IPatchProgress threadPatchProgress = new PatchProgress(progress, patchLogger);
-                PatchApplier applier = new PatchApplier(threadPatchProgress, patchLogger);
-
-                logger.Info("Starting patch thread");
-
-                ITaskStatus patchThread = BackgroundTask.Start(delegate
+                progress.OnPassStarted.Add(delegate (IPass pass)
                 {
-                    databaseConfigs = applier.ApplyPatches(patchList);
+                    currentPass = pass;
+                    StatusUpdate(progress, currentPass.Name);
                 });
 
-                float nextYield = Time.realtimeSinceStartup + yieldInterval;
-
-                float updateTimeRemaining()
+                progress.OnPatchApplied.Add(delegate
                 {
-                    float timeRemaining = nextYield - Time.realtimeSinceStartup;
-                    if (timeRemaining < 0)
+                    if (Time.realtimeSinceStartup > nextUpdate)
                     {
-                        nextYield = Time.realtimeSinceStartup + yieldInterval;
-                        StatusUpdate(progress);
-                        activity = applier.Activity;
+                        StatusUpdate(progress, currentPass.Name);
+                        nextUpdate = Time.realtimeSinceStartup + yieldInterval;
                     }
-                    return timeRemaining;
-                }
+                });
 
-                while (patchThread.IsRunning)
-                {
-                    foreach (ILogMessage message in logQueue.TakeAll())
-                    {
-                        message.LogTo(logger);
-
-                        if (updateTimeRemaining() < 0) yield return null;
-                    }
-
-                    float timeRemaining = updateTimeRemaining();
-                    if (timeRemaining > 0) System.Threading.Thread.Sleep((int)(timeRemaining * 1000));
-                    yield return null;
-                }
+                PatchApplier applier = new PatchApplier(progress, logger);
+                databaseConfigs = applier.ApplyPatches(patchList);
 
                 StatusUpdate(progress);
-                activity = "ModuleManager - finishing up";
-                yield return null;
-
-                // Clear any log messages that might still be in the queue
-                foreach (ILogMessage message in logQueue.TakeAll())
-                {
-                    message.LogTo(logger);
-                }
-
-                if (patchThread.IsExitedWithError)
-                {
-                    progress.Exception("The patch runner threw an exception", patchThread.Exception);
-                    FatalErrorHandler.HandleFatalError("The patch runner threw an exception");
-                    yield break;
-                }
-                if (databaseConfigs == null)
-                {
-                    progress.Error("The patcher returned a null collection of configs");
-                    FatalErrorHandler.HandleFatalError("The patcher returned a null collection of configs");
-                    yield break;
-                }
 
                 logger.Info("Done patching");
-                yield return null;
 
                 PurgeUnused();
 
@@ -264,7 +175,6 @@ namespace ModuleManager
                 {
                     status = "Saving Cache";
                     logger.Info(status);
-                    yield return null;
                     CreateCache(databaseConfigs, progress.Counter.patchedNodes);
                 }
 
@@ -279,18 +189,7 @@ namespace ModuleManager
             {
                 status = "Loading from Cache";
                 logger.Info(status);
-                yield return null;
                 databaseConfigs = LoadCache();
-            }
-
-            foreach (UrlDir.UrlFile file in GameDatabase.Instance.root.AllConfigFiles)
-            {
-                file.configs.Clear();
-            }
-
-            foreach (IProtoUrlConfig protoConfig in databaseConfigs)
-            {
-                protoConfig.UrlFile.AddConfig(protoConfig.Node);
             }
 
             logger.Info(status + "\n" + errors);
@@ -298,7 +197,7 @@ namespace ModuleManager
             patchSw.Stop();
             logger.Info("Ran in " + ((float)patchSw.ElapsedMilliseconds / 1000).ToString("F3") + "s");
 
-            ready = true;
+            return databaseConfigs;
         }
 
         private void LoadPhysicsConfig()
@@ -583,17 +482,19 @@ namespace ModuleManager
                     logger.Warning("Parent null for " + parentUrl);
                 }
             }
-            progressFraction = 1;
             logger.Info("Cache Loaded");
 
             return databaseConfigs;
         }
 
-        private void StatusUpdate(IPatchProgress progress)
+        private void StatusUpdate(IPatchProgress progress, string activity = null)
         {
-            progressFraction = progress.ProgressFraction;
-
             status = "ModuleManager: " + progress.Counter.patchedNodes + " patch" + (progress.Counter.patchedNodes != 1 ? "es" : "") + " applied";
+            if (progress.ProgressFraction < 1f - float.Epsilon)
+                status += " (" + progress.ProgressFraction * 100 + "%)";
+
+            if (activity != null)
+                status += "\n" + activity;
 
             if (progress.Counter.warnings > 0)
                 status += ", found <color=yellow>" + progress.Counter.warnings + " warning" + (progress.Counter.warnings != 1 ? "s" : "") + "</color>";

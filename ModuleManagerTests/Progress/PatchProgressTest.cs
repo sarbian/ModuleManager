@@ -110,11 +110,15 @@ namespace ModuleManagerTests
         [Fact]
         public void TestPatchApplied()
         {
+            int eventCounter = 0;
+            progress.OnPatchApplied.Add(() => eventCounter++);
             Assert.Equal(0, progress.Counter.appliedPatches);
             progress.PatchApplied();
             Assert.Equal(1, progress.Counter.appliedPatches);
+            Assert.Equal(1, eventCounter);
             progress.PatchApplied();
             Assert.Equal(2, progress.Counter.appliedPatches);
+            Assert.Equal(2, eventCounter);
         }
 
         [Fact]
@@ -217,6 +221,37 @@ namespace ModuleManagerTests
             progress.NeedsUnsatisfiedAfter(config2);
             Assert.Equal(2, progress.Counter.needsUnsatisfied);
             logger.Received().Log(LogType.Log, "Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its AFTER");
+        }
+
+        [Fact]
+        public void TestStartingPass()
+        {
+            EventData<IPass>.OnEvent onEvent = Substitute.For<EventData<IPass>.OnEvent>();
+            progress.OnPassStarted.Add(onEvent);
+            IPass pass1 = Substitute.For<IPass>();
+            pass1.Name.Returns(":SOME_PASS");
+
+            progress.PassStarted(pass1);
+
+            logger.Received().Log(LogType.Log, ":SOME_PASS pass");
+            onEvent.Received()(pass1);
+        }
+
+        [Fact]
+        public void TestStartingPass__NullArgument()
+        {
+            EventData<IPass>.OnEvent onEvent = Substitute.For<EventData<IPass>.OnEvent>();
+            progress.OnPassStarted.Add(onEvent);
+
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                progress.PassStarted(null);
+            });
+
+            Assert.Equal("pass", ex.ParamName);
+
+            logger.DidNotReceiveWithAnyArgs().Log(LogType.Log, null);
+            onEvent.DidNotReceiveWithAnyArgs()(null);
         }
 
         [Fact]

@@ -56,6 +56,7 @@
     <Compile Include="Collections\MessageQueue.cs" />
     <Compile Include="Logging\UnityLogger.cs" />
     <Compile Include="MMPatchLoader.cs" />
+    <Compile Include="MMPatchRunner.cs" />
     <Compile Include="ModuleManager.cs" />
     <Compile Include="ModListGenerator.cs" />
     <Compile Include="FilePathRepository.cs" />

@@ -8,6 +8,9 @@ namespace ModuleManager.Progress
 
         float ProgressFraction { get; }
 
+        EventVoid OnPatchApplied { get; }
+        EventData<IPass> OnPassStarted { get; }
+
         void Warning(UrlDir.UrlConfig url, string message);
         void Error(UrlDir.UrlConfig url, string message);
         void Error(string message);
@@ -24,5 +27,6 @@ namespace ModuleManager.Progress
         void ApplyingUpdate(IUrlConfigIdentifier original, UrlDir.UrlConfig patch);
         void PatchAdded();
         void PatchApplied();
+        void PassStarted(IPass pass);
     }
 }

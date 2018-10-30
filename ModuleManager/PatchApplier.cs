@@ -12,8 +12,6 @@ namespace ModuleManager
         private readonly IBasicLogger logger;
         private readonly IPatchProgress progress;
 
-        public string Activity { get; private set; }
-
         public PatchApplier(IPatchProgress progress, IBasicLogger logger)
         {
             this.progress = progress ?? throw new ArgumentNullException(nameof(progress));
@@ -36,8 +34,7 @@ namespace ModuleManager
 
         private void ApplyPatches(LinkedList<IProtoUrlConfig> databaseConfigs, IPass pass)
         {
-            logger.Info(pass.Name + " pass");
-            Activity = "ModuleManager " + pass.Name;
+            progress.PassStarted(pass);
 
             foreach (IPatch patch in pass)
             {

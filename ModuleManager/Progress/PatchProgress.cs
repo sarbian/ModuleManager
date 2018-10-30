@@ -21,6 +21,9 @@ namespace ModuleManager.Progress
             }
         }
 
+        public EventVoid OnPatchApplied { get; } = new EventVoid("OnPatchApplied");
+        public EventData<IPass> OnPassStarted { get; } = new EventData<IPass>("OnPassStarted");
+
         public PatchProgress(IBasicLogger logger)
         {
             this.logger = logger;
@@ -36,6 +39,13 @@ namespace ModuleManager.Progress
         public void PatchAdded()
         {
             Counter.totalPatches.Increment();
+        }
+
+        public void PassStarted(IPass pass)
+        {
+            if (pass == null) throw new ArgumentNullException(nameof(pass));
+            logger.Info(pass.Name + " pass");
+            OnPassStarted.Fire(pass);
         }
 
         public void ApplyingUpdate(IUrlConfigIdentifier original, UrlDir.UrlConfig patch)
@@ -59,6 +69,7 @@ namespace ModuleManager.Progress
         public void PatchApplied()
         {
             Counter.appliedPatches.Increment();
+            OnPatchApplied.Fire();
         }
 
         public void NeedsUnsatisfiedRoot(UrlDir.UrlConfig url)

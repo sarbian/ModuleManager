@@ -85,21 +85,21 @@ namespace ModuleManagerTests
 
             Received.InOrder(delegate
             {
-                logger.Log(LogType.Log, ":PASS1 pass");
+                progress.PassStarted(pass1);
                 patches[0].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
                 patches[1].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
                 patches[2].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
-                logger.Log(LogType.Log, ":PASS2 pass");
+                progress.PassStarted(pass2);
                 patches[3].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
                 patches[4].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
                 patches[5].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
-                logger.Log(LogType.Log, ":PASS3 pass");
+                progress.PassStarted(pass3);
                 patches[6].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
                 patches[7].Apply(databaseConfigs, progress, logger);

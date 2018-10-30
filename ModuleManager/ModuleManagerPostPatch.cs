@@ -15,6 +15,8 @@ namespace ModuleManager
     {
         public static PostPatchLoader Instance { get; private set; }
 
+        public IEnumerable<IProtoUrlConfig> databaseConfigs = null;
+
         private static readonly List<ModuleManagerPostPatchCallback> postPatchCallbacks = new List<ModuleManagerPostPatchCallback>();
 
         private readonly IBasicLogger logger = new ModLogger("ModuleManager", new UnityLogger(UnityEngine.Debug.unityLogger));
@@ -53,8 +55,30 @@ namespace ModuleManager
 
         private IEnumerator Run()
         {
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
+            Stopwatch waitTimer = new Stopwatch();
+            waitTimer.Start();
+
+            while (databaseConfigs == null) yield return null;
+
+            waitTimer.Stop();
+            logger.Info("Waited " + ((float)waitTimer.ElapsedMilliseconds / 1000).ToString("F3") + "s for patching to finish");
+
+            Stopwatch postPatchTimer = new Stopwatch();
+            postPatchTimer.Start();
+
+            logger.Info("Applying patched game database");
+
+            foreach (UrlDir.UrlFile file in GameDatabase.Instance.root.AllConfigFiles)
+            {
+                file.configs.Clear();
+            }
+
+            foreach (IProtoUrlConfig protoConfig in databaseConfigs)
+            {
+                protoConfig.UrlFile.AddConfig(protoConfig.Node);
+            }
+
+            databaseConfigs = null;
 
 #if DEBUG
             InGameTestRunner testRunner = new InGameTestRunner(logger);
@@ -145,8 +169,8 @@ namespace ModuleManager
             if (ModuleManager.dumpPostPatch)
                 ModuleManager.OutputAllConfigs();
 
-            stopwatch.Stop();
-            logger.Info("Post patch ran in " + ((float)stopwatch.ElapsedMilliseconds / 1000).ToString("F3") + "s");
+            postPatchTimer.Stop();
+            logger.Info("Post patch ran in " + ((float)postPatchTimer.ElapsedMilliseconds / 1000).ToString("F3") + "s");
 
             ready = true;
         }
