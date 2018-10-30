@@ -37,18 +37,18 @@ namespace ModuleManager
 
         private static readonly Dictionary<string, Regex> regexCache = new Dictionary<string, Regex>();
 
-        private static string cachePath;
+        private static readonly string cachePath = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), "ModuleManager.ConfigCache");
 
-        internal static string techTreeFile;
-        internal static string techTreePath;
+        internal static readonly string techTreeFile = Path.Combine("GameData", "ModuleManager.TechTree");
+        internal static readonly string techTreePath = Path.Combine(KSPUtil.ApplicationRootPath, techTreeFile);
 
-        internal static string physicsFile;
-        internal static string physicsPath;
-        private static string defaultPhysicsPath;
+        internal static readonly string physicsFile = Path.Combine("GameData", "ModuleManager.Physics");
+        internal static readonly string physicsPath = Path.Combine(KSPUtil.ApplicationRootPath, physicsFile);
+        private static readonly string defaultPhysicsPath = Path.Combine(KSPUtil.ApplicationRootPath, "Physics.cfg");
 
-        internal static string partDatabasePath;
+        internal static readonly string partDatabasePath = Path.Combine(KSPUtil.ApplicationRootPath, "PartDatabase.cfg");
 
-        private static string shaPath;
+        private static readonly string shaPath = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), "ModuleManager.ConfigSHA");
 
         private UrlDir.UrlFile physicsUrlFile;
 
@@ -71,15 +71,6 @@ namespace ModuleManager
                 return;
             }
             Instance = this;
-
-            cachePath = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), "ModuleManager.ConfigCache");
-            techTreeFile = Path.Combine("GameData", "ModuleManager.TechTree");
-            techTreePath = Path.Combine(KSPUtil.ApplicationRootPath, techTreeFile);
-            physicsFile = Path.Combine("GameData", "ModuleManager.Physics");
-            physicsPath = Path.Combine(KSPUtil.ApplicationRootPath, physicsFile);
-            defaultPhysicsPath = Path.Combine(KSPUtil.ApplicationRootPath, "Physics.cfg");
-            partDatabasePath = Path.Combine(KSPUtil.ApplicationRootPath, "PartDatabase.cfg");
-            shaPath = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), "ModuleManager.ConfigSHA");
 
             logger = new ModLogger("ModuleManager", new UnityLogger(Debug.unityLogger));
         }
