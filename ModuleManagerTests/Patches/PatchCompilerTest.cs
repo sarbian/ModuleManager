@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using Xunit;
 using NSubstitute;
 using TestUtils;
@@ -16,6 +18,41 @@ namespace ModuleManagerTests.Patches
         private readonly IBasicLogger logger = Substitute.For<IBasicLogger>();
         private readonly UrlDir.UrlFile file = UrlBuilder.CreateFile("abc/def.cfg");
         private readonly PatchCompiler patchCompiler = new PatchCompiler();
+
+        [Fact]
+        public void TestCompilePatch__Insert()
+        {
+            ProtoPatch protoPatch = new ProtoPatch(
+                UrlBuilder.CreateConfig(new TestConfigNode("NODEE")
+                {
+                    { "name", "foo" },
+                    { "bar", "bleh" },
+                }, file),
+                Command.Insert,
+                "NODE",
+                "foo",
+                null,
+                "#bar",
+                Substitute.For<IPassSpecifier>()
+            );
+
+            InsertPatch patch = Assert.IsType<InsertPatch>(patchCompiler.CompilePatch(protoPatch));
+
+            Assert.Same(protoPatch.urlConfig, patch.UrlConfig);
+
+            LinkedList<IProtoUrlConfig> configs = new LinkedList<IProtoUrlConfig>();
+
+            patch.Apply(configs, progress, logger);
+
+            Assert.Equal(1, configs.Count);
+            Assert.NotSame(protoPatch.urlConfig.config, configs.First.Value.Node);
+            AssertNodesEqual(new TestConfigNode("NODE")
+            {
+                { "name", "foo" },
+                { "bar", "bleh" },
+            }, configs.First.Value.Node);
+            Assert.Same(file, configs.First.Value.UrlFile);
+        }
 
         [Fact]
         public void TestCompilePatch__Edit()
@@ -38,25 +75,33 @@ namespace ModuleManagerTests.Patches
             Assert.Same(protoPatch.urlConfig, patch.UrlConfig);
             AssertNodeMatcher(patch.NodeMatcher);
 
-            UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig(new TestConfigNode("NODE")
+            ConfigNode config = new TestConfigNode("NODE")
             {
                 { "name", "foo" },
                 { "bar", "baz" },
-            }, file);
+            };
 
-            patch.Apply(file, progress, logger);
+            IProtoUrlConfig urlConfig = Substitute.For<IProtoUrlConfig>();
+            urlConfig.Node.Returns(config);
+            urlConfig.UrlFile.Returns(file);
+
+            LinkedList<IProtoUrlConfig> configs = new LinkedList<IProtoUrlConfig>();
+            configs.AddLast(urlConfig);
+
+            patch.Apply(configs, progress, logger);
 
             AssertNoErrors();
 
             progress.Received().ApplyingUpdate(urlConfig, protoPatch.urlConfig);
 
-            Assert.Single(file.configs);
-            Assert.NotSame(urlConfig, file.configs[0]);
+            Assert.Single(configs);
+            Assert.NotSame(config, configs.First.Value.Node);
             AssertNodesEqual(new TestConfigNode("NODE")
             {
                 { "name", "foo" },
                 { "bar", "bleh" },
-            }, file.configs[0].config);
+            }, configs.First.Value.Node);
+            Assert.Same(file, configs.First.Value.UrlFile);
         }
 
         [Fact]
@@ -81,30 +126,40 @@ namespace ModuleManagerTests.Patches
             Assert.Same(protoPatch.urlConfig, patch.UrlConfig);
             AssertNodeMatcher(patch.NodeMatcher);
 
-            UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig(new TestConfigNode("NODE")
+            ConfigNode config = new TestConfigNode("NODE")
             {
                 { "name", "foo" },
                 { "bar", "baz" },
-            }, file);
+            };
 
-            patch.Apply(file, progress, logger);
+            IProtoUrlConfig urlConfig = Substitute.For<IProtoUrlConfig>();
+            urlConfig.Node.Returns(config);
+            urlConfig.UrlFile.Returns(file);
+
+            LinkedList<IProtoUrlConfig> configs = new LinkedList<IProtoUrlConfig>();
+            configs.AddLast(urlConfig);
+
+            patch.Apply(configs, progress, logger);
 
             AssertNoErrors();
 
             progress.Received().ApplyingCopy(urlConfig, protoPatch.urlConfig);
 
-            Assert.Equal(2, file.configs.Count);
-            Assert.Same(urlConfig, file.configs[0]);
+            IProtoUrlConfig[] newConfigs = configs.ToArray();
+
+            Assert.Equal(2, newConfigs.Length);
+            Assert.Same(config, newConfigs[0].Node);
             AssertNodesEqual(new TestConfigNode("NODE")
             {
                 { "name", "foo" },
                 { "bar", "baz" },
-            }, file.configs[0].config);
+            }, newConfigs[0].Node);
             AssertNodesEqual(new TestConfigNode("NODE")
             {
                 { "name", "boo" },
                 { "bar", "bleh" },
-            }, file.configs[1].config);
+            }, newConfigs[1].Node);
+            Assert.Same(file, newConfigs[1].UrlFile);
         }
 
         [Fact]
@@ -125,19 +180,23 @@ namespace ModuleManagerTests.Patches
             Assert.Same(protoPatch.urlConfig, patch.UrlConfig);
             AssertNodeMatcher(patch.NodeMatcher);
 
-            UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig(new TestConfigNode("NODE")
+            IProtoUrlConfig urlConfig = Substitute.For<IProtoUrlConfig>();
+            urlConfig.Node.Returns(new TestConfigNode("NODE")
             {
                 { "name", "foo" },
                 { "bar", "baz" },
-            }, file);
+            });
 
-            patch.Apply(file, progress, logger);
+            LinkedList<IProtoUrlConfig> configs = new LinkedList<IProtoUrlConfig>();
+            configs.AddLast(urlConfig);
+
+            patch.Apply(configs, progress, logger);
 
             AssertNoErrors();
 
             progress.Received().ApplyingDelete(urlConfig, protoPatch.urlConfig);
 
-            Assert.Empty(file.configs);
+            Assert.Empty(configs);
         }
 
         [Fact]

@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Xunit;
 using NSubstitute;
 using UnityEngine;
@@ -15,7 +16,6 @@ namespace ModuleManagerTests
     {
         private readonly IBasicLogger logger = Substitute.For<IBasicLogger>();
         private readonly IPatchProgress progress = Substitute.For<IPatchProgress>();
-        private readonly UrlDir root = UrlBuilder.CreateRoot();
 
         [Fact]
         public void TestModifyNode__IndexAllWithAssign()
@@ -29,9 +29,9 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig c2u = UrlBuilder.CreateConfig("abc/def", new TestConfigNode("@NODE")
             {
                 { "@foo,*", "bar3" },
-            }, root);
+            });
             
-            PatchContext context = new PatchContext(c2u, root, logger, progress);
+            PatchContext context = new PatchContext(c2u, Enumerable.Empty<IProtoUrlConfig>(), logger, progress);
 
             ConfigNode c3 = MMPatchLoader.ModifyNode(new NodeStack(c1), c2u.config, context);
 
@@ -56,9 +56,9 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig c2u = UrlBuilder.CreateConfig("abc/def", new TestConfigNode("@NODE")
             {
                 { "@foo *", "2" },
-            }, root);
+            });
 
-            PatchContext context = new PatchContext(c2u, root, logger, progress);
+            PatchContext context = new PatchContext(c2u, Enumerable.Empty<IProtoUrlConfig>(), logger, progress);
 
             ConfigNode c3 = MMPatchLoader.ModifyNode(new NodeStack(c1), c2u.config, context);
 

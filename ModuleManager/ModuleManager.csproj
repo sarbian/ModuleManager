@@ -67,6 +67,7 @@
     <Compile Include="Pass.cs" />
     <Compile Include="PatchApplier.cs" />
     <Compile Include="PatchContext.cs" />
+    <Compile Include="Patches\InsertPatch.cs" />
     <Compile Include="Patches\PassSpecifiers\AfterPassSpecifier.cs" />
     <Compile Include="Patches\PassSpecifiers\BeforePassSpecifier.cs" />
     <Compile Include="Patches\PassSpecifiers\FinalPassSpecifier.cs" />
@@ -90,6 +91,7 @@
     <Compile Include="Properties\Resources.Designer.cs" />
     <Compile Include="Progress\IPatchProgress.cs" />
     <Compile Include="Progress\PatchProgress.cs" />
+    <Compile Include="ProtoUrlConfig.cs" />
     <Compile Include="Tags\Tag.cs" />
     <Compile Include="Tags\TagList.cs" />
     <Compile Include="Tags\TagListParser.cs" />

@@ -91,6 +91,7 @@
     <Compile Include="OperatorParserTest.cs" />
     <Compile Include="PassTest.cs" />
     <Compile Include="PatchApplierTest.cs" />
+    <Compile Include="Patches\InsertPatchTest.cs" />
     <Compile Include="Patches\PassSpecifiers\InsertPassSpecifierTest.cs" />
     <Compile Include="Patches\PassSpecifiers\FinalPassSpecifierTest.cs" />
     <Compile Include="Patches\PassSpecifiers\AfterPassSpecifierTest.cs" />

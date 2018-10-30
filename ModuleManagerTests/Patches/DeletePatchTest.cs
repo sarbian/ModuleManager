@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Xunit;
 using NSubstitute;
 using TestUtils;
@@ -75,28 +76,42 @@ namespace ModuleManagerTests.Patches
         [Fact]
         public void TestApply()
         {
-            UrlDir.UrlFile file = UrlBuilder.CreateFile("abc/def.cfg");
-
-            UrlDir.UrlConfig urlConfig1 = UrlBuilder.CreateConfig(new ConfigNode("NODE"), file);
-            UrlDir.UrlConfig urlConfig2 = UrlBuilder.CreateConfig(new ConfigNode("NODE"), file);
-            UrlDir.UrlConfig urlConfig3 = UrlBuilder.CreateConfig(new ConfigNode("NODE"), file);
-            UrlDir.UrlConfig urlConfig4 = UrlBuilder.CreateConfig(new ConfigNode("NODE"), file);
+            ConfigNode config1 = new ConfigNode("NODE");
+            ConfigNode config2 = new ConfigNode("NODE");
+            ConfigNode config3 = new ConfigNode("NODE");
+            ConfigNode config4 = new ConfigNode("NODE");
 
             INodeMatcher nodeMatcher = Substitute.For<INodeMatcher>();
 
-            nodeMatcher.IsMatch(urlConfig1.config).Returns(false);
-            nodeMatcher.IsMatch(urlConfig2.config).Returns(true);
-            nodeMatcher.IsMatch(urlConfig3.config).Returns(false);
-            nodeMatcher.IsMatch(urlConfig4.config).Returns(true);
+            nodeMatcher.IsMatch(config1).Returns(false);
+            nodeMatcher.IsMatch(config2).Returns(true);
+            nodeMatcher.IsMatch(config3).Returns(false);
+            nodeMatcher.IsMatch(config4).Returns(true);
 
             DeletePatch patch = new DeletePatch(UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("!NODE")), nodeMatcher, Substitute.For<IPassSpecifier>());
+
+            IProtoUrlConfig urlConfig1 = Substitute.For<IProtoUrlConfig>();
+            IProtoUrlConfig urlConfig2 = Substitute.For<IProtoUrlConfig>();
+            IProtoUrlConfig urlConfig3 = Substitute.For<IProtoUrlConfig>();
+            IProtoUrlConfig urlConfig4 = Substitute.For<IProtoUrlConfig>();
+
+            urlConfig1.Node.Returns(config1);
+            urlConfig2.Node.Returns(config2);
+            urlConfig3.Node.Returns(config3);
+            urlConfig4.Node.Returns(config4);
+
+            LinkedList<IProtoUrlConfig> configs = new LinkedList<IProtoUrlConfig>();
+            configs.AddLast(urlConfig1);
+            configs.AddLast(urlConfig2);
+            configs.AddLast(urlConfig3);
+            configs.AddLast(urlConfig4);
 
             IPatchProgress progress = Substitute.For<IPatchProgress>();
             IBasicLogger logger = Substitute.For<IBasicLogger>();
 
-            patch.Apply(file, progress, logger);
+            patch.Apply(configs, progress, logger);
 
-            Assert.Equal(new[] { urlConfig1, urlConfig3 }, file.configs);
+            Assert.Equal(new[] { urlConfig1, urlConfig3 }, configs);
 
             Received.InOrder(delegate
             {
@@ -113,7 +128,7 @@ namespace ModuleManagerTests.Patches
         }
 
         [Fact]
-        public void TestApply__FileNull()
+        public void TestApply__DatabaseConfigsNull()
         {
             DeletePatch patch = new DeletePatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>(), Substitute.For<IPassSpecifier>());
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
@@ -121,7 +136,7 @@ namespace ModuleManagerTests.Patches
                 patch.Apply(null, Substitute.For<IPatchProgress>(), Substitute.For<IBasicLogger>());
             });
 
-            Assert.Equal("file", ex.ParamName);
+            Assert.Equal("databaseConfigs", ex.ParamName);
         }
 
         [Fact]
@@ -130,7 +145,7 @@ namespace ModuleManagerTests.Patches
             DeletePatch patch = new DeletePatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>(), Substitute.For<IPassSpecifier>());
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                patch.Apply(UrlBuilder.CreateFile("abc/def.cfg"), null, Substitute.For<IBasicLogger>());
+                patch.Apply(new LinkedList<IProtoUrlConfig>(), null, Substitute.For<IBasicLogger>());
             });
 
             Assert.Equal("progress", ex.ParamName);
@@ -142,7 +157,7 @@ namespace ModuleManagerTests.Patches
             DeletePatch patch = new DeletePatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>(), Substitute.For<IPassSpecifier>());
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                patch.Apply(UrlBuilder.CreateFile("abc/def.cfg"), Substitute.For<IPatchProgress>(), null);
+                patch.Apply(new LinkedList<IProtoUrlConfig>(), Substitute.For<IPatchProgress>(), null);
             });
 
             Assert.Equal("logger", ex.ParamName);

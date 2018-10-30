@@ -3,9 +3,9 @@ using Xunit;
 using NSubstitute;
 using UnityEngine;
 using TestUtils;
+using ModuleManager;
 using ModuleManager.Logging;
 using ModuleManager.Progress;
-using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManagerTests
 {
@@ -30,13 +30,14 @@ namespace ModuleManagerTests
 
             Assert.Equal(0, progress.Counter.patchedNodes);
 
-            UrlDir.UrlConfig original = UrlBuilder.CreateConfig("abc/def", new ConfigNode("SOME_NODE"));
+            IProtoUrlConfig original = Substitute.For<IProtoUrlConfig>();
+            original.FullUrl.Returns("abc/def.cfg/SOME_NODE");
             UrlDir.UrlConfig patch1 = UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("@SOME_NODE"));
 
             progress2.ApplyingUpdate(original, patch1);
             Assert.Equal(1, progress.Counter.patchedNodes);
             logger.DidNotReceiveWithAnyArgs().Log(LogType.Log, null);
-            logger2.Received().Log(LogType.Log, "Applying update ghi/jkl/@SOME_NODE to abc/def/SOME_NODE");
+            logger2.Received().Log(LogType.Log, "Applying update ghi/jkl/@SOME_NODE to abc/def.cfg/SOME_NODE");
         }
 
         [Fact]
@@ -52,7 +53,8 @@ namespace ModuleManagerTests
         [Fact]
         public void TestApplyingUpdate()
         {
-            UrlDir.UrlConfig original = UrlBuilder.CreateConfig("abc/def", new ConfigNode("SOME_NODE"));
+            IProtoUrlConfig original = Substitute.For<IProtoUrlConfig>();
+            original.FullUrl.Returns("abc/def.cfg/SOME_NODE");
             UrlDir.UrlConfig patch1 = UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("@SOME_NODE"));
             UrlDir.UrlConfig patch2 = UrlBuilder.CreateConfig("pqr/stu", new ConfigNode("@SOME_NODE"));
 
@@ -60,17 +62,18 @@ namespace ModuleManagerTests
 
             progress.ApplyingUpdate(original, patch1);
             Assert.Equal(1, progress.Counter.patchedNodes);
-            logger.Received().Log(LogType.Log, "Applying update ghi/jkl/@SOME_NODE to abc/def/SOME_NODE");
+            logger.Received().Log(LogType.Log, "Applying update ghi/jkl/@SOME_NODE to abc/def.cfg/SOME_NODE");
 
             progress.ApplyingUpdate(original, patch2);
             Assert.Equal(2, progress.Counter.patchedNodes);
-            logger.Received().Log(LogType.Log, "Applying update pqr/stu/@SOME_NODE to abc/def/SOME_NODE");
+            logger.Received().Log(LogType.Log, "Applying update pqr/stu/@SOME_NODE to abc/def.cfg/SOME_NODE");
         }
 
         [Fact]
         public void TesApplyingCopy()
         {
-            UrlDir.UrlConfig original = UrlBuilder.CreateConfig("abc/def", new ConfigNode("SOME_NODE"));
+            IProtoUrlConfig original = Substitute.For<IProtoUrlConfig>();
+            original.FullUrl.Returns("abc/def.cfg/SOME_NODE");
             UrlDir.UrlConfig patch1 = UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("+SOME_NODE"));
             UrlDir.UrlConfig patch2 = UrlBuilder.CreateConfig("pqr/stu", new ConfigNode("+SOME_NODE"));
 
@@ -78,17 +81,18 @@ namespace ModuleManagerTests
 
             progress.ApplyingCopy(original, patch1);
             Assert.Equal(1, progress.Counter.patchedNodes);
-            logger.Received().Log(LogType.Log, "Applying copy ghi/jkl/+SOME_NODE to abc/def/SOME_NODE");
+            logger.Received().Log(LogType.Log, "Applying copy ghi/jkl/+SOME_NODE to abc/def.cfg/SOME_NODE");
 
             progress.ApplyingCopy(original, patch2);
             Assert.Equal(2, progress.Counter.patchedNodes);
-            logger.Received().Log(LogType.Log, "Applying copy pqr/stu/+SOME_NODE to abc/def/SOME_NODE");
+            logger.Received().Log(LogType.Log, "Applying copy pqr/stu/+SOME_NODE to abc/def.cfg/SOME_NODE");
         }
 
         [Fact]
         public void TesApplyingDelete()
         {
-            UrlDir.UrlConfig original = UrlBuilder.CreateConfig("abc/def", new ConfigNode("SOME_NODE"));
+            IProtoUrlConfig original = Substitute.For<IProtoUrlConfig>();
+            original.FullUrl.Returns("abc/def.cfg/SOME_NODE");
             UrlDir.UrlConfig patch1 = UrlBuilder.CreateConfig("ghi/jkl", new ConfigNode("!SOME_NODE"));
             UrlDir.UrlConfig patch2 = UrlBuilder.CreateConfig("pqr/stu", new ConfigNode("!SOME_NODE"));
 
@@ -96,11 +100,11 @@ namespace ModuleManagerTests
 
             progress.ApplyingDelete(original, patch1);
             Assert.Equal(1, progress.Counter.patchedNodes);
-            logger.Received().Log(LogType.Log, "Applying delete ghi/jkl/!SOME_NODE to abc/def/SOME_NODE");
+            logger.Received().Log(LogType.Log, "Applying delete ghi/jkl/!SOME_NODE to abc/def.cfg/SOME_NODE");
 
             progress.ApplyingDelete(original, patch2);
             Assert.Equal(2, progress.Counter.patchedNodes);
-            logger.Received().Log(LogType.Log, "Applying delete pqr/stu/!SOME_NODE to abc/def/SOME_NODE");
+            logger.Received().Log(LogType.Log, "Applying delete pqr/stu/!SOME_NODE to abc/def.cfg/SOME_NODE");
         }
 
         [Fact]
@@ -236,6 +240,18 @@ namespace ModuleManagerTests
 
         [Fact]
         public void TestError()
+        {
+            Assert.Equal(0, progress.Counter.errors);
+
+            progress.Error("An error message no one is going to read");
+            Assert.Equal(1, progress.Counter.errors);
+
+            progress.Error("Maybe someone will read this one");
+            Assert.Equal(2, progress.Counter.errors);
+        }
+
+        [Fact]
+        public void TestError__Config()
         {
             UrlDir.UrlConfig config1 = UrlBuilder.CreateConfig("abc/def", new ConfigNode("SOME_NODE"));
             UrlDir.UrlConfig config2 = UrlBuilder.CreateConfig("abc/def", new ConfigNode("SOME_OTHER_NODE"));

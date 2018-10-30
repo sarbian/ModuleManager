@@ -10,6 +10,7 @@ namespace ModuleManager.Progress
 
         void Warning(UrlDir.UrlConfig url, string message);
         void Error(UrlDir.UrlConfig url, string message);
+        void Error(string message);
         void Exception(string message, Exception exception);
         void Exception(UrlDir.UrlConfig url, string message, Exception exception);
         void NeedsUnsatisfiedRoot(UrlDir.UrlConfig url);
@@ -18,9 +19,9 @@ namespace ModuleManager.Progress
         void NeedsUnsatisfiedBefore(UrlDir.UrlConfig url);
         void NeedsUnsatisfiedFor(UrlDir.UrlConfig url);
         void NeedsUnsatisfiedAfter(UrlDir.UrlConfig url);
-        void ApplyingCopy(UrlDir.UrlConfig original, UrlDir.UrlConfig patch);
-        void ApplyingDelete(UrlDir.UrlConfig original, UrlDir.UrlConfig patch);
-        void ApplyingUpdate(UrlDir.UrlConfig original, UrlDir.UrlConfig patch);
+        void ApplyingCopy(IUrlConfigIdentifier original, UrlDir.UrlConfig patch);
+        void ApplyingDelete(IUrlConfigIdentifier original, UrlDir.UrlConfig patch);
+        void ApplyingUpdate(IUrlConfigIdentifier original, UrlDir.UrlConfig patch);
         void PatchAdded();
         void PatchApplied();
     }

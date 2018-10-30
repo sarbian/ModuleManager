@@ -38,21 +38,21 @@ namespace ModuleManager.Progress
             Counter.totalPatches.Increment();
         }
 
-        public void ApplyingUpdate(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
+        public void ApplyingUpdate(IUrlConfigIdentifier original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying update {patch.SafeUrl()} to {original.SafeUrl()}");
+            logger.Info($"Applying update {patch.SafeUrl()} to {original.FullUrl}");
             Counter.patchedNodes.Increment();
         }
 
-        public void ApplyingCopy(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
+        public void ApplyingCopy(IUrlConfigIdentifier original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying copy {patch.SafeUrl()} to {original.SafeUrl()}");
+            logger.Info($"Applying copy {patch.SafeUrl()} to {original.FullUrl}");
             Counter.patchedNodes.Increment();
         }
 
-        public void ApplyingDelete(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
+        public void ApplyingDelete(IUrlConfigIdentifier original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying delete {patch.SafeUrl()} to {original.SafeUrl()}");
+            logger.Info($"Applying delete {patch.SafeUrl()} to {original.FullUrl}");
             Counter.patchedNodes.Increment();
         }
 
@@ -107,6 +107,12 @@ namespace ModuleManager.Progress
             Counter.errors.Increment();
             logger.Error(message);
             RecordErrorFile(url);
+        }
+
+        public void Error(string message)
+        {
+            Counter.errors.Increment();
+            logger.Error(message);
         }
 
         public void Exception(string message, Exception exception)

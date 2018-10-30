@@ -39,9 +39,6 @@ namespace ModuleManager
 
             try
             {
-                int index = urlConfig.parent.configs.IndexOf(urlConfig);
-                urlConfig.parent.configs.RemoveAt(index);
-
                 if (!urlConfig.type.IsBracketBalanced())
                 {
                     progress.Error(urlConfig, "Error - node name does not have balanced brackets (or a space - if so replace with ?):\n" + urlConfig.SafeUrl());
@@ -103,21 +100,9 @@ namespace ModuleManager
                 {
                     return null;
                 }
-                
-                if (command == Command.Insert)
-                {
-                    ConfigNode newNode = urlConfig.config.DeepCopy();
-                    newNode.name = protoPatch.nodeType;
-                    newNode.id = urlConfig.config.id;
-                    needsChecker.CheckNeedsRecursive(newNode, urlConfig);
-                    urlConfig.parent.configs.Insert(index, new UrlDir.UrlConfig(urlConfig.parent, newNode));
-                    return null;
-                }
-                else
-                {
-                    needsChecker.CheckNeedsRecursive(urlConfig.config, urlConfig);
-                    return patchCompiler.CompilePatch(protoPatch);
-                }
+
+                needsChecker.CheckNeedsRecursive(urlConfig.config, urlConfig);
+                return patchCompiler.CompilePatch(protoPatch);
             }
             catch(Exception e)
             {

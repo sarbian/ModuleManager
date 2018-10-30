@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using ModuleManager.Logging;
 using ModuleManager.Extensions;
 using ModuleManager.Patches;
@@ -21,17 +20,21 @@ namespace ModuleManager
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public void ApplyPatches(IEnumerable<UrlDir.UrlFile> configFiles, IEnumerable<IPass> patches)
+        public IEnumerable<IProtoUrlConfig> ApplyPatches(IEnumerable<IPass> patches)
         {
-            if (configFiles == null) throw new ArgumentNullException(nameof(configFiles));
             if (patches == null) throw new ArgumentNullException(nameof(patches));
+
+            LinkedList<IProtoUrlConfig> databaseConfigs = new LinkedList<IProtoUrlConfig>();
+
             foreach (IPass pass in patches)
             {
-                ApplyPatches(configFiles, pass);
+                ApplyPatches(databaseConfigs, pass);
             }
+
+            return databaseConfigs; 
         }
 
-        private void ApplyPatches(IEnumerable<UrlDir.UrlFile> configFiles, IPass pass)
+        private void ApplyPatches(LinkedList<IProtoUrlConfig> databaseConfigs, IPass pass)
         {
             logger.Info(pass.Name + " pass");
             Activity = "ModuleManager " + pass.Name;
@@ -40,10 +43,7 @@ namespace ModuleManager
             {
                 try
                 {
-                    foreach (UrlDir.UrlFile file in configFiles)
-                    {
-                        patch.Apply(file, progress, logger);
-                    }
+                    patch.Apply(databaseConfigs, progress, logger);
                     progress.PatchApplied();
                 }
                 catch (Exception e)
