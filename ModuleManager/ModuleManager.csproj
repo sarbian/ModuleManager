@@ -58,6 +58,7 @@
     <Compile Include="MMPatchLoader.cs" />
     <Compile Include="ModuleManager.cs" />
     <Compile Include="ModListGenerator.cs" />
+    <Compile Include="FilePathRepository.cs" />
     <Compile Include="ModuleManagerPostPatch.cs" />
     <Compile Include="ModuleManagerTestRunner.cs" />
     <Compile Include="NeedsChecker.cs" />
