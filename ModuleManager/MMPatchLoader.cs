@@ -139,8 +139,6 @@ namespace ModuleManager
 
                 logger.Info("Done patching");
 
-                PurgeUnused();
-
                 #endregion Applying patches
 
                 #region Saving Cache
@@ -504,17 +502,6 @@ namespace ModuleManager
 
             if (progress.Counter.exceptions > 0)
                 status += ", encountered <color=red>" + progress.Counter.exceptions + " exception" + (progress.Counter.exceptions != 1 ? "s" : "") + "</color>";
-        }
-
-        private static void PurgeUnused()
-        {
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
-            {
-                string name = mod.type.RemoveWS();
-
-                if (CommandParser.Parse(name, out name) != Command.Insert)
-                    mod.parent.configs.Remove(mod);
-            }
         }
 
         #region Applying Patches
