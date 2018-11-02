@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -6,6 +7,8 @@ using System.Reflection;
 using UnityEngine;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
+
+using static ModuleManager.FilePathRepository;
 
 namespace ModuleManager
 {
@@ -79,6 +82,20 @@ namespace ModuleManager
             }
 
             databaseConfigs = null;
+
+            yield return null;
+
+            if (File.Exists(logPath))
+            {
+                logger.Info("Dumping ModuleManager log to main log");
+                logger.Info("\n#### BEGIN MODULEMANAGER LOG ####\n\n\n" + File.ReadAllText(logPath) + "\n\n\n#### END MODULEMANAGER LOG ####");
+            }
+            else
+            {
+                logger.Error("ModuleManager log does not exist: " + logPath);
+            }
+
+            yield return null;
 
 #if DEBUG
             InGameTestRunner testRunner = new InGameTestRunner(logger);
