@@ -17,5 +17,8 @@ namespace ModuleManager
         internal static readonly string partDatabasePath = Path.Combine(KSPUtil.ApplicationRootPath, "PartDatabase.cfg");
 
         internal static readonly string shaPath = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), "ModuleManager.ConfigSHA");
+
+        internal static readonly string logsDirPath = Path.Combine(KSPUtil.ApplicationRootPath, "Logs");
+        internal static readonly string logPath = Path.Combine(logsDirPath, "ModuleManager.log");
     }
 }
