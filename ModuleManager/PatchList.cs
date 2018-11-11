@@ -17,7 +17,8 @@ namespace ModuleManager
             public readonly Pass beforePass;
             public readonly Pass forPass;
             public readonly Pass afterPass;
-            
+            public readonly Pass lastPass;
+
             public ModPass(string name)
             {
                 if (name == null) throw new ArgumentNullException(nameof(name));
@@ -27,11 +28,13 @@ namespace ModuleManager
                 beforePass = new Pass($":BEFORE[{this.name}]");
                 forPass = new Pass($":FOR[{this.name}]");
                 afterPass = new Pass($":AFTER[{this.name}]");
+                lastPass = new Pass($":LAST[{this.name}]");
             }
 
             public void AddBeforePatch(IPatch patch) => beforePass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
             public void AddForPatch(IPatch patch) => forPass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
             public void AddAfterPatch(IPatch patch) => afterPass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
+            public void AddLastPatch(IPatch patch) => lastPass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
         }
 
         private class ModPassCollection : IEnumerable<ModPass>
@@ -104,6 +107,11 @@ namespace ModuleManager
                     EnsureMod(afterPassSpecifier.mod);
                     modPasses[afterPassSpecifier.mod].AddAfterPatch(patch);
                 }
+                else if (patch.PassSpecifier is LastPassSpecifier lastPassSpecifier)
+                {
+                    EnsureMod(lastPassSpecifier.mod);
+                    modPasses[lastPassSpecifier.mod].AddLastPatch(patch);
+                }
                 else if (patch.PassSpecifier is FinalPassSpecifier)
                 {
                     finalPatches.Add(patch);
@@ -123,7 +131,7 @@ namespace ModuleManager
 
         private IPass[] EnumeratePasses()
         {
-            IPass[] result = new IPass[modPasses.Count * 3 + 3];
+            IPass[] result = new IPass[modPasses.Count * 4 + 3];
 
             result[0] = firstPatches;
             result[1] = legacyPatches;
@@ -133,6 +141,11 @@ namespace ModuleManager
                 result[i * 3 + 2] = modPasses[i].beforePass;
                 result[i * 3 + 3] = modPasses[i].forPass;
                 result[i * 3 + 4] = modPasses[i].afterPass;
+            }
+
+            for (int i = 0; i < modPasses.Count; i++)
+            {
+                result[2 + (modPasses.Count * 3) + i] = modPasses[i].lastPass;
             }
 
             result[result.Length - 1] = finalPatches;

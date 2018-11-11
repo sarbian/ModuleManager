@@ -25,7 +25,7 @@ namespace ModuleManager.Patches
             if (urlConfig == null) throw new ArgumentNullException(nameof(urlConfig));
             if (tagList == null) throw new ArgumentNullException(nameof(tagList));
             if (progress == null) throw new ArgumentNullException(nameof(progress));
-            
+
             bool error = false;
 
             string nodeType = tagList.PrimaryTag.key;
@@ -42,7 +42,7 @@ namespace ModuleManager.Patches
                 progress.Warning(urlConfig, "empty brackets detected on patch name: " + urlConfig.SafeUrl());
                 nodeName = null;
             }
-            
+
             if (tagList.PrimaryTag.trailer != null)
                 progress.Warning(urlConfig, "unrecognized trailer: '" + tagList.PrimaryTag.trailer + "' on: " + urlConfig.SafeUrl());
 
@@ -52,7 +52,7 @@ namespace ModuleManager.Patches
 
             foreach (Tag tag in tagList)
             {
-                if (tag.trailer != null) 
+                if (tag.trailer != null)
                     progress.Warning(urlConfig, "unrecognized trailer: '" + tag.trailer + "' on: " + urlConfig.SafeUrl());
 
                 if (tag.key.Equals("NEEDS", StringComparison.CurrentCultureIgnoreCase))
@@ -122,7 +122,7 @@ namespace ModuleManager.Patches
                         error = true;
                         continue;
                     }
-                    
+
                     if (command == Command.Insert)
                     {
                         progress.Error(urlConfig, "pass specifier detected on insert node (not a patch): " + urlConfig.SafeUrl());
@@ -182,6 +182,29 @@ namespace ModuleManager.Patches
                     }
 
                     passSpecifier = new AfterPassSpecifier(tag.value, urlConfig);
+                }
+                else if (tag.key.Equals("LAST", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    if (string.IsNullOrEmpty(tag.value))
+                    {
+                        progress.Error(urlConfig, "empty :LAST tag detected: " + urlConfig.SafeUrl());
+                        error = true;
+                        continue;
+                    }
+
+                    if (command == Command.Insert)
+                    {
+                        progress.Error(urlConfig, "pass specifier detected on insert node (not a patch): " + urlConfig.SafeUrl());
+                        error = true;
+                        continue;
+                    }
+                    if (passSpecifier != null)
+                    {
+                        progress.Warning(urlConfig, "more than one pass specifier detected, ignoring all but the first: " + urlConfig.SafeUrl());
+                        continue;
+                    }
+
+                    passSpecifier = new LastPassSpecifier(tag.value);
                 }
                 else if (tag.key.Equals("FINAL", StringComparison.CurrentCultureIgnoreCase))
                 {
