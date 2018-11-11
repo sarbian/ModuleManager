@@ -125,33 +125,27 @@ namespace ModuleManager
             }
         }
 
-        public ArrayEnumerator<IPass> GetEnumerator() => new ArrayEnumerator<IPass>(EnumeratePasses());
-        IEnumerator<IPass> IEnumerable<IPass>.GetEnumerator() => GetEnumerator();
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        private IPass[] EnumeratePasses()
+        public IEnumerator<IPass> GetEnumerator()
         {
-            IPass[] result = new IPass[modPasses.Count * 4 + 3];
+            yield return firstPatches;
+            yield return legacyPatches;
 
-            result[0] = firstPatches;
-            result[1] = legacyPatches;
-
-            for (int i = 0; i < modPasses.Count; i++)
+            foreach (ModPass modPass in modPasses)
             {
-                result[i * 3 + 2] = modPasses[i].beforePass;
-                result[i * 3 + 3] = modPasses[i].forPass;
-                result[i * 3 + 4] = modPasses[i].afterPass;
+                yield return modPass.beforePass;
+                yield return modPass.forPass;
+                yield return modPass.afterPass;
             }
 
-            for (int i = 0; i < modPasses.Count; i++)
+            foreach (ModPass modPass in modPasses)
             {
-                result[2 + (modPasses.Count * 3) + i] = modPasses[i].lastPass;
+                yield return modPass.lastPass;
             }
 
-            result[result.Length - 1] = finalPatches;
-
-            return result;
+            yield return finalPatches;
         }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         private void EnsureMod(string mod)
         {
