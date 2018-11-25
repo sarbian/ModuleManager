@@ -60,6 +60,12 @@ namespace ModuleManager
 
         internal void Awake()
         {
+            if (LoadingScreen.Instance == null)
+            {
+                Destroy(gameObject);
+                return;
+            }
+
             totalTime.Start();
 
             // Allow loading the background in the laoding screen
