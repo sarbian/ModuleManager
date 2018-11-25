@@ -436,6 +436,9 @@ namespace ModuleManager
             System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
             System.Security.Cryptography.SHA256 filesha = System.Security.Cryptography.SHA256.Create();
             UrlDir.UrlFile[] files = GameDatabase.Instance.root.AllConfigFiles.ToArray();
+
+            filesSha.Clear();
+
             for (int i = 0; i < files.Length; i++)
             {
                 // Hash the file path so the checksum change if files are moved
