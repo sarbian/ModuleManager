@@ -17,7 +17,8 @@ namespace ModuleManager
             public readonly Pass beforePass;
             public readonly Pass forPass;
             public readonly Pass afterPass;
-            
+            public readonly Pass lastPass;
+
             public ModPass(string name)
             {
                 if (name == null) throw new ArgumentNullException(nameof(name));
@@ -27,11 +28,13 @@ namespace ModuleManager
                 beforePass = new Pass($":BEFORE[{this.name}]");
                 forPass = new Pass($":FOR[{this.name}]");
                 afterPass = new Pass($":AFTER[{this.name}]");
+                lastPass = new Pass($":LAST[{this.name}]");
             }
 
             public void AddBeforePatch(IPatch patch) => beforePass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
             public void AddForPatch(IPatch patch) => forPass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
             public void AddAfterPatch(IPatch patch) => afterPass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
+            public void AddLastPatch(IPatch patch) => lastPass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
         }
 
         private class ModPassCollection : IEnumerable<ModPass>
@@ -104,6 +107,11 @@ namespace ModuleManager
                     EnsureMod(afterPassSpecifier.mod);
                     modPasses[afterPassSpecifier.mod].AddAfterPatch(patch);
                 }
+                else if (patch.PassSpecifier is LastPassSpecifier lastPassSpecifier)
+                {
+                    EnsureMod(lastPassSpecifier.mod);
+                    modPasses[lastPassSpecifier.mod].AddLastPatch(patch);
+                }
                 else if (patch.PassSpecifier is FinalPassSpecifier)
                 {
                     finalPatches.Add(patch);
@@ -117,28 +125,27 @@ namespace ModuleManager
             }
         }
 
-        public ArrayEnumerator<IPass> GetEnumerator() => new ArrayEnumerator<IPass>(EnumeratePasses());
-        IEnumerator<IPass> IEnumerable<IPass>.GetEnumerator() => GetEnumerator();
-        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-
-        private IPass[] EnumeratePasses()
+        public IEnumerator<IPass> GetEnumerator()
         {
-            IPass[] result = new IPass[modPasses.Count * 3 + 3];
+            yield return firstPatches;
+            yield return legacyPatches;
 
-            result[0] = firstPatches;
-            result[1] = legacyPatches;
-
-            for (int i = 0; i < modPasses.Count; i++)
+            foreach (ModPass modPass in modPasses)
             {
-                result[i * 3 + 2] = modPasses[i].beforePass;
-                result[i * 3 + 3] = modPasses[i].forPass;
-                result[i * 3 + 4] = modPasses[i].afterPass;
+                yield return modPass.beforePass;
+                yield return modPass.forPass;
+                yield return modPass.afterPass;
             }
 
-            result[result.Length - 1] = finalPatches;
+            foreach (ModPass modPass in modPasses)
+            {
+                yield return modPass.lastPass;
+            }
 
-            return result;
+            yield return finalPatches;
         }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
         private void EnsureMod(string mod)
         {

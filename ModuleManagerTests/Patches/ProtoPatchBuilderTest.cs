@@ -476,6 +476,75 @@ namespace ModuleManagerTests.Patches
         }
 
         [Fact]
+        public void TestBuild__Last()
+        {
+            ITagList tagList = Substitute.For<ITagList>();
+            tagList.PrimaryTag.Returns(new Tag("NODE", null, null));
+            tagList.GetEnumerator().Returns(new ArrayEnumerator<Tag>(
+                new Tag("LAST", "stuff", null)
+            ));
+
+            ProtoPatch protoPatch = builder.Build(urlConfig, Command.Copy, tagList);
+
+            EnsureNoErrors();
+
+            Assert.Same(urlConfig, protoPatch.urlConfig);
+            Assert.Equal(Command.Copy, protoPatch.command);
+            Assert.Equal("NODE", protoPatch.nodeType);
+            Assert.Null(protoPatch.nodeName);
+            Assert.Null(protoPatch.needs);
+            Assert.Null(protoPatch.has);
+            LastPassSpecifier passSpecifier = Assert.IsType<LastPassSpecifier>(protoPatch.passSpecifier);
+            Assert.Equal("stuff", passSpecifier.mod);
+        }
+
+        [Fact]
+        public void TestBuild__Last__Case1()
+        {
+            ITagList tagList = Substitute.For<ITagList>();
+            tagList.PrimaryTag.Returns(new Tag("NODE", null, null));
+            tagList.GetEnumerator().Returns(new ArrayEnumerator<Tag>(
+                new Tag("Last", "stuff", null)
+            ));
+
+            ProtoPatch protoPatch = builder.Build(urlConfig, Command.Copy, tagList);
+
+            EnsureNoErrors();
+
+            Assert.Same(urlConfig, protoPatch.urlConfig);
+            Assert.Equal(Command.Copy, protoPatch.command);
+            Assert.Equal("NODE", protoPatch.nodeType);
+            Assert.Null(protoPatch.nodeName);
+            Assert.Null(protoPatch.needs);
+            Assert.Null(protoPatch.has);
+            LastPassSpecifier passSpecifier = Assert.IsType<LastPassSpecifier>(protoPatch.passSpecifier);
+            Assert.Equal("stuff", passSpecifier.mod);
+        }
+
+        [Fact]
+        public void TestBuild__Last__Case2()
+        {
+            ITagList tagList = Substitute.For<ITagList>();
+            tagList.PrimaryTag.Returns(new Tag("NODE", null, null));
+            tagList.GetEnumerator().Returns(new ArrayEnumerator<Tag>(
+                new Tag("last", "stuff", null)
+            ));
+
+            ProtoPatch protoPatch = builder.Build(urlConfig, Command.Copy, tagList);
+
+            EnsureNoErrors();
+
+            Assert.Same(urlConfig, protoPatch.urlConfig);
+            Assert.Equal(Command.Copy, protoPatch.command);
+            Assert.Equal("NODE", protoPatch.nodeType);
+            Assert.Null(protoPatch.nodeName);
+            Assert.Null(protoPatch.needs);
+            Assert.Null(protoPatch.has);
+            LastPassSpecifier passSpecifier = Assert.IsType<LastPassSpecifier>(protoPatch.passSpecifier);
+            Assert.Equal("stuff", passSpecifier.mod);
+        }
+
+        [Fact]
         public void TestBuild__Final()
         {
             ITagList tagList = Substitute.For<ITagList>();
@@ -1093,6 +1162,79 @@ namespace ModuleManagerTests.Patches
             tagList.PrimaryTag.Returns(new Tag("NODE", null, null));
             tagList.GetEnumerator().Returns(new ArrayEnumerator<Tag>(
                 new Tag("AFTER", "mod1", null)
+            ));
+
+            Assert.Null(builder.Build(urlConfig, Command.Insert, tagList));
+
+            progress.DidNotReceiveWithAnyArgs().Warning(null, null);
+            progress.Received().Error(urlConfig, "pass specifier detected on insert node (not a patch): abc/def/NODE");
+            EnsureNoExceptions();
+        }
+
+        [Fact]
+        public void TestBuild__NullLast()
+        {
+            ITagList tagList = Substitute.For<ITagList>();
+            tagList.PrimaryTag.Returns(new Tag("NODE", null, null));
+            tagList.GetEnumerator().Returns(new ArrayEnumerator<Tag>(
+                new Tag("LAST", null, null)
+            ));
+
+            Assert.Null(builder.Build(urlConfig, Command.Copy, tagList));
+
+            progress.DidNotReceiveWithAnyArgs().Warning(null, null);
+            progress.Received().Error(urlConfig, "empty :LAST tag detected: abc/def/NODE");
+            EnsureNoExceptions();
+        }
+
+        [Fact]
+        public void TestBuild__EmptyLast()
+        {
+            ITagList tagList = Substitute.For<ITagList>();
+            tagList.PrimaryTag.Returns(new Tag("NODE", null, null));
+            tagList.GetEnumerator().Returns(new ArrayEnumerator<Tag>(
+                new Tag("LAST", "", null)
+            ));
+
+            Assert.Null(builder.Build(urlConfig, Command.Copy, tagList));
+
+            progress.DidNotReceiveWithAnyArgs().Warning(null, null);
+            progress.Received().Error(urlConfig, "empty :LAST tag detected: abc/def/NODE");
+            EnsureNoExceptions();
+        }
+
+        [Fact]
+        public void TestBuild__MoreThanOnePass__Last()
+        {
+            ITagList tagList = Substitute.For<ITagList>();
+            tagList.PrimaryTag.Returns(new Tag("NODE", null, null));
+            tagList.GetEnumerator().Returns(new ArrayEnumerator<Tag>(
+                new Tag("FIRST", null, null),
+                new Tag("LAST", "stuff", null)
+            ));
+
+            ProtoPatch protoPatch = builder.Build(urlConfig, Command.Copy, tagList);
+
+            progress.Received().Warning(urlConfig, "more than one pass specifier detected, ignoring all but the first: abc/def/NODE");
+            progress.DidNotReceiveWithAnyArgs().Error(null, null);
+            EnsureNoExceptions();
+
+            Assert.Same(urlConfig, protoPatch.urlConfig);
+            Assert.Equal(Command.Copy, protoPatch.command);
+            Assert.Equal("NODE", protoPatch.nodeType);
+            Assert.Null(protoPatch.nodeName);
+            Assert.Null(protoPatch.needs);
+            Assert.Null(protoPatch.has);
+            Assert.IsType<FirstPassSpecifier>(protoPatch.passSpecifier);
+        }
+
+        [Fact]
+        public void TestBuild__PassSpecifierOnInsert__Last()
+        {
+            ITagList tagList = Substitute.For<ITagList>();
+            tagList.PrimaryTag.Returns(new Tag("NODE", null, null));
+            tagList.GetEnumerator().Returns(new ArrayEnumerator<Tag>(
+                new Tag("LAST", "mod1", null)
             ));
 
             Assert.Null(builder.Build(urlConfig, Command.Insert, tagList));

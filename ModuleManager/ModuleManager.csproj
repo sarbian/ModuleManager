@@ -71,6 +71,7 @@
     <Compile Include="Patches\PassSpecifiers\InsertPassSpecifier.cs" />
     <Compile Include="Patches\PassSpecifiers\IPassSpecifier.cs" />
     <Compile Include="Patches\PassSpecifiers\LegacyPassSpecifier.cs" />
+    <Compile Include="Patches\PassSpecifiers\LastPassSpecifier.cs" />
     <Compile Include="Patches\CopyPatch.cs" />
     <Compile Include="Patches\DeletePatch.cs" />
     <Compile Include="Patches\EditPatch.cs" />
