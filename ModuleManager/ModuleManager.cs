@@ -66,6 +66,16 @@ namespace ModuleManager
                 return;
             }
 
+            // Ensure that only one copy of the service is run per scene change.
+            if (loadedInScene || !ElectionAndCheck())
+            {
+                Assembly currentAssembly = Assembly.GetExecutingAssembly();
+                Log("Multiple copies of current version. Using the first copy. Version: " +
+                    currentAssembly.GetName().Version);
+                Destroy(gameObject);
+                return;
+            }
+
             totalTime.Start();
 
             // Allow loading the background in the laoding screen
@@ -86,16 +96,6 @@ namespace ModuleManager
             foreach (var text in texts)
             {
                 textPos = Mathf.Min(textPos, text.rectTransform.localPosition.y);
-            }
-            
-            // Ensure that only one copy of the service is run per scene change.
-            if (loadedInScene || !ElectionAndCheck())
-            {
-                Assembly currentAssembly = Assembly.GetExecutingAssembly();
-                Log("Multiple copies of current version. Using the first copy. Version: " +
-                    currentAssembly.GetName().Version);
-                Destroy(gameObject);
-                return;
             }
             DontDestroyOnLoad(gameObject);
 
