@@ -12,7 +12,7 @@ using ModuleManager.Cats;
 
 namespace ModuleManager
 {
-    [KSPAddon(KSPAddon.Startup.Instantly, false)]
+    [KSPAddon(KSPAddon.Startup.Instantly, true)]
     public class ModuleManager : MonoBehaviour
     {
         #region state
