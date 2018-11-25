@@ -7,7 +7,6 @@ using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
 using ModuleManager.Cats;
 
 namespace ModuleManager
