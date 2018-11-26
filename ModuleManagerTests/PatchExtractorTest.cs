@@ -307,7 +307,7 @@ namespace ModuleManagerTests
 
             patchCompiler.DidNotReceiveWithAnyArgs().CompilePatch(null);
         
-            Assert.Equal(1, root.AllConfigs.Count());
+            Assert.Single(root.AllConfigs);
             UrlDir.UrlConfig newUrlConfig = root.AllConfigs.First();
             Assert.NotSame(urlConfig, newUrlConfig);
             Assert.NotSame(urlConfig.config, newUrlConfig.config);

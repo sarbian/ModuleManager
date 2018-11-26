@@ -232,7 +232,7 @@ namespace ModuleManagerTests.Patches
 
             patch.Apply(file, progress, logger);
 
-            Assert.Equal(1, file.configs.Count);
+            Assert.Single(file.configs);
 
             Assert.Same(urlConfig, file.configs[0]);
             AssertNodesEqual(new TestConfigNode("NODE")
