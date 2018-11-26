@@ -50,7 +50,7 @@ namespace ModuleManagerTests.Patches
 
             progress.Received().ApplyingUpdate(urlConfig, protoPatch.urlConfig);
 
-            Assert.Equal(1, file.configs.Count);
+            Assert.Single(file.configs);
             Assert.NotSame(urlConfig, file.configs[0]);
             AssertNodesEqual(new TestConfigNode("NODE")
             {
@@ -137,7 +137,7 @@ namespace ModuleManagerTests.Patches
 
             progress.Received().ApplyingDelete(urlConfig, protoPatch.urlConfig);
 
-            Assert.Equal(0, file.configs.Count);
+            Assert.Empty(file.configs);
         }
 
         [Fact]

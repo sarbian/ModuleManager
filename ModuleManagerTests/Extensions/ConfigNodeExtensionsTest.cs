@@ -8,6 +8,7 @@ namespace ModuleManagerTests.Extensions
 {
     public class ConfigNodeExtensionsTest
     {
+        [Fact]
         public void TestShallowCopyFrom()
         {
             ConfigNode fromNode = new TestConfigNode("SOME_NODE")

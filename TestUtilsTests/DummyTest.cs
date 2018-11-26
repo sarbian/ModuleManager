@@ -8,7 +8,7 @@ namespace TestUtilsTests
         [Fact]
         public void PassingTest()
         {
-            Assert.Equal(true, true);
+            Assert.True(true);
         }
     }
 }
