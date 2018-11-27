@@ -10,6 +10,7 @@ namespace ModuleManager.Patches
     {
         UrlDir.UrlConfig UrlConfig { get; }
         IPassSpecifier PassSpecifier { get; }
+        bool CountsAsPatch { get; }
         void Apply(LinkedList<IProtoUrlConfig> configs, IPatchProgress progress, IBasicLogger logger);
     }
 }

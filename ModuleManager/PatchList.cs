@@ -126,7 +126,7 @@ namespace ModuleManager
                     throw new NotImplementedException("Don't know what to do with pass specifier: " + patch.PassSpecifier.Descriptor);
                 }
 
-                progress.PatchAdded();
+                if (patch.CountsAsPatch) progress.PatchAdded();
             }
         }
 

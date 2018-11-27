@@ -15,6 +15,7 @@ namespace ModuleManager.Patches
         public UrlDir.UrlConfig UrlConfig { get; }
         public INodeMatcher NodeMatcher { get; }
         public IPassSpecifier PassSpecifier { get; }
+        public bool CountsAsPatch => true;
 
         public EditPatch(UrlDir.UrlConfig urlConfig, INodeMatcher nodeMatcher, IPassSpecifier passSpecifier)
         {

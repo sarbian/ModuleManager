@@ -73,6 +73,13 @@ namespace ModuleManagerTests.Patches
 
             Assert.Same(passSpecifier, patch.PassSpecifier);
         }
+        
+        [Fact]
+        public void TestCountsAsPatch()
+        {
+            InsertPatch patch = new InsertPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), "A_NODE", Substitute.For<IPassSpecifier>());
+            Assert.False(patch.CountsAsPatch);
+        }
 
         [Fact]
         public void TestApply()

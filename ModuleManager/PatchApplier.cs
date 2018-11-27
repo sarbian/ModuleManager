@@ -41,7 +41,7 @@ namespace ModuleManager
                 try
                 {
                     patch.Apply(databaseConfigs, progress, logger);
-                    progress.PatchApplied();
+                    if (patch.CountsAsPatch) progress.PatchApplied();
                 }
                 catch (Exception e)
                 {

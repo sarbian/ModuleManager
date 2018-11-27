@@ -142,6 +142,31 @@ namespace ModuleManagerTests
             patches[22].PassSpecifier.Returns(new FinalPassSpecifier());
             patches[23].PassSpecifier.Returns(new FinalPassSpecifier());
 
+            patches[00].CountsAsPatch.Returns(false);
+            patches[01].CountsAsPatch.Returns(false);
+            patches[02].CountsAsPatch.Returns(true);
+            patches[03].CountsAsPatch.Returns(true);
+            patches[04].CountsAsPatch.Returns(true);
+            patches[05].CountsAsPatch.Returns(true);
+            patches[06].CountsAsPatch.Returns(true);
+            patches[07].CountsAsPatch.Returns(true);
+            patches[08].CountsAsPatch.Returns(true);
+            patches[09].CountsAsPatch.Returns(true);
+            patches[10].CountsAsPatch.Returns(true);
+            patches[11].CountsAsPatch.Returns(true);
+            patches[12].CountsAsPatch.Returns(true);
+            patches[13].CountsAsPatch.Returns(true);
+            patches[14].CountsAsPatch.Returns(true);
+            patches[15].CountsAsPatch.Returns(true);
+            patches[16].CountsAsPatch.Returns(true);
+            patches[17].CountsAsPatch.Returns(true);
+            patches[18].CountsAsPatch.Returns(true);
+            patches[19].CountsAsPatch.Returns(true);
+            patches[20].CountsAsPatch.Returns(true);
+            patches[21].CountsAsPatch.Returns(true);
+            patches[22].CountsAsPatch.Returns(true);
+            patches[23].CountsAsPatch.Returns(true);
+
             IPatchProgress progress = Substitute.For<IPatchProgress>();
 
             PatchList patchList = new PatchList(new[] { "mod1", "mod2" }, patches, progress);
@@ -186,7 +211,7 @@ namespace ModuleManagerTests
             Assert.Equal(":FINAL", passes[11].Name);
             Assert.Equal(new[] { patches[22], patches[23] }, passes[11]);
 
-            progress.Received(patches.Length).PatchAdded();
+            progress.Received(22).PatchAdded();
         }
     }
 }

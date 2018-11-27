@@ -74,6 +74,13 @@ namespace ModuleManagerTests.Patches
         }
 
         [Fact]
+        public void TestCountsAsPatch()
+        {
+            DeletePatch patch = new DeletePatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>(), Substitute.For<IPassSpecifier>());
+            Assert.True(patch.CountsAsPatch);
+        }
+
+        [Fact]
         public void TestApply()
         {
             ConfigNode config1 = new ConfigNode("NODE");

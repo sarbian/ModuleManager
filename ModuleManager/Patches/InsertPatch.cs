@@ -12,6 +12,7 @@ namespace ModuleManager.Patches
         public UrlDir.UrlConfig UrlConfig { get; }
         public string NodeType { get; }
         public IPassSpecifier PassSpecifier { get; }
+        public bool CountsAsPatch => false;
 
         public InsertPatch(UrlDir.UrlConfig urlConfig, string nodeType, IPassSpecifier passSpecifier)
         {

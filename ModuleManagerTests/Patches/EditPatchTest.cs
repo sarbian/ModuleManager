@@ -76,6 +76,13 @@ namespace ModuleManagerTests.Patches
         }
 
         [Fact]
+        public void TestCountsAsPatch()
+        {
+            EditPatch patch = new EditPatch(UrlBuilder.CreateConfig("abc/def", new ConfigNode()), Substitute.For<INodeMatcher>(), Substitute.For<IPassSpecifier>());
+            Assert.True(patch.CountsAsPatch);
+        }
+
+        [Fact]
         public void TestApply()
         {
             UrlDir.UrlFile file = UrlBuilder.CreateFile("abc/def.cfg");

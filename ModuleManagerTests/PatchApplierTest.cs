@@ -67,6 +67,16 @@ namespace ModuleManagerTests
                 patches[i] = Substitute.For<IPatch>();
             }
 
+            patches[0].CountsAsPatch.Returns(false);
+            patches[1].CountsAsPatch.Returns(false);
+            patches[2].CountsAsPatch.Returns(false);
+            patches[3].CountsAsPatch.Returns(true);
+            patches[4].CountsAsPatch.Returns(true);
+            patches[5].CountsAsPatch.Returns(true);
+            patches[6].CountsAsPatch.Returns(true);
+            patches[7].CountsAsPatch.Returns(true);
+            patches[8].CountsAsPatch.Returns(true);
+
             pass1.GetEnumerator().Returns(new ArrayEnumerator<IPatch>(patches[0], patches[1], patches[2]));
             pass2.GetEnumerator().Returns(new ArrayEnumerator<IPatch>(patches[3], patches[4], patches[5]));
             pass3.GetEnumerator().Returns(new ArrayEnumerator<IPatch>(patches[6], patches[7], patches[8]));
@@ -87,11 +97,8 @@ namespace ModuleManagerTests
             {
                 progress.PassStarted(pass1);
                 patches[0].Apply(databaseConfigs, progress, logger);
-                progress.PatchApplied();
                 patches[1].Apply(databaseConfigs, progress, logger);
-                progress.PatchApplied();
                 patches[2].Apply(databaseConfigs, progress, logger);
-                progress.PatchApplied();
                 progress.PassStarted(pass2);
                 patches[3].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
