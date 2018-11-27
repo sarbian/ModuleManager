@@ -489,7 +489,7 @@ namespace ModuleManager
         {
             status = "ModuleManager: " + progress.Counter.patchedNodes + " patch" + (progress.Counter.patchedNodes != 1 ? "es" : "") + " applied";
             if (progress.ProgressFraction < 1f - float.Epsilon)
-                status += " (" + progress.ProgressFraction * 100 + "%)";
+                status += " (" + progress.ProgressFraction.ToString("P0") + ")";
 
             if (activity != null)
                 status += "\n" + activity;
