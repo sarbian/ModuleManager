@@ -20,8 +20,6 @@ namespace ModuleManager
 
         private bool inRnDCenter;
 
-        private bool reloading;
-
         public bool showUI = false;
 
         private Rect windowPos = new Rect(80f, 60f, 240f, 40f);
@@ -296,19 +294,6 @@ namespace ModuleManager
                     errors.transform.localPosition = new Vector3(0, offsetY);
                 }
             }
-
-            if (reloading)
-            {
-                float percent = 0;
-                if (!GameDatabase.Instance.IsReady())
-                    percent = GameDatabase.Instance.ProgressFraction();
-                else if (!PartLoader.Instance.IsReady())
-                    percent = 2f + PartLoader.Instance.ProgressFraction();
-
-                int intPercent = Mathf.CeilToInt(percent * 100f / 3f);
-                ScreenMessages.PostScreenMessage("Database reloading " + intPercent + "%", Time.deltaTime,
-                    ScreenMessageStyle.UPPER_CENTER);
-            }
         }
 
         #region GUI stuff.
@@ -323,20 +308,83 @@ namespace ModuleManager
 
         private IEnumerator DataBaseReloadWithMM(bool dump = false)
         {
-            reloading = true;
-
             QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = -1;
 
-            ScreenMessages.PostScreenMessage("Database reloading started", 1, ScreenMessageStyle.UPPER_CENTER);
+            patchRunner = new MMPatchRunner(new ModLogger("ModuleManager", new UnityLogger(Debug.unityLogger)));
+
+            float totalLoadWeight = GameDatabase.Instance.LoadWeight() + PartLoader.Instance.LoadWeight();
+            bool startedReload = false;
+
+            UISkinDef skinDef = HighLogic.UISkin;
+            UIStyle centeredTextStyle = new UIStyle(skinDef.label)
+            {
+                alignment = TextAnchor.UpperCenter
+            };
+
+            PopupDialog reloadingDialog = PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                new MultiOptionDialog(
+                    "ModuleManagerReloading",
+                    "",
+                    "ModuleManager - Reloading Database",
+                    skinDef,
+                    new Rect(0.5f, 0.5f, 600f, 60f),
+                    new DialogGUIFlexibleSpace(),
+                    new DialogGUIVerticalLayout(
+                        new DialogGUIFlexibleSpace(),
+                        new DialogGUILabel(delegate ()
+                        {
+                            float progressFraction;
+                            if (!startedReload)
+                            {
+                                progressFraction = 0f;
+                            }
+                            else if (!GameDatabase.Instance.IsReady())
+                            {
+                                progressFraction = GameDatabase.Instance.ProgressFraction() * GameDatabase.Instance.LoadWeight();
+                                progressFraction /= totalLoadWeight;
+                            }
+                            else if (!PartLoader.Instance.IsReady())
+                            {
+                                progressFraction = GameDatabase.Instance.LoadWeight() + (PartLoader.Instance.ProgressFraction() * GameDatabase.Instance.LoadWeight());
+                                progressFraction /= totalLoadWeight;
+                            }
+                            else
+                            {
+                                progressFraction = 1f;
+                            }
+
+                            return $"Overall progress: {progressFraction:P0}";
+                        }, centeredTextStyle, expandW: true),
+                        new DialogGUILabel(delegate ()
+                        {
+                            if (!startedReload)
+                                return "Starting";
+                            else if (!GameDatabase.Instance.IsReady())
+                                return GameDatabase.Instance.ProgressTitle();
+                            else if (!PostPatchLoader.Instance.IsReady())
+                                return PostPatchLoader.Instance.ProgressTitle();
+                            else if (!PartLoader.Instance.IsReady())
+                                return PartLoader.Instance.ProgressTitle();
+                            else
+                                return "";
+                        }),
+                        new DialogGUISpace(5f),
+                        new DialogGUILabel(() => patchRunner.Status)
+                    )
+                ),
+                false,
+                skinDef);
+
             yield return null;
 
             GameDatabase.Instance.Recompile = true;
             GameDatabase.Instance.StartLoad();
 
-            yield return null;
+            startedReload = true;
 
-            patchRunner = new MMPatchRunner(new ModLogger("ModuleManager", new UnityLogger(Debug.unityLogger)));
+            yield return null;
             StartCoroutine(patchRunner.Run());
 
             // wait for it to finish
@@ -372,8 +420,8 @@ namespace ModuleManager
 
             QualitySettings.vSyncCount = GameSettings.SYNC_VBL;
             Application.targetFrameRate = GameSettings.FRAMERATE_LIMIT;
-            reloading = false;
-            ScreenMessages.PostScreenMessage("Database reloading finished", 1, ScreenMessageStyle.UPPER_CENTER);
+
+            reloadingDialog.Dismiss();
         }
 
         public static void OutputAllConfigs()
