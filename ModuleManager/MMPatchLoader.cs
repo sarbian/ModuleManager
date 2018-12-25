@@ -306,11 +306,11 @@ namespace ModuleManager
                 // Hash the file path so the checksum change if files are moved
                 byte[] pathBytes = Encoding.UTF8.GetBytes(files[i].url);
                 sha.TransformBlock(pathBytes, 0, pathBytes.Length, pathBytes, 0);
-                
+
                 // hash the file content
                 byte[] contentBytes = File.ReadAllBytes(files[i].fullPath);
                 sha.TransformBlock(contentBytes, 0, contentBytes.Length, contentBytes, 0);
-                
+
                 filesha.ComputeHash(contentBytes);
                 if (!filesSha.ContainsKey(files[i].url))
                 {
@@ -372,7 +372,7 @@ namespace ModuleManager
             StringBuilder changes = new StringBuilder();
 
             changes.Append("Changes :\n");
-            
+
             for (int i = 0; i < files.Length; i++)
             {
                 ConfigNode fileNode = GetFileNode(shaConfigNode, files[i].url);
@@ -418,7 +418,7 @@ namespace ModuleManager
             }
             return null;
         }
-        
+
 
         private void CreateCache(IEnumerable<IProtoUrlConfig> databaseConfigs, int patchedNodeCount)
         {
@@ -512,7 +512,7 @@ namespace ModuleManager
         private IEnumerable<IProtoUrlConfig> LoadCache()
         {
             ConfigNode cache = ConfigNode.Load(cachePath);
-            
+
             if (cache.HasValue("patchedNodeCount") && int.TryParse(cache.GetValue("patchedNodeCount"), out int patchedNodeCount))
                 status = "ModuleManager: " + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") +  " loaded from cache";
 
@@ -586,7 +586,7 @@ namespace ModuleManager
                 #endif
 
                 Command cmd = CommandParser.Parse(modVal.name, out string valName);
-                
+
                 Operator op;
                 if (valName.Length > 2 && valName[valName.Length - 2] == ',')
                     op = Operator.Assign;
@@ -602,10 +602,10 @@ namespace ModuleManager
                         context.progress.Error(context.patchUrl, "Error - Cannot find value assigning command: " + valName);
                         continue;
                     }
-                    
+
                     if (op != Operator.Assign)
                     {
-                        if (double.TryParse(modVal.value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double s) 
+                        if (double.TryParse(modVal.value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double s)
                             && double.TryParse(val.value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double os))
                         {
                             switch (op)
@@ -1000,7 +1000,7 @@ namespace ModuleManager
                         if (n != null)
                             subNodes.Add(n);
                     }
-                    
+
                     if (command == Command.Replace)
                     {
                         // if the original exists modify it
@@ -1362,7 +1362,7 @@ namespace ModuleManager
                 context.logger.Warning("Cannot find key " + valName + " in " + nodeStack.value.name);
                 return null;
             }
-            
+
             if (match.Groups[3].Success)
             {
                 ConfigNode.Value newVal = new ConfigNode.Value(cVal.name, cVal.value);
@@ -1471,7 +1471,7 @@ namespace ModuleManager
                             return null;
                         }
                     }
-                    else if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double s) 
+                    else if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double s)
                              && double.TryParse(oValue, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double os))
                     {
                         switch (op)
@@ -1543,7 +1543,7 @@ namespace ModuleManager
         public static bool CheckConstraints(ConfigNode node, string constraints)
         {
             constraints = constraints.RemoveWS();
-            
+
             if (constraints.Length == 0)
                 return true;
 
