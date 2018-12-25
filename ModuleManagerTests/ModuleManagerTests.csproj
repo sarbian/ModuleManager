@@ -85,6 +85,7 @@
     <Compile Include="NeedsCheckerTest.cs" />
     <Compile Include="Collections\MessageQueueTest.cs" />
     <Compile Include="Logging\ExceptionMessageTest.cs" />
+    <Compile Include="Logging\LogSplitterTest.cs" />
     <Compile Include="Logging\NormalMessageTest.cs" />
     <Compile Include="Logging\QueueLoggerTest.cs" />
     <Compile Include="NodeMatcherTest.cs" />
