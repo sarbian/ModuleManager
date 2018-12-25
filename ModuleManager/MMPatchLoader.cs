@@ -11,8 +11,10 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
+using ModuleManager.Collections;
 using ModuleManager.Logging;
 using ModuleManager.Extensions;
+using ModuleManager.Threading;
 using ModuleManager.Tags;
 using ModuleManager.Patches;
 using ModuleManager.Progress;
@@ -40,6 +42,8 @@ namespace ModuleManager
         private Dictionary<string, string> filesSha = new Dictionary<string, string>();
 
         private const float yieldInterval = 1f/30f; // Patch at ~30fps
+
+        private const float TIME_TO_WAIT_FOR_LOGS = 0.05f;
 
         private IBasicLogger logger;
 
@@ -79,10 +83,53 @@ namespace ModuleManager
 
             if (!useCache)
             {
-                IPatchProgress progress = new PatchProgress(logger);
+                if (!Directory.Exists(logsDirPath)) Directory.CreateDirectory(logsDirPath);
+                MessageQueue<ILogMessage> externalLogQueue = new MessageQueue<ILogMessage>();
+                MessageQueue<ILogMessage> patchLogQueue = new MessageQueue<ILogMessage>();
+                bool logThreadExitFlag = false;
+                ITaskStatus loggingThreadStatus = BackgroundTask.Start(delegate
+                {
+                    QueueLogger externalLogger = new QueueLogger(externalLogQueue);
+                    using (StreamLogger streamLogger = new StreamLogger(new FileStream(patchLogPath, FileMode.Create), externalLogger))
+                    {
+                        while (!logThreadExitFlag)
+                        {
+                            float waitTargetTime = Time.realtimeSinceStartup + TIME_TO_WAIT_FOR_LOGS;
+
+                            foreach (ILogMessage message in patchLogQueue.TakeAll())
+                            {
+                                message.LogTo(streamLogger);
+                            }
+
+                            foreach (ILogMessage message in externalLogQueue.TakeAll())
+                            {
+                                message.LogTo(logger);
+                            }
+
+                            float timeRemaining = waitTargetTime - Time.realtimeSinceStartup;
+                            if (timeRemaining > 0)
+                                System.Threading.Thread.Sleep((int)(timeRemaining * 1000));
+                        }
+
+                        foreach (ILogMessage message in patchLogQueue.TakeAll())
+                        {
+                            message.LogTo(streamLogger);
+                        }
+
+                        foreach (ILogMessage message in externalLogQueue.TakeAll())
+                        {
+                            message.LogTo(logger);
+                        }
+
+                        streamLogger.Info("Done!");
+                    }
+                });
+                IBasicLogger patchLogger = new LogSplitter(logger, new QueueLogger(patchLogQueue));
+
+                IPatchProgress progress = new PatchProgress(patchLogger);
                 status = "Pre patch init";
-                logger.Info(status);
-                IEnumerable<string> mods = ModListGenerator.GenerateModList(progress, logger);
+                patchLogger.Info(status);
+                IEnumerable<string> mods = ModListGenerator.GenerateModList(progress, patchLogger);
 
                 // If we don't use the cache then it is best to clean the PartDatabase.cfg
                 if (!keepPartDB && File.Exists(partDatabasePath))
@@ -93,14 +140,14 @@ namespace ModuleManager
                 #region Sorting Patches
 
                 status = "Extracting patches";
-                logger.Info(status);
+                patchLogger.Info(status);
 
                 UrlDir gameData = GameDatabase.Instance.root.children.First(dir => dir.type == UrlDir.DirectoryType.GameData && dir.name == "");
-                INeedsChecker needsChecker = new NeedsChecker(mods, gameData, progress, logger);
+                INeedsChecker needsChecker = new NeedsChecker(mods, gameData, progress, patchLogger);
                 ITagListParser tagListParser = new TagListParser(progress);
                 IProtoPatchBuilder protoPatchBuilder = new ProtoPatchBuilder(progress);
                 IPatchCompiler patchCompiler = new PatchCompiler();
-                PatchExtractor extractor = new PatchExtractor(progress, logger, needsChecker, tagListParser, protoPatchBuilder, patchCompiler);
+                PatchExtractor extractor = new PatchExtractor(progress, patchLogger, needsChecker, tagListParser, protoPatchBuilder, patchCompiler);
 
                 // Have to convert to an array because we will be removing patches
                 IEnumerable<IPatch> extractedPatches =
@@ -112,7 +159,7 @@ namespace ModuleManager
                 #region Applying patches
 
                 status = "Applying patches";
-                logger.Info(status);
+                patchLogger.Info(status);
 
                 IPass currentPass = null;
                 float nextUpdate = Time.realtimeSinceStartup + yieldInterval;
@@ -132,12 +179,12 @@ namespace ModuleManager
                     }
                 });
 
-                PatchApplier applier = new PatchApplier(progress, logger);
+                PatchApplier applier = new PatchApplier(progress, patchLogger);
                 databaseConfigs = applier.ApplyPatches(patchList);
 
                 StatusUpdate(progress);
 
-                logger.Info("Done patching");
+                patchLogger.Info("Done patching");
 
                 #endregion Applying patches
 
@@ -145,7 +192,7 @@ namespace ModuleManager
 
                 foreach (KeyValuePair<string, int> item in progress.Counter.warningFiles)
                 {
-                    logger.Warning(item.Value + " warning" + (item.Value > 1 ? "s" : "") + " related to GameData/" + item.Key);
+                    patchLogger.Warning(item.Value + " warning" + (item.Value > 1 ? "s" : "") + " related to GameData/" + item.Key);
                 }
 
                 if (progress.Counter.errors > 0 || progress.Counter.exceptions > 0)
@@ -156,7 +203,7 @@ namespace ModuleManager
                                   + "\n";
                     }
 
-                    logger.Warning("Errors in patch prevents the creation of the cache");
+                    patchLogger.Warning("Errors in patch prevents the creation of the cache");
                     try
                     {
                         if (File.Exists(cachePath))
@@ -166,13 +213,13 @@ namespace ModuleManager
                     }
                     catch (Exception e)
                     {
-                        logger.Exception("Exception while deleting stale cache ", e);
+                        patchLogger.Exception("Exception while deleting stale cache ", e);
                     }
                 }
                 else
                 {
                     status = "Saving Cache";
-                    logger.Info(status);
+                    patchLogger.Info(status);
                     CreateCache(databaseConfigs, progress.Counter.patchedNodes);
                 }
 
@@ -182,12 +229,35 @@ namespace ModuleManager
 
                 SaveModdedTechTree();
                 SaveModdedPhysics();
+
+                logThreadExitFlag = true;
+
+                while (loggingThreadStatus.IsRunning)
+                {
+                    System.Threading.Thread.Sleep(100);
+                }
+
+                if (loggingThreadStatus.IsExitedWithError)
+                {
+                    logger.Error("The patching thread threw an exception");
+                    throw loggingThreadStatus.Exception;
+                }
             }
             else
             {
                 status = "Loading from Cache";
                 logger.Info(status);
                 databaseConfigs = LoadCache();
+
+                if (File.Exists(patchLogPath))
+                {
+                    logger.Info("Dumping patch log");
+                    logger.Info("\n#### BEGIN PATCH LOG ####\n\n\n" + File.ReadAllText(patchLogPath) + "\n\n\n#### END PATCH LOG ####");
+                }
+                else
+                {
+                    logger.Error("Patch log does not exist: " + patchLogPath);
+                }
             }
 
             logger.Info(status + "\n" + errors);
