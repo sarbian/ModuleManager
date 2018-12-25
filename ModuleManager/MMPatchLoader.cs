@@ -84,13 +84,11 @@ namespace ModuleManager
             if (!useCache)
             {
                 if (!Directory.Exists(logsDirPath)) Directory.CreateDirectory(logsDirPath);
-                MessageQueue<ILogMessage> externalLogQueue = new MessageQueue<ILogMessage>();
                 MessageQueue<ILogMessage> patchLogQueue = new MessageQueue<ILogMessage>();
                 bool logThreadExitFlag = false;
                 ITaskStatus loggingThreadStatus = BackgroundTask.Start(delegate
                 {
-                    QueueLogger externalLogger = new QueueLogger(externalLogQueue);
-                    using (StreamLogger streamLogger = new StreamLogger(new FileStream(patchLogPath, FileMode.Create), externalLogger))
+                    using (StreamLogger streamLogger = new StreamLogger(new FileStream(patchLogPath, FileMode.Create)))
                     {
                         while (!logThreadExitFlag)
                         {
@@ -101,11 +99,6 @@ namespace ModuleManager
                                 message.LogTo(streamLogger);
                             }
 
-                            foreach (ILogMessage message in externalLogQueue.TakeAll())
-                            {
-                                message.LogTo(logger);
-                            }
-
                             float timeRemaining = waitTargetTime - Time.realtimeSinceStartup;
                             if (timeRemaining > 0)
                                 System.Threading.Thread.Sleep((int)(timeRemaining * 1000));
@@ -114,11 +107,6 @@ namespace ModuleManager
                         foreach (ILogMessage message in patchLogQueue.TakeAll())
                         {
                             message.LogTo(streamLogger);
-                        }
-
-                        foreach (ILogMessage message in externalLogQueue.TakeAll())
-                        {
-                            message.LogTo(logger);
                         }
 
                         streamLogger.Info("Done!");

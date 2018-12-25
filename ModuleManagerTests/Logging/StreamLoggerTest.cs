@@ -14,7 +14,7 @@ namespace ModuleManagerTests.Logging
         {
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                new StreamLogger(null, Substitute.For<IBasicLogger>());
+                new StreamLogger(null);
             });
 
             Assert.Equal("stream", ex.ParamName);
@@ -27,7 +27,7 @@ namespace ModuleManagerTests.Logging
             {
                 ArgumentException ex = Assert.Throws<ArgumentException>(delegate
                 {
-                    new StreamLogger(stream, Substitute.For<IBasicLogger>());
+                    new StreamLogger(stream);
                 });
 
                 Assert.Equal("stream", ex.ParamName);
@@ -36,25 +36,11 @@ namespace ModuleManagerTests.Logging
         }
 
         [Fact]
-        public void TestConstructor__ExceptionLoggerNull()
-        {
-            using (MemoryStream stream = new MemoryStream(new byte[0], true))
-            {
-                ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
-                {
-                    new StreamLogger(stream, null);
-                });
-
-                Assert.Equal("exceptionLogger", ex.ParamName);
-            }
-        }
-
-        [Fact]
         public void TestLog__AlreadyDisposed()
         {
             using (MemoryStream stream = new MemoryStream(new byte[0], true))
             {
-                StreamLogger streamLogger = new StreamLogger(stream, Substitute.For<IBasicLogger>());
+                StreamLogger streamLogger = new StreamLogger(stream);
                 streamLogger.Dispose();
 
                 InvalidOperationException ex = Assert.Throws<InvalidOperationException>(delegate
@@ -69,17 +55,14 @@ namespace ModuleManagerTests.Logging
         [Fact]
         public void TestLog__Log()
         {
-            IBasicLogger exceptionLogger = Substitute.For<IBasicLogger>();
             byte[] bytes = new byte[50];
             using (MemoryStream stream = new MemoryStream(bytes, true))
             {
-                using (StreamLogger streamLogger = new StreamLogger(stream, exceptionLogger))
+                using (StreamLogger streamLogger = new StreamLogger(stream))
                 {
                     streamLogger.Log(LogType.Log, "a message");
                 }
             }
-
-            exceptionLogger.DidNotReceiveWithAnyArgs().Exception(null, null);
 
             using (MemoryStream stream = new MemoryStream(bytes, false))
             {
@@ -95,17 +78,14 @@ namespace ModuleManagerTests.Logging
         [Fact]
         public void TestLog__Assert()
         {
-            IBasicLogger exceptionLogger = Substitute.For<IBasicLogger>();
             byte[] bytes = new byte[50];
             using (MemoryStream stream = new MemoryStream(bytes, true))
             {
-                using (StreamLogger streamLogger = new StreamLogger(stream, exceptionLogger))
+                using (StreamLogger streamLogger = new StreamLogger(stream))
                 {
                     streamLogger.Log(LogType.Assert, "a message");
                 }
             }
-
-            exceptionLogger.DidNotReceiveWithAnyArgs().Exception(null, null);
 
             using (MemoryStream stream = new MemoryStream(bytes, false))
             {
@@ -121,17 +101,14 @@ namespace ModuleManagerTests.Logging
         [Fact]
         public void TestLog__Warning()
         {
-            IBasicLogger exceptionLogger = Substitute.For<IBasicLogger>();
             byte[] bytes = new byte[50];
             using (MemoryStream stream = new MemoryStream(bytes, true))
             {
-                using (StreamLogger streamLogger = new StreamLogger(stream, exceptionLogger))
+                using (StreamLogger streamLogger = new StreamLogger(stream))
                 {
                     streamLogger.Log(LogType.Warning, "a message");
                 }
             }
-
-            exceptionLogger.DidNotReceiveWithAnyArgs().Exception(null, null);
 
             using (MemoryStream stream = new MemoryStream(bytes, false))
             {
@@ -147,17 +124,14 @@ namespace ModuleManagerTests.Logging
         [Fact]
         public void TestLog__Error()
         {
-            IBasicLogger exceptionLogger = Substitute.For<IBasicLogger>();
             byte[] bytes = new byte[50];
             using (MemoryStream stream = new MemoryStream(bytes, true))
             {
-                using (StreamLogger streamLogger = new StreamLogger(stream, exceptionLogger))
+                using (StreamLogger streamLogger = new StreamLogger(stream))
                 {
                     streamLogger.Log(LogType.Error, "a message");
                 }
             }
-
-            exceptionLogger.DidNotReceiveWithAnyArgs().Exception(null, null);
 
             using (MemoryStream stream = new MemoryStream(bytes, false))
             {
@@ -173,17 +147,14 @@ namespace ModuleManagerTests.Logging
         [Fact]
         public void TestLog__Exception()
         {
-            IBasicLogger exceptionLogger = Substitute.For<IBasicLogger>();
             byte[] bytes = new byte[50];
             using (MemoryStream stream = new MemoryStream(bytes, true))
             {
-                using (StreamLogger streamLogger = new StreamLogger(stream, exceptionLogger))
+                using (StreamLogger streamLogger = new StreamLogger(stream))
                 {
                     streamLogger.Log(LogType.Exception, "a message");
                 }
             }
-
-            exceptionLogger.DidNotReceiveWithAnyArgs().Exception(null, null);
 
             using (MemoryStream stream = new MemoryStream(bytes, false))
             {
@@ -199,17 +170,14 @@ namespace ModuleManagerTests.Logging
         [Fact]
         public void TestLog__Unknown()
         {
-            IBasicLogger exceptionLogger = Substitute.For<IBasicLogger>();
             byte[] bytes = new byte[50];
             using (MemoryStream stream = new MemoryStream(bytes, true))
             {
-                using (StreamLogger streamLogger = new StreamLogger(stream, exceptionLogger))
+                using (StreamLogger streamLogger = new StreamLogger(stream))
                 {
                     streamLogger.Log((LogType)1000, "a message");
                 }
             }
-
-            exceptionLogger.DidNotReceiveWithAnyArgs().Exception(null, null);
 
             using (MemoryStream stream = new MemoryStream(bytes, false))
             {
