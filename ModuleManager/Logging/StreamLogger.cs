@@ -6,6 +6,8 @@ namespace ModuleManager.Logging
 {
     public class StreamLogger : IBasicLogger, IDisposable
     {
+        private const string DATETIME_FORMAT_STRING = "yyyy-mm-dd HH:mm:ss.fff";
+
         private readonly Stream stream;
         private readonly StreamWriter streamWriter;
         private bool disposed = false;
@@ -35,7 +37,7 @@ namespace ModuleManager.Logging
             else
                 prefix = "UNK";
 
-            streamWriter.WriteLine("[{0} {1}] {2}", prefix, DateTime.Now.ToString(), message);
+            streamWriter.WriteLine("[{0} {1}] {2}", prefix, DateTime.Now.ToString(DATETIME_FORMAT_STRING), message);
         }
 
         public void Exception(string message, Exception exception)
