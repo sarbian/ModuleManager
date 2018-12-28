@@ -85,30 +85,12 @@ namespace ModuleManager
             {
                 if (!Directory.Exists(logsDirPath)) Directory.CreateDirectory(logsDirPath);
                 MessageQueue<ILogMessage> patchLogQueue = new MessageQueue<ILogMessage>();
-                bool logThreadExitFlag = false;
+                QueueLogRunner logRunner = new QueueLogRunner(patchLogQueue);
                 ITaskStatus loggingThreadStatus = BackgroundTask.Start(delegate
                 {
                     using (StreamLogger streamLogger = new StreamLogger(new FileStream(patchLogPath, FileMode.Create)))
                     {
-                        while (!logThreadExitFlag)
-                        {
-                            float waitTargetTime = Time.realtimeSinceStartup + TIME_TO_WAIT_FOR_LOGS;
-
-                            foreach (ILogMessage message in patchLogQueue.TakeAll())
-                            {
-                                message.LogTo(streamLogger);
-                            }
-
-                            float timeRemaining = waitTargetTime - Time.realtimeSinceStartup;
-                            if (timeRemaining > 0)
-                                System.Threading.Thread.Sleep((int)(timeRemaining * 1000));
-                        }
-
-                        foreach (ILogMessage message in patchLogQueue.TakeAll())
-                        {
-                            message.LogTo(streamLogger);
-                        }
-
+                        logRunner.Run(streamLogger);
                         streamLogger.Info("Done!");
                     }
                 });
@@ -218,7 +200,7 @@ namespace ModuleManager
                 SaveModdedTechTree();
                 SaveModdedPhysics();
 
-                logThreadExitFlag = true;
+                logRunner.RequestStop();
 
                 while (loggingThreadStatus.IsRunning)
                 {

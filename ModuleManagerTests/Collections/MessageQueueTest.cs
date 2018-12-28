@@ -42,7 +42,7 @@ namespace ModuleManagerTests.Collections
             queue.Add(o2);
             queue.Add(o3);
 
-            MessageQueue<TestClass> queue2 = queue.TakeAll();
+            MessageQueue<TestClass> queue2 = Assert.IsType<MessageQueue<TestClass>>(queue.TakeAll());
 
             queue.Add(o4);
 

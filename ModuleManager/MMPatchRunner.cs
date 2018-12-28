@@ -35,30 +35,12 @@ namespace ModuleManager
             kspLogger.Info("Patching started on a new thread, all output will be directed to " + logPath);
 
             MessageQueue<ILogMessage> mmLogQueue = new MessageQueue<ILogMessage>();
-            bool logThreadExitFlag = false;
+            QueueLogRunner logRunner = new QueueLogRunner(mmLogQueue);
             ITaskStatus loggingThreadStatus = BackgroundTask.Start(delegate
             {
                 using (StreamLogger streamLogger = new StreamLogger(new FileStream(logPath, FileMode.Create)))
                 {
-                    while (!logThreadExitFlag)
-                    {
-                        float waitTargetTime = Time.realtimeSinceStartup + TIME_TO_WAIT_FOR_LOGS;
-
-                        foreach (ILogMessage message in mmLogQueue.TakeAll())
-                        {
-                            message.LogTo(streamLogger);
-                        }
-
-                        float timeRemaining = waitTargetTime - Time.realtimeSinceStartup;
-                        if (timeRemaining > 0)
-                            System.Threading.Thread.Sleep((int)(timeRemaining * 1000));
-                    }
-
-                    foreach (ILogMessage message in mmLogQueue.TakeAll())
-                    {
-                        message.LogTo(streamLogger);
-                    }
-
+                    logRunner.Run(streamLogger);
                     streamLogger.Info("Done!");
                 }
             });
@@ -80,7 +62,7 @@ namespace ModuleManager
                 yield return null;
 
                 if (!patchingThreadStatus.IsRunning)
-                    logThreadExitFlag = true;
+                    logRunner.RequestStop();
 
                 Status = patchLoader.status;
                 Errors = patchLoader.errors;

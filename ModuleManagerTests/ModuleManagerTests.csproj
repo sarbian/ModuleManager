@@ -88,6 +88,7 @@
     <Compile Include="Logging\LogSplitterTest.cs" />
     <Compile Include="Logging\NormalMessageTest.cs" />
     <Compile Include="Logging\QueueLoggerTest.cs" />
+    <Compile Include="Logging\QueueLogRunnerTest.cs" />
     <Compile Include="NodeMatcherTest.cs" />
     <Compile Include="OperatorParserTest.cs" />
     <Compile Include="PassTest.cs" />
