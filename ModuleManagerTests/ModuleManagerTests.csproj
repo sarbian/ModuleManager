@@ -74,6 +74,7 @@
     <Compile Include="Patches\PassSpecifiers\BeforePassSpecifierTest.cs" />
     <Compile Include="Patches\PassSpecifiers\LegacyPassSpecifierTest.cs" />
     <Compile Include="Patches\PassSpecifiers\FirstPassSpecifierTest.cs" />
+    <Compile Include="Patches\PassSpecifiers\LastPassSpecifierTest.cs" />
     <Compile Include="Patches\PatchCompilerTest.cs" />
     <Compile Include="Patches\ProtoPatchBuilderTest.cs" />
     <Compile Include="PatchListTest.cs" />

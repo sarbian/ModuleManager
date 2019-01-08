@@ -31,6 +31,7 @@
     <ConsolePause>False</ConsolePause>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Fix16.cs" />
     <Compile Include="Cats\CatAnimator.cs" />
     <Compile Include="Cats\CatManager.cs" />
     <Compile Include="Cats\CatMover.cs" />
@@ -71,6 +72,7 @@
     <Compile Include="Patches\PassSpecifiers\InsertPassSpecifier.cs" />
     <Compile Include="Patches\PassSpecifiers\IPassSpecifier.cs" />
     <Compile Include="Patches\PassSpecifiers\LegacyPassSpecifier.cs" />
+    <Compile Include="Patches\PassSpecifiers\LastPassSpecifier.cs" />
     <Compile Include="Patches\CopyPatch.cs" />
     <Compile Include="Patches\DeletePatch.cs" />
     <Compile Include="Patches\EditPatch.cs" />
