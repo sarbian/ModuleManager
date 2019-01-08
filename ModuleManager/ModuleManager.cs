@@ -128,6 +128,13 @@ namespace ModuleManager
 
                 int gameDatabaseIndex = list.FindIndex(s => s is GameDatabase);
                 list.Insert(gameDatabaseIndex + 1, loader);
+
+                // Workaround for 1.6.0 Editor bug after a PartDatabase rebuild.
+                if (Versioning.version_major == 1 && Versioning.version_minor == 6 && Versioning.Revision == 0)
+                {
+                    Fix16 fix16 = aGameObject.AddComponent<Fix16>();
+                    list.Add(fix16);
+                }
             }
 
             bool foolsDay = (DateTime.Now.Month == 4 && DateTime.Now.Day == 1);
