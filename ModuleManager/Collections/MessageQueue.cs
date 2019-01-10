@@ -4,9 +4,10 @@ using System.Collections.Generic;
 
 namespace ModuleManager.Collections
 {
-    public interface IMessageQueue<T>
+    public interface IMessageQueue<T> : IEnumerable<T>
     {
         void Add(T value);
+        IMessageQueue<T> TakeAll();
     }
 
     public class MessageQueue<T> : IMessageQueue<T>, IEnumerable<T>
@@ -56,7 +57,7 @@ namespace ModuleManager.Collections
         private readonly object lockObject = new object();
         private Node head;
         private Node tail;
-        
+
         public void Add(T value)
         {
             Node node = new Node(value);
@@ -75,7 +76,7 @@ namespace ModuleManager.Collections
             }
         }
 
-        public MessageQueue<T> TakeAll()
+        public IMessageQueue<T> TakeAll()
         {
             MessageQueue<T> queue = new MessageQueue<T>();
             lock(lockObject)

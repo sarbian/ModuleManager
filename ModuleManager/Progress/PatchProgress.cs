@@ -21,6 +21,9 @@ namespace ModuleManager.Progress
             }
         }
 
+        public EventVoid OnPatchApplied { get; } = new EventVoid("OnPatchApplied");
+        public EventData<IPass> OnPassStarted { get; } = new EventData<IPass>("OnPassStarted");
+
         public PatchProgress(IBasicLogger logger)
         {
             this.logger = logger;
@@ -38,27 +41,35 @@ namespace ModuleManager.Progress
             Counter.totalPatches.Increment();
         }
 
-        public void ApplyingUpdate(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
+        public void PassStarted(IPass pass)
         {
-            logger.Info($"Applying update {patch.SafeUrl()} to {original.SafeUrl()}");
+            if (pass == null) throw new ArgumentNullException(nameof(pass));
+            logger.Info(pass.Name + " pass");
+            OnPassStarted.Fire(pass);
+        }
+
+        public void ApplyingUpdate(IUrlConfigIdentifier original, UrlDir.UrlConfig patch)
+        {
+            logger.Info($"Applying update {patch.SafeUrl()} to {original.FullUrl}");
             Counter.patchedNodes.Increment();
         }
 
-        public void ApplyingCopy(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
+        public void ApplyingCopy(IUrlConfigIdentifier original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying copy {patch.SafeUrl()} to {original.SafeUrl()}");
+            logger.Info($"Applying copy {patch.SafeUrl()} to {original.FullUrl}");
             Counter.patchedNodes.Increment();
         }
 
-        public void ApplyingDelete(UrlDir.UrlConfig original, UrlDir.UrlConfig patch)
+        public void ApplyingDelete(IUrlConfigIdentifier original, UrlDir.UrlConfig patch)
         {
-            logger.Info($"Applying delete {patch.SafeUrl()} to {original.SafeUrl()}");
+            logger.Info($"Applying delete {patch.SafeUrl()} to {original.FullUrl}");
             Counter.patchedNodes.Increment();
         }
 
         public void PatchApplied()
         {
             Counter.appliedPatches.Increment();
+            OnPatchApplied.Fire();
         }
 
         public void NeedsUnsatisfiedRoot(UrlDir.UrlConfig url)
@@ -107,6 +118,12 @@ namespace ModuleManager.Progress
             Counter.errors.Increment();
             logger.Error(message);
             RecordErrorFile(url);
+        }
+
+        public void Error(string message)
+        {
+            Counter.errors.Increment();
+            logger.Error(message);
         }
 
         public void Exception(string message, Exception exception)

@@ -2,6 +2,8 @@
 using System.IO;
 using UnityEngine;
 
+using static ModuleManager.FilePathRepository;
+
 namespace ModuleManager
 {
     [KSPAddon(KSPAddon.Startup.SpaceCentre, false)]
@@ -9,17 +11,17 @@ namespace ModuleManager
     {
         internal void Start()
         {
-            if (HighLogic.CurrentGame.Parameters.Career.TechTreeUrl != MMPatchLoader.techTreeFile &&  File.Exists(MMPatchLoader.techTreePath))
+            if (HighLogic.CurrentGame.Parameters.Career.TechTreeUrl != techTreeFile &&  File.Exists(techTreePath))
             {
                 Log("Setting modded tech tree as the active one");
-                HighLogic.CurrentGame.Parameters.Career.TechTreeUrl = MMPatchLoader.techTreeFile;
+                HighLogic.CurrentGame.Parameters.Career.TechTreeUrl = techTreeFile;
             }
 
-            if (PhysicsGlobals.PhysicsDatabaseFilename != MMPatchLoader.physicsFile && File.Exists(MMPatchLoader.physicsPath))
+            if (PhysicsGlobals.PhysicsDatabaseFilename != physicsFile && File.Exists(physicsPath))
             {
                 Log("Setting modded physics as the active one");
 
-                PhysicsGlobals.PhysicsDatabaseFilename = MMPatchLoader.physicsFile;
+                PhysicsGlobals.PhysicsDatabaseFilename = physicsFile;
 
                 if (!PhysicsGlobals.Instance.LoadDatabase())
                     Log("Something went wrong while setting the active physics config.");

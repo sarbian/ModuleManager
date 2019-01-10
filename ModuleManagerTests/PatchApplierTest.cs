@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using Xunit;
 using NSubstitute;
 using UnityEngine;
-using TestUtils;
 using ModuleManager;
 using ModuleManager.Collections;
 using ModuleManager.Logging;
@@ -36,24 +36,12 @@ namespace ModuleManagerTests
         }
 
         [Fact]
-        public void TestApplyPatches__UrlFilesNull()
-        {
-            PatchApplier applier = new PatchApplier(Substitute.For<IPatchProgress>(), Substitute.For<IBasicLogger>());
-            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
-            {
-                applier.ApplyPatches(null, new IPass[0]);
-            });
-
-            Assert.Equal("configFiles", ex.ParamName);
-        }
-
-        [Fact]
         public void TestApplyPatches__PatchesNull()
         {
             PatchApplier applier = new PatchApplier(Substitute.For<IPatchProgress>(), Substitute.For<IBasicLogger>());
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                applier.ApplyPatches(new UrlDir.UrlFile[0], null);
+                applier.ApplyPatches(null);
             });
 
             Assert.Equal("patches", ex.ParamName);
@@ -65,8 +53,6 @@ namespace ModuleManagerTests
             IBasicLogger logger = Substitute.For<IBasicLogger>();
             IPatchProgress progress = Substitute.For<IPatchProgress>();
             PatchApplier patchApplier = new PatchApplier(progress, logger);
-            UrlDir.UrlFile file1 = UrlBuilder.CreateFile("abc/def.cfg");
-            UrlDir.UrlFile file2 = UrlBuilder.CreateFile("ghi/jkl.cfg");
             IPass pass1 = Substitute.For<IPass>();
             IPass pass2 = Substitute.For<IPass>();
             IPass pass3 = Substitute.For<IPass>();
@@ -81,13 +67,23 @@ namespace ModuleManagerTests
                 patches[i] = Substitute.For<IPatch>();
             }
 
+            patches[0].CountsAsPatch.Returns(false);
+            patches[1].CountsAsPatch.Returns(false);
+            patches[2].CountsAsPatch.Returns(false);
+            patches[3].CountsAsPatch.Returns(true);
+            patches[4].CountsAsPatch.Returns(true);
+            patches[5].CountsAsPatch.Returns(true);
+            patches[6].CountsAsPatch.Returns(true);
+            patches[7].CountsAsPatch.Returns(true);
+            patches[8].CountsAsPatch.Returns(true);
+
             pass1.GetEnumerator().Returns(new ArrayEnumerator<IPatch>(patches[0], patches[1], patches[2]));
             pass2.GetEnumerator().Returns(new ArrayEnumerator<IPatch>(patches[3], patches[4], patches[5]));
             pass3.GetEnumerator().Returns(new ArrayEnumerator<IPatch>(patches[6], patches[7], patches[8]));
 
             IPass[] patchList = new IPass[] { pass1, pass2, pass3 };
 
-            patchApplier.ApplyPatches(new[] { file1, file2 }, new[] { pass1, pass2, pass3 });
+            LinkedList<IProtoUrlConfig> databaseConfigs = Assert.IsType<LinkedList<IProtoUrlConfig>>(patchApplier.ApplyPatches(new[] { pass1, pass2, pass3 }));
 
             progress.DidNotReceiveWithAnyArgs().Error(null, null);
             progress.DidNotReceiveWithAnyArgs().Exception(null, null);
@@ -99,35 +95,23 @@ namespace ModuleManagerTests
 
             Received.InOrder(delegate
             {
-                logger.Log(LogType.Log, ":PASS1 pass");
-                patches[0].Apply(file1, progress, logger);
-                patches[0].Apply(file2, progress, logger);
+                progress.PassStarted(pass1);
+                patches[0].Apply(databaseConfigs, progress, logger);
+                patches[1].Apply(databaseConfigs, progress, logger);
+                patches[2].Apply(databaseConfigs, progress, logger);
+                progress.PassStarted(pass2);
+                patches[3].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
-                patches[1].Apply(file1, progress, logger);
-                patches[1].Apply(file2, progress, logger);
+                patches[4].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
-                patches[2].Apply(file1, progress, logger);
-                patches[2].Apply(file2, progress, logger);
+                patches[5].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
-                logger.Log(LogType.Log, ":PASS2 pass");
-                patches[3].Apply(file1, progress, logger);
-                patches[3].Apply(file2, progress, logger);
+                progress.PassStarted(pass3);
+                patches[6].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
-                patches[4].Apply(file1, progress, logger);
-                patches[4].Apply(file2, progress, logger);
+                patches[7].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
-                patches[5].Apply(file1, progress, logger);
-                patches[5].Apply(file2, progress, logger);
-                progress.PatchApplied();
-                logger.Log(LogType.Log, ":PASS3 pass");
-                patches[6].Apply(file1, progress, logger);
-                patches[6].Apply(file2, progress, logger);
-                progress.PatchApplied();
-                patches[7].Apply(file1, progress, logger);
-                patches[7].Apply(file2, progress, logger);
-                progress.PatchApplied();
-                patches[8].Apply(file1, progress, logger);
-                patches[8].Apply(file2, progress, logger);
+                patches[8].Apply(databaseConfigs, progress, logger);
                 progress.PatchApplied();
             });
         }

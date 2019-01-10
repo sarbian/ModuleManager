@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using ModuleManager.Logging;
 using ModuleManager.Patches.PassSpecifiers;
 using ModuleManager.Progress;
@@ -8,8 +9,8 @@ namespace ModuleManager.Patches
     public interface IPatch
     {
         UrlDir.UrlConfig UrlConfig { get; }
-        INodeMatcher NodeMatcher { get; }
         IPassSpecifier PassSpecifier { get; }
-        void Apply(UrlDir.UrlFile file, IPatchProgress progress, IBasicLogger logger);
+        bool CountsAsPatch { get; }
+        void Apply(LinkedList<IProtoUrlConfig> configs, IPatchProgress progress, IBasicLogger logger);
     }
 }

@@ -7,7 +7,9 @@ using System.Linq;
 using System.Reflection;
 using TMPro;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 using ModuleManager.Cats;
+using ModuleManager.Logging;
 
 namespace ModuleManager
 {
@@ -17,8 +19,6 @@ namespace ModuleManager
         #region state
 
         private bool inRnDCenter;
-
-        private bool reloading;
 
         public bool showUI = false;
 
@@ -35,6 +35,8 @@ namespace ModuleManager
         public static bool dumpPostPatch = false;
 
         private PopupDialog menu;
+
+        private MMPatchRunner patchRunner;
 
         #endregion state
 
@@ -121,13 +123,16 @@ namespace ModuleManager
                 // We could insert ModuleManager after GameDatabase to get it to run there
                 // and SaveGameFixer after PartLoader.
 
-                GameObject aGameObject = new GameObject("ModuleManager");
-                MMPatchLoader loader = aGameObject.AddComponent<MMPatchLoader>();
-
-                Log(string.Format("Adding ModuleManager to the loading screen {0}", list.Count));
-
                 int gameDatabaseIndex = list.FindIndex(s => s is GameDatabase);
-                list.Insert(gameDatabaseIndex + 1, loader);
+
+                GameObject aGameObject = new GameObject("ModuleManager");
+                DontDestroyOnLoad(aGameObject);
+
+                Log(string.Format("Adding post patch to the loading screen {0}", list.Count));
+                list.Insert(gameDatabaseIndex + 1, aGameObject.AddComponent<PostPatchLoader>());
+
+                patchRunner = new MMPatchRunner(new ModLogger("ModuleManager", new UnityLogger(Debug.unityLogger)));
+                StartCoroutine(patchRunner.Run());
 
                 // Workaround for 1.6.0 Editor bug after a PartDatabase rebuild.
                 if (Versioning.version_major == 1 && Versioning.version_minor == 6 && Versioning.Revision == 0)
@@ -263,42 +268,31 @@ namespace ModuleManager
 
             float offsetY = textPos;
             float h;
-            if (warning)
-            {
-                h = warning.text.Length > 0 ? warning.textBounds.size.y : 0;
-                offsetY = offsetY + h;
-                warning.rectTransform.localPosition = new Vector3(0, offsetY);
-            }
 
-            if (status)
+            if (patchRunner != null)
             {
-                status.text = MMPatchLoader.Instance.status;
-                h = status.text.Length > 0 ? status.textBounds.size.y: 0;
-                offsetY = offsetY + h;
-                status.transform.localPosition = new Vector3(0, offsetY);
-            }
+                if (warning)
+                {
+                    h = warning.text.Length > 0 ? warning.textBounds.size.y : 0;
+                    offsetY = offsetY + h;
+                    warning.rectTransform.localPosition = new Vector3(0, offsetY);
+                }
 
-            if (errors)
-            {
-                errors.text = MMPatchLoader.Instance.errors;
-                h = errors.text.Length > 0 ? errors.textBounds.size.y: 0;
-                offsetY = offsetY + h;
-                errors.transform.localPosition = new Vector3(0, offsetY);
-            }
+                if (status)
+                {
+                    status.text = patchRunner.Status;
+                    h = status.text.Length > 0 ? status.textBounds.size.y : 0;
+                    offsetY = offsetY + h;
+                    status.transform.localPosition = new Vector3(0, offsetY);
+                }
 
-            if (reloading)
-            {
-                float percent = 0;
-                if (!GameDatabase.Instance.IsReady())
-                    percent = GameDatabase.Instance.ProgressFraction();
-                else if (!MMPatchLoader.Instance.IsReady())
-                    percent = 1f + MMPatchLoader.Instance.ProgressFraction();
-                else if (!PartLoader.Instance.IsReady())
-                    percent = 2f + PartLoader.Instance.ProgressFraction();
-
-                int intPercent = Mathf.CeilToInt(percent * 100f / 3f);
-                ScreenMessages.PostScreenMessage("Database reloading " + intPercent + "%", Time.deltaTime,
-                    ScreenMessageStyle.UPPER_CENTER);
+                if (errors)
+                {
+                    errors.text = patchRunner.Errors;
+                    h = errors.text.Length > 0 ? errors.textBounds.size.y : 0;
+                    offsetY = offsetY + h;
+                    errors.transform.localPosition = new Vector3(0, offsetY);
+                }
             }
         }
 
@@ -314,29 +308,93 @@ namespace ModuleManager
 
         private IEnumerator DataBaseReloadWithMM(bool dump = false)
         {
-            reloading = true;
-
             QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = -1;
 
-            ScreenMessages.PostScreenMessage("Database reloading started", 1, ScreenMessageStyle.UPPER_CENTER);
+            patchRunner = new MMPatchRunner(new ModLogger("ModuleManager", new UnityLogger(Debug.unityLogger)));
+
+            float totalLoadWeight = GameDatabase.Instance.LoadWeight() + PartLoader.Instance.LoadWeight();
+            bool startedReload = false;
+
+            UISkinDef skinDef = HighLogic.UISkin;
+            UIStyle centeredTextStyle = new UIStyle(skinDef.label)
+            {
+                alignment = TextAnchor.UpperCenter
+            };
+
+            PopupDialog reloadingDialog = PopupDialog.SpawnPopupDialog(new Vector2(0.5f, 0.5f),
+                new Vector2(0.5f, 0.5f),
+                new MultiOptionDialog(
+                    "ModuleManagerReloading",
+                    "",
+                    "ModuleManager - Reloading Database",
+                    skinDef,
+                    new Rect(0.5f, 0.5f, 600f, 60f),
+                    new DialogGUIFlexibleSpace(),
+                    new DialogGUIVerticalLayout(
+                        new DialogGUIFlexibleSpace(),
+                        new DialogGUILabel(delegate ()
+                        {
+                            float progressFraction;
+                            if (!startedReload)
+                            {
+                                progressFraction = 0f;
+                            }
+                            else if (!GameDatabase.Instance.IsReady())
+                            {
+                                progressFraction = GameDatabase.Instance.ProgressFraction() * GameDatabase.Instance.LoadWeight();
+                                progressFraction /= totalLoadWeight;
+                            }
+                            else if (!PartLoader.Instance.IsReady())
+                            {
+                                progressFraction = GameDatabase.Instance.LoadWeight() + (PartLoader.Instance.ProgressFraction() * GameDatabase.Instance.LoadWeight());
+                                progressFraction /= totalLoadWeight;
+                            }
+                            else
+                            {
+                                progressFraction = 1f;
+                            }
+
+                            return $"Overall progress: {progressFraction:P0}";
+                        }, centeredTextStyle, expandW: true),
+                        new DialogGUILabel(delegate ()
+                        {
+                            if (!startedReload)
+                                return "Starting";
+                            else if (!GameDatabase.Instance.IsReady())
+                                return GameDatabase.Instance.ProgressTitle();
+                            else if (!PostPatchLoader.Instance.IsReady())
+                                return PostPatchLoader.Instance.ProgressTitle();
+                            else if (!PartLoader.Instance.IsReady())
+                                return PartLoader.Instance.ProgressTitle();
+                            else
+                                return "";
+                        }),
+                        new DialogGUISpace(5f),
+                        new DialogGUILabel(() => patchRunner.Status)
+                    )
+                ),
+                false,
+                skinDef);
+
             yield return null;
 
             GameDatabase.Instance.Recompile = true;
             GameDatabase.Instance.StartLoad();
 
+            startedReload = true;
+
+            yield return null;
+            StartCoroutine(patchRunner.Run());
+
             // wait for it to finish
             while (!GameDatabase.Instance.IsReady())
                 yield return null;
 
-            MMPatchLoader.Instance.StartLoad();
+            PostPatchLoader.Instance.StartLoad();
 
-            while (!MMPatchLoader.Instance.IsReady())
+            while (!PostPatchLoader.Instance.IsReady())
                 yield return null;
-
-            PartResourceLibrary.Instance.LoadDefinitions();
-
-            PartUpgradeManager.Handler.FillUpgrades();
 
             if (dump)
                 OutputAllConfigs();
@@ -362,8 +420,8 @@ namespace ModuleManager
 
             QualitySettings.vSyncCount = GameSettings.SYNC_VBL;
             Application.targetFrameRate = GameSettings.FRAMERATE_LIMIT;
-            reloading = false;
-            ScreenMessages.PostScreenMessage("Database reloading finished", 1, ScreenMessageStyle.UPPER_CENTER);
+
+            reloadingDialog.Dismiss();
         }
 
         public static void OutputAllConfigs()

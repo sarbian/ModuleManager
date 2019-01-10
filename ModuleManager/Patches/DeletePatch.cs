@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
 using ModuleManager.Patches.PassSpecifiers;
@@ -11,6 +12,7 @@ namespace ModuleManager.Patches
         public UrlDir.UrlConfig UrlConfig { get; }
         public INodeMatcher NodeMatcher { get; }
         public IPassSpecifier PassSpecifier { get; }
+        public bool CountsAsPatch => true;
 
         public DeletePatch(UrlDir.UrlConfig urlConfig, INodeMatcher nodeMatcher, IPassSpecifier passSpecifier)
         {
@@ -19,31 +21,29 @@ namespace ModuleManager.Patches
             PassSpecifier = passSpecifier ?? throw new ArgumentNullException(nameof(passSpecifier));
         }
 
-        public void Apply(UrlDir.UrlFile file, IPatchProgress progress, IBasicLogger logger)
+        public void Apply(LinkedList<IProtoUrlConfig> databaseConfigs, IPatchProgress progress, IBasicLogger logger)
         {
-            if (file == null) throw new ArgumentNullException(nameof(file));
+            if (databaseConfigs == null) throw new ArgumentNullException(nameof(databaseConfigs));
             if (progress == null) throw new ArgumentNullException(nameof(progress));
             if (logger == null) throw new ArgumentNullException(nameof(logger));
 
-            int i = 0;
-            while (i < file.configs.Count)
+            LinkedListNode<IProtoUrlConfig> currentNode = databaseConfigs.First;
+            while (currentNode != null)
             {
-                UrlDir.UrlConfig url = file.configs[i];
+                IProtoUrlConfig protoConfig = currentNode.Value;
                 try
                 {
-                    if (NodeMatcher.IsMatch(url.config))
+                    LinkedListNode<IProtoUrlConfig> nextNode = currentNode.Next;
+                    if (NodeMatcher.IsMatch(protoConfig.Node))
                     {
-                        progress.ApplyingDelete(url, UrlConfig);
-                        file.configs.RemoveAt(i);
+                        progress.ApplyingDelete(protoConfig, UrlConfig);
+                        databaseConfigs.Remove(currentNode);
                     }
-                    else
-                    {
-                        i++;
-                    }
+                    currentNode = nextNode;
                 }
                 catch (Exception ex)
                 {
-                    progress.Exception(UrlConfig, $"Exception while applying delete {UrlConfig.SafeUrl()} to {url.SafeUrl()}", ex);
+                    progress.Exception(UrlConfig, $"Exception while applying delete {UrlConfig.SafeUrl()} to {protoConfig.FullUrl}", ex);
                 }
             }
         }

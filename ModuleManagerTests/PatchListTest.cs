@@ -111,32 +111,61 @@ namespace ModuleManagerTests
                 Substitute.For<IPatch>(),
                 Substitute.For<IPatch>(),
                 Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
             };
 
             UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig("abc/def", new ConfigNode("NODE"));
 
-            patches[00].PassSpecifier.Returns(new FirstPassSpecifier());
-            patches[01].PassSpecifier.Returns(new FirstPassSpecifier());
-            patches[02].PassSpecifier.Returns(new LegacyPassSpecifier());
-            patches[03].PassSpecifier.Returns(new LegacyPassSpecifier());
-            patches[04].PassSpecifier.Returns(new BeforePassSpecifier("mod1", urlConfig));
-            patches[05].PassSpecifier.Returns(new BeforePassSpecifier("MOD1", urlConfig));
-            patches[06].PassSpecifier.Returns(new ForPassSpecifier("mod1", urlConfig));
-            patches[07].PassSpecifier.Returns(new ForPassSpecifier("MOD1", urlConfig));
-            patches[08].PassSpecifier.Returns(new AfterPassSpecifier("mod1", urlConfig));
-            patches[09].PassSpecifier.Returns(new AfterPassSpecifier("MOD1", urlConfig));
-            patches[10].PassSpecifier.Returns(new LastPassSpecifier("mod1"));
-            patches[11].PassSpecifier.Returns(new LastPassSpecifier("MOD1"));
-            patches[12].PassSpecifier.Returns(new BeforePassSpecifier("mod2", urlConfig));
-            patches[13].PassSpecifier.Returns(new BeforePassSpecifier("MOD2", urlConfig));
-            patches[14].PassSpecifier.Returns(new ForPassSpecifier("mod2", urlConfig));
-            patches[15].PassSpecifier.Returns(new ForPassSpecifier("MOD2", urlConfig));
-            patches[16].PassSpecifier.Returns(new AfterPassSpecifier("mod2", urlConfig));
-            patches[17].PassSpecifier.Returns(new AfterPassSpecifier("MOD2", urlConfig));
-            patches[18].PassSpecifier.Returns(new LastPassSpecifier("mod2"));
-            patches[19].PassSpecifier.Returns(new LastPassSpecifier("MOD2"));
-            patches[20].PassSpecifier.Returns(new FinalPassSpecifier());
-            patches[21].PassSpecifier.Returns(new FinalPassSpecifier());
+            patches[00].PassSpecifier.Returns(new InsertPassSpecifier());
+            patches[01].PassSpecifier.Returns(new InsertPassSpecifier());
+            patches[02].PassSpecifier.Returns(new FirstPassSpecifier());
+            patches[03].PassSpecifier.Returns(new FirstPassSpecifier());
+            patches[04].PassSpecifier.Returns(new LegacyPassSpecifier());
+            patches[05].PassSpecifier.Returns(new LegacyPassSpecifier());
+            patches[06].PassSpecifier.Returns(new BeforePassSpecifier("mod1", urlConfig));
+            patches[07].PassSpecifier.Returns(new BeforePassSpecifier("MOD1", urlConfig));
+            patches[08].PassSpecifier.Returns(new ForPassSpecifier("mod1", urlConfig));
+            patches[09].PassSpecifier.Returns(new ForPassSpecifier("MOD1", urlConfig));
+            patches[10].PassSpecifier.Returns(new AfterPassSpecifier("mod1", urlConfig));
+            patches[11].PassSpecifier.Returns(new AfterPassSpecifier("MOD1", urlConfig));
+            patches[12].PassSpecifier.Returns(new LastPassSpecifier("mod1"));
+            patches[13].PassSpecifier.Returns(new LastPassSpecifier("MOD1"));
+            patches[14].PassSpecifier.Returns(new BeforePassSpecifier("mod2", urlConfig));
+            patches[15].PassSpecifier.Returns(new BeforePassSpecifier("MOD2", urlConfig));
+            patches[16].PassSpecifier.Returns(new ForPassSpecifier("mod2", urlConfig));
+            patches[17].PassSpecifier.Returns(new ForPassSpecifier("MOD2", urlConfig));
+            patches[18].PassSpecifier.Returns(new AfterPassSpecifier("mod2", urlConfig));
+            patches[19].PassSpecifier.Returns(new AfterPassSpecifier("MOD2", urlConfig));
+            patches[20].PassSpecifier.Returns(new LastPassSpecifier("mod2"));
+            patches[21].PassSpecifier.Returns(new LastPassSpecifier("MOD2"));
+            patches[22].PassSpecifier.Returns(new FinalPassSpecifier());
+            patches[23].PassSpecifier.Returns(new FinalPassSpecifier());
+
+            patches[00].CountsAsPatch.Returns(false);
+            patches[01].CountsAsPatch.Returns(false);
+            patches[02].CountsAsPatch.Returns(true);
+            patches[03].CountsAsPatch.Returns(true);
+            patches[04].CountsAsPatch.Returns(true);
+            patches[05].CountsAsPatch.Returns(true);
+            patches[06].CountsAsPatch.Returns(true);
+            patches[07].CountsAsPatch.Returns(true);
+            patches[08].CountsAsPatch.Returns(true);
+            patches[09].CountsAsPatch.Returns(true);
+            patches[10].CountsAsPatch.Returns(true);
+            patches[11].CountsAsPatch.Returns(true);
+            patches[12].CountsAsPatch.Returns(true);
+            patches[13].CountsAsPatch.Returns(true);
+            patches[14].CountsAsPatch.Returns(true);
+            patches[15].CountsAsPatch.Returns(true);
+            patches[16].CountsAsPatch.Returns(true);
+            patches[17].CountsAsPatch.Returns(true);
+            patches[18].CountsAsPatch.Returns(true);
+            patches[19].CountsAsPatch.Returns(true);
+            patches[20].CountsAsPatch.Returns(true);
+            patches[21].CountsAsPatch.Returns(true);
+            patches[22].CountsAsPatch.Returns(true);
+            patches[23].CountsAsPatch.Returns(true);
 
             IPatchProgress progress = Substitute.For<IPatchProgress>();
 
@@ -144,42 +173,45 @@ namespace ModuleManagerTests
 
             IPass[] passes = patchList.ToArray();
 
-            Assert.Equal(11, passes.Length);
+            Assert.Equal(12, passes.Length);
 
-            Assert.Equal(":FIRST", passes[0].Name);
+            Assert.Equal(":INSERT (initial)", passes[0].Name);
             Assert.Equal(new[] { patches[0], patches[1] }, passes[0]);
 
-            Assert.Equal(":LEGACY (default)", passes[1].Name);
+            Assert.Equal(":FIRST", passes[1].Name);
             Assert.Equal(new[] { patches[2], patches[3] }, passes[1]);
 
-            Assert.Equal(":BEFORE[MOD1]", passes[2].Name);
+            Assert.Equal(":LEGACY (default)", passes[2].Name);
             Assert.Equal(new[] { patches[4], patches[5] }, passes[2]);
 
-            Assert.Equal(":FOR[MOD1]", passes[3].Name);
+            Assert.Equal(":BEFORE[MOD1]", passes[3].Name);
             Assert.Equal(new[] { patches[6], patches[7] }, passes[3]);
 
-            Assert.Equal(":AFTER[MOD1]", passes[4].Name);
+            Assert.Equal(":FOR[MOD1]", passes[4].Name);
             Assert.Equal(new[] { patches[8], patches[9] }, passes[4]);
 
-            Assert.Equal(":BEFORE[MOD2]", passes[5].Name);
-            Assert.Equal(new[] { patches[12], patches[13] }, passes[5]);
+            Assert.Equal(":AFTER[MOD1]", passes[5].Name);
+            Assert.Equal(new[] { patches[10], patches[11] }, passes[5]);
 
-            Assert.Equal(":FOR[MOD2]", passes[6].Name);
+            Assert.Equal(":BEFORE[MOD2]", passes[6].Name);
             Assert.Equal(new[] { patches[14], patches[15] }, passes[6]);
 
-            Assert.Equal(":AFTER[MOD2]", passes[7].Name);
+            Assert.Equal(":FOR[MOD2]", passes[7].Name);
             Assert.Equal(new[] { patches[16], patches[17] }, passes[7]);
 
-            Assert.Equal(":LAST[MOD1]", passes[8].Name);
-            Assert.Equal(new[] { patches[10], patches[11] }, passes[8]);
+            Assert.Equal(":AFTER[MOD2]", passes[8].Name);
+            Assert.Equal(new[] { patches[18], patches[19] }, passes[8]);
 
-            Assert.Equal(":LAST[MOD2]", passes[9].Name);
-            Assert.Equal(new[] { patches[18], patches[19] }, passes[9]);
+            Assert.Equal(":LAST[MOD1]", passes[9].Name);
+            Assert.Equal(new[] { patches[12], patches[13] }, passes[9]);
 
-            Assert.Equal(":FINAL", passes[10].Name);
+            Assert.Equal(":LAST[MOD2]", passes[10].Name);
             Assert.Equal(new[] { patches[20], patches[21] }, passes[10]);
 
-            progress.Received(patches.Length).PatchAdded();
+            Assert.Equal(":FINAL", passes[11].Name);
+            Assert.Equal(new[] { patches[22], patches[23] }, passes[11]);
+
+            progress.Received(22).PatchAdded();
         }
     }
 }

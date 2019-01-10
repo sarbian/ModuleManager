@@ -1,5 +1,4 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -12,22 +11,22 @@ using System.Text.RegularExpressions;
 using UnityEngine;
 using Debug = UnityEngine.Debug;
 
+using ModuleManager.Collections;
 using ModuleManager.Logging;
 using ModuleManager.Extensions;
-using ModuleManager.Collections;
-using ModuleManager.Tags;
 using ModuleManager.Threading;
+using ModuleManager.Tags;
 using ModuleManager.Patches;
 using ModuleManager.Progress;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
+using static ModuleManager.FilePathRepository;
+
 namespace ModuleManager
 {
-    public delegate void ModuleManagerPostPatchCallback();
-
     [SuppressMessage("ReSharper", "StringLastIndexOfIsCultureSpecific.1")]
     [SuppressMessage("ReSharper", "StringIndexOfIsCultureSpecific.1")]
-    public class MMPatchLoader : LoadingSystem
+    public class MMPatchLoader
     {
         public string status = "";
 
@@ -35,98 +34,36 @@ namespace ModuleManager
 
         public static bool keepPartDB = false;
 
-        private string activity = "Module Manager";
-
         private static readonly Dictionary<string, Regex> regexCache = new Dictionary<string, Regex>();
-
-        private static string cachePath;
-
-        internal static string techTreeFile;
-        internal static string techTreePath;
-
-        internal static string physicsFile;
-        internal static string physicsPath;
-        private static string defaultPhysicsPath;
-
-        internal static string partDatabasePath;
-
-        private static string shaPath;
 
         private UrlDir.UrlFile physicsUrlFile;
 
         private string configSha;
         private Dictionary<string, string> filesSha = new Dictionary<string, string>();
 
-        private static readonly List<ModuleManagerPostPatchCallback> postPatchCallbacks = new List<ModuleManagerPostPatchCallback>();
-
         private const float yieldInterval = 1f/30f; // Patch at ~30fps
+
+        private const float TIME_TO_WAIT_FOR_LOGS = 0.05f;
 
         private IBasicLogger logger;
 
-        private float progressFraction = 0;
-
-        public static MMPatchLoader Instance { get; private set; }
-
-        private void Awake()
-        {
-            if (Instance != null)
-            {
-                DestroyImmediate(this);
-                return;
-            }
-            Instance = this;
-            DontDestroyOnLoad(gameObject);
-
-            cachePath = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), "ModuleManager.ConfigCache");
-            techTreeFile = Path.Combine("GameData", "ModuleManager.TechTree");
-            techTreePath = Path.Combine(KSPUtil.ApplicationRootPath, techTreeFile);
-            physicsFile = Path.Combine("GameData", "ModuleManager.Physics");
-            physicsPath = Path.Combine(KSPUtil.ApplicationRootPath, physicsFile);
-            defaultPhysicsPath = Path.Combine(KSPUtil.ApplicationRootPath, "Physics.cfg");
-            partDatabasePath = Path.Combine(KSPUtil.ApplicationRootPath, "PartDatabase.cfg");
-            shaPath = Path.Combine(Path.Combine(KSPUtil.ApplicationRootPath, "GameData"), "ModuleManager.ConfigSHA");
-
-            logger = new ModLogger("ModuleManager", new UnityLogger(Debug.unityLogger));
-        }
-
-        private bool ready;
-
-        public override bool IsReady()
-        {
-            return ready;
-        }
-
-        public override float ProgressFraction() => progressFraction;
-
-        public override string ProgressTitle()
-        {
-            return activity;
-        }
-
-        public override void StartLoad()
-        {
-            ready = false;
-
-            // DB check used to track the now fixed TextureReplacer corruption
-            //checkValues();
-
-            StartCoroutine(ProcessPatch());
-        }
-
         public static void AddPostPatchCallback(ModuleManagerPostPatchCallback callback)
         {
-            if (!postPatchCallbacks.Contains(callback))
-                postPatchCallbacks.Add(callback);
+            PostPatchLoader.AddPostPatchCallback(callback);
         }
 
-        private IEnumerator ProcessPatch()
+        public MMPatchLoader(IBasicLogger logger)
+        {
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        public IEnumerable<IProtoUrlConfig> Run()
         {
             Stopwatch patchSw = new Stopwatch();
             patchSw.Start();
 
             status = "Checking Cache";
             logger.Info(status);
-            yield return null;
 
             bool useCache = false;
             try
@@ -141,16 +78,28 @@ namespace ModuleManager
 #if DEBUG
             //useCache = false;
 #endif
-            yield return null;
+
+            IEnumerable<IProtoUrlConfig> databaseConfigs = null;
 
             if (!useCache)
             {
-                IPatchProgress progress = new PatchProgress(logger);
-                status = "Pre patch init";
-                logger.Info(status);
-                IEnumerable<string> mods = ModListGenerator.GenerateModList(progress, logger);
+                if (!Directory.Exists(logsDirPath)) Directory.CreateDirectory(logsDirPath);
+                MessageQueue<ILogMessage> patchLogQueue = new MessageQueue<ILogMessage>();
+                QueueLogRunner logRunner = new QueueLogRunner(patchLogQueue);
+                ITaskStatus loggingThreadStatus = BackgroundTask.Start(delegate
+                {
+                    using (StreamLogger streamLogger = new StreamLogger(new FileStream(patchLogPath, FileMode.Create)))
+                    {
+                        logRunner.Run(streamLogger);
+                        streamLogger.Info("Done!");
+                    }
+                });
+                IBasicLogger patchLogger = new LogSplitter(logger, new QueueLogger(patchLogQueue));
 
-                yield return null;
+                IPatchProgress progress = new PatchProgress(patchLogger);
+                status = "Pre patch init";
+                patchLogger.Info(status);
+                IEnumerable<string> mods = ModListGenerator.GenerateModList(progress, patchLogger);
 
                 // If we don't use the cache then it is best to clean the PartDatabase.cfg
                 if (!keepPartDB && File.Exists(partDatabasePath))
@@ -161,92 +110,51 @@ namespace ModuleManager
                 #region Sorting Patches
 
                 status = "Extracting patches";
-                logger.Info(status);
-
-                yield return null;
+                patchLogger.Info(status);
 
                 UrlDir gameData = GameDatabase.Instance.root.children.First(dir => dir.type == UrlDir.DirectoryType.GameData && dir.name == "");
-                INeedsChecker needsChecker = new NeedsChecker(mods, gameData, progress, logger);
+                INeedsChecker needsChecker = new NeedsChecker(mods, gameData, progress, patchLogger);
                 ITagListParser tagListParser = new TagListParser(progress);
                 IProtoPatchBuilder protoPatchBuilder = new ProtoPatchBuilder(progress);
                 IPatchCompiler patchCompiler = new PatchCompiler();
-                PatchExtractor extractor = new PatchExtractor(progress, logger, needsChecker, tagListParser, protoPatchBuilder, patchCompiler);
+                PatchExtractor extractor = new PatchExtractor(progress, patchLogger, needsChecker, tagListParser, protoPatchBuilder, patchCompiler);
 
                 // Have to convert to an array because we will be removing patches
-                UrlDir.UrlConfig[] allConfigs = GameDatabase.Instance.root.AllConfigs.ToArray();
-                IEnumerable<IPatch> extractedPatches = allConfigs.Select(urlConfig => extractor.ExtractPatch(urlConfig));
-                PatchList patchList = new PatchList(mods, extractedPatches.Where(patch => patch != null), progress);
+                IEnumerable<IPatch> extractedPatches =
+                    GameDatabase.Instance.root.AllConfigs.Select(urlConfig => extractor.ExtractPatch(urlConfig)).Where(patch => patch != null);
+                PatchList patchList = new PatchList(mods, extractedPatches, progress);
 
                 #endregion
 
                 #region Applying patches
 
                 status = "Applying patches";
-                logger.Info(status);
+                patchLogger.Info(status);
 
-                yield return null;
+                IPass currentPass = null;
+                float nextUpdate = Time.realtimeSinceStartup + yieldInterval;
 
-                MessageQueue<ILogMessage> logQueue = new MessageQueue<ILogMessage>();
-                IBasicLogger patchLogger = new QueueLogger(logQueue);
-                IPatchProgress threadPatchProgress = new PatchProgress(progress, patchLogger);
-                PatchApplier applier = new PatchApplier(threadPatchProgress, patchLogger);
-
-                logger.Info("Starting patch thread");
-
-                ITaskStatus patchThread = BackgroundTask.Start(delegate
+                progress.OnPassStarted.Add(delegate (IPass pass)
                 {
-                    applier.ApplyPatches(GameDatabase.Instance.root.AllConfigFiles.ToArray(), patchList);
+                    currentPass = pass;
+                    StatusUpdate(progress, currentPass.Name);
                 });
 
-                float nextYield = Time.realtimeSinceStartup + yieldInterval;
-
-                float updateTimeRemaining()
+                progress.OnPatchApplied.Add(delegate
                 {
-                    float timeRemaining = nextYield - Time.realtimeSinceStartup;
-                    if (timeRemaining < 0)
+                    if (Time.realtimeSinceStartup > nextUpdate)
                     {
-                        nextYield = Time.realtimeSinceStartup + yieldInterval;
-                        StatusUpdate(progress);
-                        activity = applier.Activity;
+                        StatusUpdate(progress, currentPass.Name);
+                        nextUpdate = Time.realtimeSinceStartup + yieldInterval;
                     }
-                    return timeRemaining;
-                }
+                });
 
-                while (patchThread.IsRunning)
-                {
-                    foreach (ILogMessage message in logQueue.TakeAll())
-                    {
-                        message.LogTo(logger);
-
-                        if (updateTimeRemaining() < 0) yield return null;
-                    }
-
-                    float timeRemaining = updateTimeRemaining();
-                    if (timeRemaining > 0) System.Threading.Thread.Sleep((int)(timeRemaining * 1000));
-                    yield return null;
-                }
+                PatchApplier applier = new PatchApplier(progress, patchLogger);
+                databaseConfigs = applier.ApplyPatches(patchList);
 
                 StatusUpdate(progress);
-                activity = "ModuleManager - finishing up";
-                yield return null;
 
-                // Clear any log messages that might still be in the queue
-                foreach (ILogMessage message in logQueue.TakeAll())
-                {
-                    message.LogTo(logger);
-                }
-
-                if (patchThread.IsExitedWithError)
-                {
-                    progress.Exception("The patch runner threw an exception", patchThread.Exception);
-                    FatalErrorHandler.HandleFatalError("The patch runner threw an exception");
-                    yield break;
-                }
-
-                logger.Info("Done patching");
-                yield return null;
-
-                PurgeUnused();
+                patchLogger.Info("Done patching");
 
                 #endregion Applying patches
 
@@ -254,7 +162,7 @@ namespace ModuleManager
 
                 foreach (KeyValuePair<string, int> item in progress.Counter.warningFiles)
                 {
-                    logger.Warning(item.Value + " warning" + (item.Value > 1 ? "s" : "") + " related to GameData/" + item.Key);
+                    patchLogger.Warning(item.Value + " warning" + (item.Value > 1 ? "s" : "") + " related to GameData/" + item.Key);
                 }
 
                 if (progress.Counter.errors > 0 || progress.Counter.exceptions > 0)
@@ -265,7 +173,7 @@ namespace ModuleManager
                                   + "\n";
                     }
 
-                    logger.Warning("Errors in patch prevents the creation of the cache");
+                    patchLogger.Warning("Errors in patch prevents the creation of the cache");
                     try
                     {
                         if (File.Exists(cachePath))
@@ -275,15 +183,14 @@ namespace ModuleManager
                     }
                     catch (Exception e)
                     {
-                        logger.Exception("Exception while deleting stale cache ", e);
+                        patchLogger.Exception("Exception while deleting stale cache ", e);
                     }
                 }
                 else
                 {
                     status = "Saving Cache";
-                    logger.Info(status);
-                    yield return null;
-                    CreateCache(progress.Counter.patchedNodes);
+                    patchLogger.Info(status);
+                    CreateCache(databaseConfigs, progress.Counter.patchedNodes);
                 }
 
                 StatusUpdate(progress);
@@ -292,106 +199,43 @@ namespace ModuleManager
 
                 SaveModdedTechTree();
                 SaveModdedPhysics();
+
+                logRunner.RequestStop();
+
+                while (loggingThreadStatus.IsRunning)
+                {
+                    System.Threading.Thread.Sleep(100);
+                }
+
+                if (loggingThreadStatus.IsExitedWithError)
+                {
+                    logger.Error("The patching thread threw an exception");
+                    throw loggingThreadStatus.Exception;
+                }
             }
             else
             {
                 status = "Loading from Cache";
                 logger.Info(status);
-                yield return null;
-                LoadCache();
+                databaseConfigs = LoadCache();
+
+                if (File.Exists(patchLogPath))
+                {
+                    logger.Info("Dumping patch log");
+                    logger.Info("\n#### BEGIN PATCH LOG ####\n\n\n" + File.ReadAllText(patchLogPath) + "\n\n\n#### END PATCH LOG ####");
+                }
+                else
+                {
+                    logger.Error("Patch log does not exist: " + patchLogPath);
+                }
             }
 
             logger.Info(status + "\n" + errors);
 
-#if DEBUG
-            RunTestCases();
-#endif
-
-            // TODO : Remove if we ever get a way to load sooner
-            logger.Info("Reloading resources definitions");
-            PartResourceLibrary.Instance.LoadDefinitions();
-
-            logger.Info("Reloading Trait configs");
-            GameDatabase.Instance.ExperienceConfigs.LoadTraitConfigs();
-
-            logger.Info("Reloading Part Upgrades");
-            PartUpgradeManager.Handler.FillUpgrades();
-
-            foreach (ModuleManagerPostPatchCallback callback in postPatchCallbacks)
-            {
-                try
-                {
-                    callback();
-                }
-                catch (Exception e)
-                {
-                    logger.Exception("Exception while running a post patch callback", e);
-                }
-                yield return null;
-            }
-            yield return null;
-
-            // Call all "public static void ModuleManagerPostLoad()" on all class
-            foreach (Assembly ass in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    foreach (Type type in ass.GetTypes())
-                    {
-                        MethodInfo method = type.GetMethod("ModuleManagerPostLoad", BindingFlags.Public | BindingFlags.Static);
-                        
-                        if (method != null && method.GetParameters().Length == 0)
-                        {
-                            try
-                            {
-                                logger.Info("Calling " + ass.GetName().Name + "." + type.Name + "." + method.Name + "()");
-                                method.Invoke(null, null);
-                            }
-                            catch (Exception e)
-                            {
-                                logger.Exception("Exception while calling " + ass.GetName().Name + "." + type.Name + "." + method.Name + "()", e);
-                            }
-                        }
-                    }
-                }
-                catch (Exception e)
-                {
-                    logger.Exception("Post run call threw an exception in loading " + ass.FullName, e);
-                }
-            }
-
-            yield return null;
-
-            // Call "public void ModuleManagerPostLoad()" on all active MonoBehaviour instance
-            foreach (MonoBehaviour obj in FindObjectsOfType<MonoBehaviour>())
-            {
-                MethodInfo method = obj.GetType().GetMethod("ModuleManagerPostLoad", BindingFlags.Public | BindingFlags.Instance);
-
-                if (method != null && method.GetParameters().Length == 0)
-                {
-                    try
-                    {
-                        logger.Info("Calling " + obj.GetType().Name + "." + method.Name + "()");
-                        method.Invoke(obj, null);
-                    }
-                    catch (Exception e)
-                    {
-                        logger.Exception("Exception while calling " + obj.GetType().Name + "." + method.Name + "() :\n", e);
-                    }
-                }
-            }
-
-            yield return null;
-
-            if (ModuleManager.dumpPostPatch)
-                ModuleManager.OutputAllConfigs();
-
-            yield return null;
-
             patchSw.Stop();
             logger.Info("Ran in " + ((float)patchSw.ElapsedMilliseconds / 1000).ToString("F3") + "s");
 
-            ready = true;
+            return databaseConfigs;
         }
 
         private void LoadPhysicsConfig()
@@ -444,11 +288,11 @@ namespace ModuleManager
                 // Hash the file path so the checksum change if files are moved
                 byte[] pathBytes = Encoding.UTF8.GetBytes(files[i].url);
                 sha.TransformBlock(pathBytes, 0, pathBytes.Length, pathBytes, 0);
-                
+
                 // hash the file content
                 byte[] contentBytes = File.ReadAllBytes(files[i].fullPath);
                 sha.TransformBlock(contentBytes, 0, contentBytes.Length, contentBytes, 0);
-                
+
                 filesha.ComputeHash(contentBytes);
                 if (!filesSha.ContainsKey(files[i].url))
                 {
@@ -510,7 +354,7 @@ namespace ModuleManager
             StringBuilder changes = new StringBuilder();
 
             changes.Append("Changes :\n");
-            
+
             for (int i = 0; i < files.Length; i++)
             {
                 ConfigNode fileNode = GetFileNode(shaConfigNode, files[i].url);
@@ -556,9 +400,9 @@ namespace ModuleManager
             }
             return null;
         }
-        
 
-        private void CreateCache(int patchedNodeCount)
+
+        private void CreateCache(IEnumerable<IProtoUrlConfig> databaseConfigs, int patchedNodeCount)
         {
             ConfigNode shaConfigNode = new ConfigNode();
             shaConfigNode.AddValue("SHA", configSha);
@@ -570,13 +414,11 @@ namespace ModuleManager
 
             cache.AddValue("patchedNodeCount", patchedNodeCount.ToString());
 
-            foreach (UrlDir.UrlConfig config in GameDatabase.Instance.root.AllConfigs)
+            foreach (IProtoUrlConfig urlConfig in databaseConfigs)
             {
                 ConfigNode node = cache.AddNode("UrlConfig");
-                node.AddValue("name", config.name);
-                node.AddValue("type", config.type);
-                node.AddValue("parentUrl", config.parent.url);
-                node.AddNode(config.config);
+                node.AddValue("parentUrl", urlConfig.UrlFile.url);
+                node.AddNode(urlConfig.Node);
             }
 
             foreach (var file in GameDatabase.Instance.root.AllConfigFiles)
@@ -649,17 +491,10 @@ namespace ModuleManager
             techNode.Save(techTreePath);
         }
 
-        private void LoadCache()
+        private IEnumerable<IProtoUrlConfig> LoadCache()
         {
-            // Clear the config DB
-            foreach (UrlDir.UrlFile files in GameDatabase.Instance.root.AllConfigFiles)
-            {
-                files.configs.Clear();
-            }
-
-            // And then load all the cached configs
             ConfigNode cache = ConfigNode.Load(cachePath);
-            
+
             if (cache.HasValue("patchedNodeCount") && int.TryParse(cache.GetValue("patchedNodeCount"), out int patchedNodeCount))
                 status = "ModuleManager: " + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") +  " loaded from cache";
 
@@ -669,31 +504,35 @@ namespace ModuleManager
             physicsUrlFile = new UrlDir.UrlFile(gameDataDir, new FileInfo(defaultPhysicsPath));
             gameDataDir.files.Add(physicsUrlFile);
 
+            List<IProtoUrlConfig> databaseConfigs = new List<IProtoUrlConfig>(cache.nodes.Count);
+
             foreach (ConfigNode node in cache.nodes)
             {
-                string name = node.GetValue("name");
-                string type = node.GetValue("type");
                 string parentUrl = node.GetValue("parentUrl");
 
                 UrlDir.UrlFile parent = GameDatabase.Instance.root.AllConfigFiles.FirstOrDefault(f => f.url == parentUrl);
                 if (parent != null)
                 {
-                    parent.AddConfig(node.nodes[0]);
+                    databaseConfigs.Add(new ProtoUrlConfig(parent, node.nodes[0]));
                 }
                 else
                 {
                     logger.Warning("Parent null for " + parentUrl);
                 }
             }
-            progressFraction = 1;
             logger.Info("Cache Loaded");
+
+            return databaseConfigs;
         }
 
-        private void StatusUpdate(IPatchProgress progress)
+        private void StatusUpdate(IPatchProgress progress, string activity = null)
         {
-            progressFraction = progress.ProgressFraction;
-
             status = "ModuleManager: " + progress.Counter.patchedNodes + " patch" + (progress.Counter.patchedNodes != 1 ? "es" : "") + " applied";
+            if (progress.ProgressFraction < 1f - float.Epsilon)
+                status += " (" + progress.ProgressFraction.ToString("P0") + ")";
+
+            if (activity != null)
+                status += "\n" + activity;
 
             if (progress.Counter.warnings > 0)
                 status += ", found <color=yellow>" + progress.Counter.warnings + " warning" + (progress.Counter.warnings != 1 ? "s" : "") + "</color>";
@@ -703,17 +542,6 @@ namespace ModuleManager
 
             if (progress.Counter.exceptions > 0)
                 status += ", encountered <color=red>" + progress.Counter.exceptions + " exception" + (progress.Counter.exceptions != 1 ? "s" : "") + "</color>";
-        }
-
-        private static void PurgeUnused()
-        {
-            foreach (UrlDir.UrlConfig mod in GameDatabase.Instance.root.AllConfigs.ToArray())
-            {
-                string name = mod.type.RemoveWS();
-
-                if (CommandParser.Parse(name, out name) != Command.Insert)
-                    mod.parent.configs.Remove(mod);
-            }
         }
 
         #region Applying Patches
@@ -740,7 +568,7 @@ namespace ModuleManager
                 #endif
 
                 Command cmd = CommandParser.Parse(modVal.name, out string valName);
-                
+
                 Operator op;
                 if (valName.Length > 2 && valName[valName.Length - 2] == ',')
                     op = Operator.Assign;
@@ -756,10 +584,10 @@ namespace ModuleManager
                         context.progress.Error(context.patchUrl, "Error - Cannot find value assigning command: " + valName);
                         continue;
                     }
-                    
+
                     if (op != Operator.Assign)
                     {
-                        if (double.TryParse(modVal.value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double s) 
+                        if (double.TryParse(modVal.value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double s)
                             && double.TryParse(val.value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double os))
                         {
                             switch (op)
@@ -1154,7 +982,7 @@ namespace ModuleManager
                         if (n != null)
                             subNodes.Add(n);
                     }
-                    
+
                     if (command == Command.Replace)
                     {
                         // if the original exists modify it
@@ -1310,28 +1138,24 @@ namespace ModuleManager
             // @XXXXX
             if (root)
             {
-                IEnumerable<UrlDir.UrlConfig> urlConfigs = context.databaseRoot.GetConfigs(nodeType);
-                if (!urlConfigs.Any())
+                bool foundNodeType = false;
+                foreach (IProtoUrlConfig urlConfig in context.databaseConfigs)
                 {
-                    context.logger.Warning("Can't find nodeType:" + nodeType);
-                    return null;
-                }
+                    ConfigNode node = urlConfig.Node;
 
-                if (nodeName == null)
-                {
-                    nodeStack = new NodeStack(urlConfigs.First().config);
-                }
-                else
-                {
-                    foreach (UrlDir.UrlConfig url in urlConfigs)
+                    if (node.name != nodeType) continue;
+
+                    foundNodeType = true;
+
+                    if (nodeName == null || (node.GetValue("name") is string testNodeName && WildcardMatch(testNodeName, nodeName)))
                     {
-                        if (url.config.HasValue("name") && WildcardMatch(url.config.GetValue("name"), nodeName))
-                        {
-                            nodeStack = new NodeStack(url.config);
-                            break;
-                        }
+                        nodeStack = new NodeStack(node);
+                        break;
                     }
                 }
+
+                if (!foundNodeType) context.logger.Warning("Can't find nodeType:" + nodeType);
+                if (nodeStack == null) return null;
             }
             else
             {
@@ -1396,7 +1220,6 @@ namespace ModuleManager
 
                 string subName = path.Substring(1, nextSep - 1);
                 string nodeType, nodeName;
-                UrlDir.UrlConfig target = null;
 
                 if (subName.Contains("["))
                 {
@@ -1408,32 +1231,27 @@ namespace ModuleManager
                 {
                     // @NODETYPE/
                     nodeType = subName;
-                    nodeName = string.Empty;
+                    nodeName = null;
                 }
 
-                IEnumerable<UrlDir.UrlConfig> urlConfigs = context.databaseRoot.GetConfigs(nodeType);
-                if (!urlConfigs.Any())
+                bool foundNodeType = false;
+                foreach (IProtoUrlConfig urlConfig in context.databaseConfigs)
                 {
-                    context.logger.Warning("Can't find nodeType:" + nodeType);
-                    return null;
-                }
+                    ConfigNode node = urlConfig.Node;
 
-                if (nodeName == string.Empty)
-                {
-                    target = urlConfigs.First();
-                }
-                else
-                {
-                    foreach (UrlDir.UrlConfig url in urlConfigs)
+                    if (node.name != nodeType) continue;
+
+                    foundNodeType = true;
+
+                    if (nodeName == null || (node.GetValue("name") is string testNodeName && WildcardMatch(testNodeName, nodeName)))
                     {
-                        if (url.config.HasValue("name") && WildcardMatch(url.config.GetValue("name"), nodeName))
-                        {
-                            target = url;
-                            break;
-                        }
+                        return RecurseVariableSearch(path.Substring(nextSep + 1), new NodeStack(node), context);
                     }
                 }
-                return target != null ? RecurseVariableSearch(path.Substring(nextSep + 1), new NodeStack(target.config), context) : null;
+
+                if (!foundNodeType) context.logger.Warning("Can't find nodeType:" + nodeType);
+
+                return null;
             }
             if (path.StartsWith("../"))
             {
@@ -1526,7 +1344,7 @@ namespace ModuleManager
                 context.logger.Warning("Cannot find key " + valName + " in " + nodeStack.value.name);
                 return null;
             }
-            
+
             if (match.Groups[3].Success)
             {
                 ConfigNode.Value newVal = new ConfigNode.Value(cVal.name, cVal.value);
@@ -1635,7 +1453,7 @@ namespace ModuleManager
                             return null;
                         }
                     }
-                    else if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double s) 
+                    else if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double s)
                              && double.TryParse(oValue, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double os))
                     {
                         switch (op)
@@ -1707,7 +1525,7 @@ namespace ModuleManager
         public static bool CheckConstraints(ConfigNode node, string constraints)
         {
             constraints = constraints.RemoveWS();
-            
+
             if (constraints.Length == 0)
                 return true;
 
@@ -1935,66 +1753,6 @@ namespace ModuleManager
             return v;
         }
 
-        private static bool CompareRecursive(ConfigNode expectNode, ConfigNode gotNode)
-        {
-            if (expectNode.values.Count != gotNode.values.Count || expectNode.nodes.Count != gotNode.nodes.Count)
-                return false;
-            for (int i = 0; i < expectNode.values.Count; ++i)
-            {
-                ConfigNode.Value eVal = expectNode.values[i];
-                ConfigNode.Value gVal = gotNode.values[i];
-                if (eVal.name != gVal.name || eVal.value != gVal.value)
-                    return false;
-            }
-            for (int i = 0; i < expectNode.nodes.Count; ++i)
-            {
-                ConfigNode eNode = expectNode.nodes[i];
-                ConfigNode gNode = gotNode.nodes[i];
-                if (!CompareRecursive(eNode, gNode))
-                    return false;
-            }
-            return true;
-        }
-
         #endregion Config Node Utilities
-
-        #region Tests
-
-        private void RunTestCases()
-        {
-            logger.Info("Running tests...");
-
-            // Do MM testcases
-            foreach (UrlDir.UrlConfig expect in GameDatabase.Instance.GetConfigs("MMTEST_EXPECT"))
-            {
-                // So for each of the expects, we expect all the configs before that node to match exactly.
-                UrlDir.UrlFile parent = expect.parent;
-                if (parent.configs.Count != expect.config.CountNodes + 1)
-                {
-                    logger.Error("Test " + parent.name + " failed as expected number of nodes differs expected:" +
-                        expect.config.CountNodes + " found: " + parent.configs.Count);
-                    for (int i = 0; i < parent.configs.Count; ++i)
-                        logger.Info(parent.configs[i].config.ToString());
-                    continue;
-                }
-                for (int i = 0; i < expect.config.CountNodes; ++i)
-                {
-                    ConfigNode gotNode = parent.configs[i].config;
-                    ConfigNode expectNode = expect.config.nodes[i];
-                    if (!CompareRecursive(expectNode, gotNode))
-                    {
-                        logger.Error("Test " + parent.name + "[" + i +
-                            "] failed as expected output and actual output differ.\nexpected:\n" + expectNode +
-                            "\nActually got:\n" + gotNode);
-                    }
-                }
-
-                // Purge the tests
-                parent.configs.Clear();
-            }
-            logger.Info("tests complete.");
-        }
-
-        #endregion Tests
     }
 }

@@ -118,8 +118,6 @@ namespace ModuleManagerTests
 
             AssertNoErrors();
 
-            Assert.Empty(root.AllConfigs);
-
             progress.DidNotReceive().PatchAdded();
             progress.DidNotReceiveWithAnyArgs().NeedsUnsatisfiedRoot(null);
         }
@@ -152,8 +150,6 @@ namespace ModuleManagerTests
             Assert.Same(patch, patchExtractor.ExtractPatch(urlConfig));
 
             AssertNoErrors();
-
-            Assert.Empty(root.AllConfigs);
 
             needsChecker.Received().CheckNeedsRecursive(urlConfig.config, urlConfig);
             needsChecker.DidNotReceiveWithAnyArgs().CheckNeedsExpression(null);
@@ -190,8 +186,6 @@ namespace ModuleManagerTests
 
             AssertNoErrors();
 
-            Assert.Empty(root.AllConfigs);
-
             needsChecker.Received().CheckNeedsRecursive(urlConfig.config, urlConfig);
             progress.DidNotReceiveWithAnyArgs().NeedsUnsatisfiedRoot(null);
         }
@@ -221,8 +215,6 @@ namespace ModuleManagerTests
             Assert.Null(patchExtractor.ExtractPatch(urlConfig));
 
             AssertNoErrors();
-
-            Assert.Empty(root.AllConfigs);
 
             passSpecifier.DidNotReceiveWithAnyArgs().CheckNeeds(null, null);
             needsChecker.DidNotReceiveWithAnyArgs().CheckNeedsRecursive(null, null);
@@ -258,61 +250,8 @@ namespace ModuleManagerTests
 
             AssertNoErrors();
 
-            Assert.Empty(root.AllConfigs);
-
             needsChecker.DidNotReceiveWithAnyArgs().CheckNeedsRecursive(null, null);
             patchCompiler.DidNotReceiveWithAnyArgs().CompilePatch(null);
-
-            progress.DidNotReceiveWithAnyArgs().NeedsUnsatisfiedRoot(null);
-        }
-
-        [Fact]
-        public void TestExtractPatch__Insert()
-        {
-            UrlDir.UrlConfig urlConfig = CreateConfig("NODE_TYPE");
-
-            ITagList tagList = Substitute.For<ITagList>();
-            tagListParser.Parse("NODE_TYPE", urlConfig).Returns(tagList);
-        
-            IPassSpecifier passSpecifier = Substitute.For<IPassSpecifier>();
-            ProtoPatch protoPatch = new ProtoPatch(
-                urlConfig,
-                Command.Insert,
-                "NODE_TYPE",
-                null,
-                "needs",
-                null,
-                passSpecifier
-            );
-
-            protoPatchBuilder.Build(urlConfig, Command.Insert, tagList).Returns(protoPatch);
-            needsChecker.CheckNeedsExpression("needs").Returns(true);
-            passSpecifier.CheckNeeds(needsChecker, progress).Returns(true);
-
-            ConfigNode needsCheckedNode = null;
-            needsChecker.CheckNeedsRecursive(Arg.Do<ConfigNode>(node => needsCheckedNode = node), urlConfig);
-
-            Assert.Null(patchExtractor.ExtractPatch(urlConfig));
-        
-            AssertNoErrors();
-
-            Received.InOrder(delegate
-            {
-                tagListParser.Parse("NODE_TYPE", urlConfig);
-                protoPatchBuilder.Build(urlConfig, Command.Insert, tagList);
-                needsChecker.CheckNeedsExpression("needs");
-                passSpecifier.CheckNeeds(needsChecker, progress);
-                needsChecker.CheckNeedsRecursive(needsCheckedNode, urlConfig);
-            });
-
-            patchCompiler.DidNotReceiveWithAnyArgs().CompilePatch(null);
-        
-            Assert.Single(root.AllConfigs);
-            UrlDir.UrlConfig newUrlConfig = root.AllConfigs.First();
-            Assert.NotSame(urlConfig, newUrlConfig);
-            Assert.NotSame(urlConfig.config, newUrlConfig.config);
-            AssertConfigNodesEqual(urlConfig.config, newUrlConfig.config);
-            Assert.Same(needsCheckedNode, newUrlConfig.config);
 
             progress.DidNotReceiveWithAnyArgs().NeedsUnsatisfiedRoot(null);
         }
@@ -337,8 +276,6 @@ namespace ModuleManagerTests
             patchExtractor.ExtractPatch(config1);
             patchExtractor.ExtractPatch(config2);
         
-            Assert.Empty(root.AllConfigs);
-        
             progress.DidNotReceiveWithAnyArgs().Exception(null, null);
             progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
         
@@ -357,8 +294,6 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig urlConfig = CreateConfig("%NODE");
             Assert.Null(patchExtractor.ExtractPatch(urlConfig));
 
-            Assert.Empty(root.AllConfigs);
-
             progress.Received().Error(urlConfig, "Error - replace command (%) is not valid on a root node: abc/def/%NODE");
         }
 
@@ -367,8 +302,6 @@ namespace ModuleManagerTests
         {
             UrlDir.UrlConfig urlConfig = CreateConfig("&NODE");
             Assert.Null(patchExtractor.ExtractPatch(urlConfig));
-
-            Assert.Empty(root.AllConfigs);
 
             progress.Received().Error(urlConfig, "Error - create command (&) is not valid on a root node: abc/def/&NODE");
         }
@@ -379,8 +312,6 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig urlConfig = CreateConfig("|NODE");
             Assert.Null(patchExtractor.ExtractPatch(urlConfig));
 
-            Assert.Empty(root.AllConfigs);
-
             progress.Received().Error(urlConfig, "Error - rename command (|) is not valid on a root node: abc/def/|NODE");
         }
 
@@ -389,8 +320,6 @@ namespace ModuleManagerTests
         {
             UrlDir.UrlConfig urlConfig = CreateConfig("#NODE");
             Assert.Null(patchExtractor.ExtractPatch(urlConfig));
-
-            Assert.Empty(root.AllConfigs);
 
             progress.Received().Error(urlConfig, "Error - paste command (#) is not valid on a root node: abc/def/#NODE");
         }
@@ -401,8 +330,6 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig urlConfig = CreateConfig("*NODE");
             Assert.Null(patchExtractor.ExtractPatch(urlConfig));
 
-            Assert.Empty(root.AllConfigs);
-
             progress.Received().Error(urlConfig, "Error - special command (*) is not valid on a root node: abc/def/*NODE");
         }
 
@@ -412,8 +339,6 @@ namespace ModuleManagerTests
             UrlDir.UrlConfig urlConfig = CreateConfig("badSomehow");
             tagListParser.When(t => t.Parse("badSomehow", urlConfig)).Throw(new FormatException("badly formatted"));
             Assert.Null(patchExtractor.ExtractPatch(urlConfig));
-
-            Assert.Empty(root.AllConfigs);
 
             progress.Received().Error(urlConfig, "Cannot parse node name as tag list: badly formatted\non: abc/def/badSomehow");
         }
@@ -426,8 +351,6 @@ namespace ModuleManagerTests
             Assert.Null(patchExtractor.ExtractPatch(urlConfig));
 
             AssertNoErrors();
-
-            Assert.Empty(root.AllConfigs);
         }
 
         [Fact]
@@ -437,8 +360,6 @@ namespace ModuleManagerTests
             Exception ex = new Exception();
             tagListParser.When(t => t.Parse("NODE", urlConfig)).Throw(ex);
             Assert.Null(patchExtractor.ExtractPatch(urlConfig));
-
-            Assert.Empty(root.AllConfigs);
 
             progress.Received().Exception(urlConfig, "Exception while attempting to create patch from config: abc/def/NODE", ex);
         }

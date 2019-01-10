@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
@@ -14,6 +15,7 @@ namespace ModuleManager.Patches
         public UrlDir.UrlConfig UrlConfig { get; }
         public INodeMatcher NodeMatcher { get; }
         public IPassSpecifier PassSpecifier { get; }
+        public bool CountsAsPatch => true;
 
         public EditPatch(UrlDir.UrlConfig urlConfig, INodeMatcher nodeMatcher, IPassSpecifier passSpecifier)
         {
@@ -24,32 +26,32 @@ namespace ModuleManager.Patches
             loop = urlConfig.config.HasNode("MM_PATCH_LOOP");
         }
 
-        public void Apply(UrlDir.UrlFile file, IPatchProgress progress, IBasicLogger logger)
+        public void Apply(LinkedList<IProtoUrlConfig> databaseConfigs, IPatchProgress progress, IBasicLogger logger)
         {
-            if (file == null) throw new ArgumentNullException(nameof(file));
+            if (databaseConfigs == null) throw new ArgumentNullException(nameof(databaseConfigs));
             if (progress == null) throw new ArgumentNullException(nameof(progress));
             if (logger == null) throw new ArgumentNullException(nameof(logger));
 
-            PatchContext context = new PatchContext(UrlConfig, file.root, logger, progress);
-            for (int i = 0; i < file.configs.Count; i++)
+            PatchContext context = new PatchContext(UrlConfig, databaseConfigs, logger, progress);
+            for (LinkedListNode<IProtoUrlConfig> listNode = databaseConfigs.First; listNode != null; listNode = listNode.Next)
             {
-                UrlDir.UrlConfig urlConfig = file.configs[i];
+                IProtoUrlConfig protoConfig = listNode.Value;
                 try
                 {
-                    if (!NodeMatcher.IsMatch(urlConfig.config)) continue;
-                    if (loop) logger.Info($"Looping on {UrlConfig.SafeUrl()} to {urlConfig.SafeUrl()}");
+                    if (!NodeMatcher.IsMatch(protoConfig.Node)) continue;
+                    if (loop) logger.Info($"Looping on {UrlConfig.SafeUrl()} to {protoConfig.FullUrl}");
 
                     do
                     {
-                        progress.ApplyingUpdate(urlConfig, UrlConfig);
-                        file.configs[i] = urlConfig = new UrlDir.UrlConfig(file, MMPatchLoader.ModifyNode(new NodeStack(urlConfig.config), UrlConfig.config, context));
-                    } while (loop && NodeMatcher.IsMatch(urlConfig.config));
+                        progress.ApplyingUpdate(protoConfig, UrlConfig);
+                        listNode.Value = protoConfig = new ProtoUrlConfig(protoConfig.UrlFile, MMPatchLoader.ModifyNode(new NodeStack(protoConfig.Node), UrlConfig.config, context));
+                    } while (loop && NodeMatcher.IsMatch(protoConfig.Node));
 
-                    if (loop) file.configs[i].config.RemoveNodes("MM_PATCH_LOOP");
+                    if (loop) protoConfig.Node.RemoveNodes("MM_PATCH_LOOP");
                 }
                 catch (Exception ex)
                 {
-                    progress.Exception(UrlConfig, $"Exception while applying update {UrlConfig.SafeUrl()} to {urlConfig.SafeUrl()}", ex);
+                    progress.Exception(UrlConfig, $"Exception while applying update {UrlConfig.SafeUrl()} to {protoConfig.FullUrl}", ex);
                 }
             }
         }

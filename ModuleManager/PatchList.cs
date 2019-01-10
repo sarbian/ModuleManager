@@ -70,6 +70,7 @@ namespace ModuleManager
             IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
         }
 
+        private readonly Pass insertPatches = new Pass(":INSERT (initial)");
         private readonly Pass firstPatches = new Pass(":FIRST");
         private readonly Pass legacyPatches = new Pass(":LEGACY (default)");
         private readonly Pass finalPatches = new Pass(":FINAL");
@@ -84,7 +85,11 @@ namespace ModuleManager
 
             foreach (IPatch patch in patches)
             {
-                if (patch.PassSpecifier is FirstPassSpecifier)
+                if (patch.PassSpecifier is InsertPassSpecifier)
+                {
+                    insertPatches.Add(patch);
+                }
+                else if (patch.PassSpecifier is FirstPassSpecifier)
                 {
                     firstPatches.Add(patch);
                 }
@@ -121,12 +126,13 @@ namespace ModuleManager
                     throw new NotImplementedException("Don't know what to do with pass specifier: " + patch.PassSpecifier.Descriptor);
                 }
 
-                progress.PatchAdded();
+                if (patch.CountsAsPatch) progress.PatchAdded();
             }
         }
 
         public IEnumerator<IPass> GetEnumerator()
         {
+            yield return insertPatches;
             yield return firstPatches;
             yield return legacyPatches;
 
