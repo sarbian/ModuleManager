@@ -36,8 +36,6 @@ namespace ModuleManager
 
         private static readonly Dictionary<string, Regex> regexCache = new Dictionary<string, Regex>();
 
-        private UrlDir.UrlFile physicsUrlFile;
-
         private string configSha;
         private Dictionary<string, string> filesSha = new Dictionary<string, string>();
 
@@ -197,8 +195,8 @@ namespace ModuleManager
 
                 #endregion Saving Cache
 
-                SaveModdedTechTree();
-                SaveModdedPhysics();
+                SaveModdedTechTree(databaseConfigs);
+                SaveModdedPhysics(databaseConfigs);
 
                 logRunner.RequestStop();
 
@@ -243,7 +241,7 @@ namespace ModuleManager
             logger.Info("Loading Physics.cfg");
             UrlDir gameDataDir = GameDatabase.Instance.root.AllDirectories.First(d => d.path.EndsWith("GameData") && d.name == "" && d.url == "");
             // need to use a file with a cfg extension to get the right fileType or you can't AddConfig on it
-            physicsUrlFile = new UrlDir.UrlFile(gameDataDir, new FileInfo(defaultPhysicsPath));
+            UrlDir.UrlFile physicsUrlFile = new UrlDir.UrlFile(gameDataDir, new FileInfo(defaultPhysicsPath));
             // Since it loaded the default config badly (sub node only) we clear it first
             physicsUrlFile.configs.Clear();
             // And reload it properly
@@ -253,23 +251,23 @@ namespace ModuleManager
             gameDataDir.files.Add(physicsUrlFile);
         }
 
-
-        private void SaveModdedPhysics()
+        private void SaveModdedPhysics(IEnumerable<IProtoUrlConfig> databaseConfigs)
         {
-            List<UrlDir.UrlConfig> configs = physicsUrlFile.configs;
+            IEnumerable<IProtoUrlConfig> configs = databaseConfigs.Where(config => config.NodeType == "PHYSICSGLOBALS");
+            int count = configs.Count();
 
-            if (configs.Count == 0)
+            if (count == 0)
             {
                 logger.Info("No PHYSICSGLOBALS node found. No custom Physics config will be saved");
                 return;
             }
 
-            if (configs.Count > 1)
+            if (count > 1)
             {
-                logger.Info(configs.Count + " PHYSICSGLOBALS node found. A patch may be wrong. Using the first one");
+                logger.Info($"{count} PHYSICSGLOBALS node found. A patch may be wrong. Using the first one");
             }
 
-            configs[0].config.Save(physicsPath);
+            configs.First().Node.Save(physicsPath);
         }
 
         private bool IsCacheUpToDate()
@@ -471,23 +469,24 @@ namespace ModuleManager
             }
         }
 
-        private void SaveModdedTechTree()
+        private void SaveModdedTechTree(IEnumerable<IProtoUrlConfig> databaseConfigs)
         {
-            UrlDir.UrlConfig[] configs = GameDatabase.Instance.GetConfigs("TechTree");
+            IEnumerable<IProtoUrlConfig> configs = databaseConfigs.Where(config => config.NodeType == "TechTree");
+            int count = configs.Count();
 
-            if (configs.Length == 0)
+            if (count == 0)
             {
                 logger.Info("No TechTree node found. No custom TechTree will be saved");
                 return;
             }
 
-            if (configs.Length > 1)
+            if (count > 1)
             {
-                logger.Info(configs.Length + " TechTree node found. A patch may be wrong. Using the first one");
+                logger.Info($"{count} TechTree node found. A patch may be wrong. Using the first one");
             }
 
             ConfigNode techNode = new ConfigNode("TechTree");
-            techNode.AddNode(configs[0].config);
+            techNode.AddNode(configs.First().Node);
             techNode.Save(techTreePath);
         }
 
@@ -501,7 +500,7 @@ namespace ModuleManager
             // Create the fake file where we load the physic config cache
             UrlDir gameDataDir = GameDatabase.Instance.root.AllDirectories.First(d => d.path.EndsWith("GameData") && d.name == "" && d.url == "");
             // need to use a file with a cfg extension to get the right fileType or you can't AddConfig on it
-            physicsUrlFile = new UrlDir.UrlFile(gameDataDir, new FileInfo(defaultPhysicsPath));
+            UrlDir.UrlFile physicsUrlFile = new UrlDir.UrlFile(gameDataDir, new FileInfo(defaultPhysicsPath));
             gameDataDir.files.Add(physicsUrlFile);
 
             List<IProtoUrlConfig> databaseConfigs = new List<IProtoUrlConfig>(cache.nodes.Count);
