@@ -28,6 +28,9 @@ namespace ModuleManager
     [SuppressMessage("ReSharper", "StringIndexOfIsCultureSpecific.1")]
     public class MMPatchLoader
     {
+        private const string PHYSICS_NODE_NAME = "PHYSICSGLOBALS";
+        private const string TECH_TREE_NODE_NAME = "TechTree";
+
         public string status = "";
 
         public string errors = "";
@@ -246,25 +249,25 @@ namespace ModuleManager
             physicsUrlFile.configs.Clear();
             // And reload it properly
             ConfigNode physicsContent = ConfigNode.Load(defaultPhysicsPath);
-            physicsContent.name = "PHYSICSGLOBALS";
+            physicsContent.name = PHYSICS_NODE_NAME;
             physicsUrlFile.AddConfig(physicsContent);
             gameDataDir.files.Add(physicsUrlFile);
         }
 
         private void SaveModdedPhysics(IEnumerable<IProtoUrlConfig> databaseConfigs)
         {
-            IEnumerable<IProtoUrlConfig> configs = databaseConfigs.Where(config => config.NodeType == "PHYSICSGLOBALS");
+            IEnumerable<IProtoUrlConfig> configs = databaseConfigs.Where(config => config.NodeType == PHYSICS_NODE_NAME);
             int count = configs.Count();
 
             if (count == 0)
             {
-                logger.Info("No PHYSICSGLOBALS node found. No custom Physics config will be saved");
+                logger.Info($"No {PHYSICS_NODE_NAME} node found. No custom Physics config will be saved");
                 return;
             }
 
             if (count > 1)
             {
-                logger.Info($"{count} PHYSICSGLOBALS node found. A patch may be wrong. Using the first one");
+                logger.Info($"{count} {PHYSICS_NODE_NAME} nodes found. A patch may be wrong. Using the first one");
             }
 
             configs.First().Node.Save(physicsPath);
@@ -471,21 +474,21 @@ namespace ModuleManager
 
         private void SaveModdedTechTree(IEnumerable<IProtoUrlConfig> databaseConfigs)
         {
-            IEnumerable<IProtoUrlConfig> configs = databaseConfigs.Where(config => config.NodeType == "TechTree");
+            IEnumerable<IProtoUrlConfig> configs = databaseConfigs.Where(config => config.NodeType == TECH_TREE_NODE_NAME);
             int count = configs.Count();
 
             if (count == 0)
             {
-                logger.Info("No TechTree node found. No custom TechTree will be saved");
+                logger.Info($"No {TECH_TREE_NODE_NAME} node found. No custom {TECH_TREE_NODE_NAME} will be saved");
                 return;
             }
 
             if (count > 1)
             {
-                logger.Info($"{count} TechTree node found. A patch may be wrong. Using the first one");
+                logger.Info($"{count} {TECH_TREE_NODE_NAME} nodes found. A patch may be wrong. Using the first one");
             }
 
-            ConfigNode techNode = new ConfigNode("TechTree");
+            ConfigNode techNode = new ConfigNode(TECH_TREE_NODE_NAME);
             techNode.AddNode(configs.First().Node);
             techNode.Save(techTreePath);
         }
