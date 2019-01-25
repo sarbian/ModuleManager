@@ -11,7 +11,7 @@ namespace ModuleManager
     {
         internal void Start()
         {
-            if (HighLogic.CurrentGame.Parameters.Career.TechTreeUrl != techTreeFile &&  File.Exists(techTreePath))
+            if (HighLogic.CurrentGame.Parameters.Career.TechTreeUrl != techTreeFile && File.Exists(techTreePath))
             {
                 Log("Setting modded tech tree as the active one");
                 HighLogic.CurrentGame.Parameters.Career.TechTreeUrl = techTreeFile;
