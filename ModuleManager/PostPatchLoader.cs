@@ -92,9 +92,16 @@ namespace ModuleManager
 
             if (File.Exists(logPath))
             {
-                progressTitle = "ModuleManager: Dumping log to KSP log";
-                logger.Info("Dumping ModuleManager log to main log");
-                logger.Info("\n#### BEGIN MODULEMANAGER LOG ####\n\n\n" + File.ReadAllText(logPath) + "\n\n\n#### END MODULEMANAGER LOG ####");
+                if (ModuleManager.DontCopyLogs)
+                {
+                    logger.Info("Not dumping log because -mm-dont-copy-logs was set");
+                }
+                else
+                {
+                    progressTitle = "ModuleManager: Dumping log to KSP log";
+                    logger.Info("Dumping ModuleManager log to main log");
+                    logger.Info("\n#### BEGIN MODULEMANAGER LOG ####\n\n\n" + File.ReadAllText(logPath) + "\n\n\n#### END MODULEMANAGER LOG ####");
+                }
             }
             else
             {

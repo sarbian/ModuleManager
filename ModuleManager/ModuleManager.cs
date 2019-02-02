@@ -33,6 +33,7 @@ namespace ModuleManager
         private bool nyan = false;
         private bool nCats = false;
         public static bool dumpPostPatch = false;
+        public static bool DontCopyLogs { get; private set; } = false;
 
         private PopupDialog menu;
 
@@ -151,6 +152,8 @@ namespace ModuleManager
                 || Environment.GetCommandLineArgs().Contains("-ncats");
 
             dumpPostPatch = Environment.GetCommandLineArgs().Contains("-mm-dump");
+
+            DontCopyLogs = Environment.GetCommandLineArgs().Contains("-mm-dont-copy-logs");
 
             loadedInScene = true;
         }
