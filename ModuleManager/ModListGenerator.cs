@@ -117,11 +117,10 @@ namespace ModuleManager
                 }
             }
             modListInfo.Append("Mods by directory (sub directories of GameData):\n");
-            string gameData = Path.Combine(Path.GetFullPath(KSPUtil.ApplicationRootPath), "GameData");
-            foreach (string subdir in Directory.GetDirectories(gameData))
+            UrlDir gameData = GameDatabase.Instance.root.children.First(dir => dir.type == UrlDir.DirectoryType.GameData);
+            foreach (UrlDir subDir in gameData.children)
             {
-                string name = Path.GetFileName(subdir);
-                string cleanName = name.RemoveWS();
+                string cleanName = subDir.name.RemoveWS();
                 if (!mods.Contains(cleanName, StringComparer.OrdinalIgnoreCase))
                 {
                     mods.Add(cleanName);
