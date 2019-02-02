@@ -6,7 +6,7 @@ namespace ModuleManager.Logging
 {
     public class StreamLogger : IBasicLogger, IDisposable
     {
-        private const string DATETIME_FORMAT_STRING = "yyyy-mm-dd HH:mm:ss.fff";
+        private const string DATETIME_FORMAT_STRING = "yyyy-MM-dd HH:mm:ss.fff";
 
         private readonly Stream stream;
         private readonly StreamWriter streamWriter;
