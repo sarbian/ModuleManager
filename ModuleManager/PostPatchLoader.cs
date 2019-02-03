@@ -26,6 +26,8 @@ namespace ModuleManager
 
         private bool ready = false;
 
+        private string progressTitle = "ModuleManager: Post patch";
+
         public static void AddPostPatchCallback(ModuleManagerPostPatchCallback callback)
         {
             if (!postPatchCallbacks.Contains(callback))
@@ -48,7 +50,7 @@ namespace ModuleManager
 
         public override float ProgressFraction() => 1;
 
-        public override string ProgressTitle() => "ModuleManager : post patch";
+        public override string ProgressTitle() => progressTitle;
 
         public override void StartLoad()
         {
@@ -61,6 +63,8 @@ namespace ModuleManager
             Stopwatch waitTimer = new Stopwatch();
             waitTimer.Start();
 
+            progressTitle = "ModuleManager: Waiting for patching to finish";
+
             while (databaseConfigs == null) yield return null;
 
             waitTimer.Stop();
@@ -69,6 +73,7 @@ namespace ModuleManager
             Stopwatch postPatchTimer = new Stopwatch();
             postPatchTimer.Start();
 
+            progressTitle = "ModuleManager: Applying patched game database";
             logger.Info("Applying patched game database");
 
             foreach (UrlDir.UrlFile file in GameDatabase.Instance.root.AllConfigFiles)
@@ -87,8 +92,16 @@ namespace ModuleManager
 
             if (File.Exists(logPath))
             {
-                logger.Info("Dumping ModuleManager log to main log");
-                logger.Info("\n#### BEGIN MODULEMANAGER LOG ####\n\n\n" + File.ReadAllText(logPath) + "\n\n\n#### END MODULEMANAGER LOG ####");
+                if (ModuleManager.DontCopyLogs)
+                {
+                    logger.Info("Not dumping log because -mm-dont-copy-logs was set");
+                }
+                else
+                {
+                    progressTitle = "ModuleManager: Dumping log to KSP log";
+                    logger.Info("Dumping ModuleManager log to main log");
+                    logger.Info("\n#### BEGIN MODULEMANAGER LOG ####\n\n\n" + File.ReadAllText(logPath) + "\n\n\n#### END MODULEMANAGER LOG ####");
+                }
             }
             else
             {
@@ -104,6 +117,8 @@ namespace ModuleManager
 
             yield return null;
 
+            progressTitle = "ModuleManager: Reloading things";
+
             logger.Info("Reloading resources definitions");
             PartResourceLibrary.Instance.LoadDefinitions();
 
@@ -115,6 +130,7 @@ namespace ModuleManager
 
             yield return null;
 
+            progressTitle = "ModuleManager: Running post patch callbacks";
             logger.Info("Running post patch callbacks");
 
             foreach (ModuleManagerPostPatchCallback callback in postPatchCallbacks)
