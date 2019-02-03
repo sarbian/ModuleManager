@@ -42,9 +42,7 @@ namespace ModuleManager
         private string configSha;
         private Dictionary<string, string> filesSha = new Dictionary<string, string>();
 
-        private const float yieldInterval = 1f/30f; // Patch at ~30fps
-
-        private const float TIME_TO_WAIT_FOR_LOGS = 0.05f;
+        private const int STATUS_UPDATE_INVERVAL_MS = 33;
 
         private readonly IEnumerable<ModListGenerator.ModAddedByAssembly> modsAddedByAssemblies;
         private readonly IBasicLogger logger;
@@ -135,7 +133,6 @@ namespace ModuleManager
                 patchLogger.Info(status);
 
                 IPass currentPass = null;
-                float nextUpdate = Time.realtimeSinceStartup + yieldInterval;
 
                 progress.OnPassStarted.Add(delegate (IPass pass)
                 {
@@ -143,18 +140,24 @@ namespace ModuleManager
                     StatusUpdate(progress, currentPass.Name);
                 });
 
+                System.Diagnostics.Stopwatch stopwatch = new System.Diagnostics.Stopwatch();
+                stopwatch.Start();
+
                 progress.OnPatchApplied.Add(delegate
                 {
-                    if (Time.realtimeSinceStartup > nextUpdate)
+                    long timeRemaining = STATUS_UPDATE_INVERVAL_MS - stopwatch.ElapsedMilliseconds;
+                    if (timeRemaining < 0)
                     {
                         StatusUpdate(progress, currentPass.Name);
-                        nextUpdate = Time.realtimeSinceStartup + yieldInterval;
+                        stopwatch.Reset();
+                        stopwatch.Start();
                     }
                 });
 
                 PatchApplier applier = new PatchApplier(progress, patchLogger);
                 databaseConfigs = applier.ApplyPatches(patchList);
 
+                stopwatch.Stop();
                 StatusUpdate(progress);
 
                 patchLogger.Info("Done patching");
