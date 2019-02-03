@@ -46,15 +46,17 @@ namespace ModuleManager
 
         private const float TIME_TO_WAIT_FOR_LOGS = 0.05f;
 
-        private IBasicLogger logger;
+        private readonly IEnumerable<ModListGenerator.ModAddedByAssembly> modsAddedByAssemblies;
+        private readonly IBasicLogger logger;
 
         public static void AddPostPatchCallback(ModuleManagerPostPatchCallback callback)
         {
             PostPatchLoader.AddPostPatchCallback(callback);
         }
 
-        public MMPatchLoader(IBasicLogger logger)
+        public MMPatchLoader(IEnumerable<ModListGenerator.ModAddedByAssembly> modsAddedByAssemblies, IBasicLogger logger)
         {
+            this.modsAddedByAssemblies = modsAddedByAssemblies ?? throw new ArgumentNullException(nameof(modsAddedByAssemblies));
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -100,7 +102,7 @@ namespace ModuleManager
                 IPatchProgress progress = new PatchProgress(patchLogger);
                 status = "Pre patch init";
                 patchLogger.Info(status);
-                IEnumerable<string> mods = ModListGenerator.GenerateModList(progress, patchLogger);
+                IEnumerable<string> mods = ModListGenerator.GenerateModList(modsAddedByAssemblies, progress, patchLogger);
 
                 // If we don't use the cache then it is best to clean the PartDatabase.cfg
                 if (!keepPartDB && File.Exists(partDatabasePath))
@@ -311,6 +313,12 @@ namespace ModuleManager
                 string path = dll.url + "/" + dll.name;
                 byte[] pathBytes = Encoding.UTF8.GetBytes(path);
                 sha.TransformBlock(pathBytes, 0, pathBytes.Length, pathBytes, 0);
+            }
+
+            foreach (ModListGenerator.ModAddedByAssembly mod in modsAddedByAssemblies)
+            {
+                byte[] modBytes = Encoding.UTF8.GetBytes(mod.modName);
+                sha.TransformBlock(modBytes, 0, modBytes.Length, modBytes, 0);
             }
 
             byte[] godsFinalMessageToHisCreation = Encoding.UTF8.GetBytes("We apologize for the inconvenience.");

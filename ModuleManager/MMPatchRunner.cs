@@ -45,12 +45,17 @@ namespace ModuleManager
                 }
             });
 
-            // Wait for game database to be initialized for the 2nd time
+            // Wait for game database to be initialized for the 2nd time and wait for any plugins to initialize
             yield return null;
+            yield return null;
+
+            IBasicLogger mmLogger = new QueueLogger(mmLogQueue);
+
+            IEnumerable<ModListGenerator.ModAddedByAssembly> modsAddedByAssemblies = ModListGenerator.GetAdditionalModsFromStaticMethods(mmLogger);
 
             IEnumerable<IProtoUrlConfig> databaseConfigs = null;
 
-            MMPatchLoader patchLoader = new MMPatchLoader(new QueueLogger(mmLogQueue));
+            MMPatchLoader patchLoader = new MMPatchLoader(modsAddedByAssemblies, mmLogger);
 
             ITaskStatus patchingThreadStatus = BackgroundTask.Start(delegate
             {

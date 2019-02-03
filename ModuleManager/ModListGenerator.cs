@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Diagnostics;
 using System.Reflection;
+using UnityEngine;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
 using ModuleManager.Utils;
@@ -14,7 +15,7 @@ namespace ModuleManager
 {
     public static class ModListGenerator
     {
-        public static IEnumerable<string> GenerateModList(IPatchProgress progress, IBasicLogger logger)
+        public static IEnumerable<string> GenerateModList(IEnumerable<ModAddedByAssembly> modsAddedByAssemblies, IPatchProgress progress, IBasicLogger logger)
         {
             #region List of mods
 
@@ -127,6 +128,17 @@ namespace ModuleManager
                     modListInfo.AppendFormat("  {0}\n", cleanName);
                 }
             }
+
+            modListInfo.Append("Mods added by assemblies:\n");
+            foreach (ModAddedByAssembly mod in modsAddedByAssemblies)
+            {
+                if (!mods.Contains(mod.modName, StringComparer.OrdinalIgnoreCase))
+                {
+                    mods.Add(mod.modName);
+                    modListInfo.AppendFormat("  {0}\n", mod);
+                }
+            }
+
             logger.Info(modListInfo.ToString());
 
             mods.Sort();
@@ -134,6 +146,99 @@ namespace ModuleManager
             #endregion List of mods
 
             return mods;
+        }
+
+        public class ModAddedByAssembly
+        {
+            public readonly string modName;
+            public readonly string assemblyName;
+
+            public ModAddedByAssembly(string modName, string assemblyName)
+            {
+                this.modName = modName ?? throw new ArgumentNullException(nameof(modName));
+                this.assemblyName = assemblyName ?? throw new ArgumentNullException(nameof(assemblyName));
+            }
+
+            public override string ToString()
+            {
+                return $"{modName} (added by {assemblyName})";
+            }
+        }
+
+        public static IEnumerable<ModAddedByAssembly> GetAdditionalModsFromStaticMethods(IBasicLogger logger)
+        {
+            List<ModAddedByAssembly> result = new List<ModAddedByAssembly>();
+            foreach (Assembly ass in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    foreach (Type type in ass.GetTypes())
+                    {
+                        MethodInfo method = type.GetMethod("ModuleManagerAddToModList", BindingFlags.Public | BindingFlags.Static);
+
+                        if (method != null && method.GetParameters().Length == 0 && typeof(IEnumerable<string>).IsAssignableFrom(method.ReturnType))
+                        {
+                            string methodName = $"{ass.GetName().Name}.{type.Name}.{method.Name}()";
+                            try
+                            {
+                                logger.Info("Calling " + methodName);
+                                IEnumerable<string> modsToAdd = (IEnumerable<string>)method.Invoke(null, null);
+
+                                if (modsToAdd == null)
+                                {
+                                    logger.Error("ModuleManagerAddToModList returned null: " + methodName);
+                                    continue;
+                                }
+
+                                foreach (string mod in modsToAdd)
+                                {
+                                    result.Add(new ModAddedByAssembly(mod, ass.GetName().Name));
+                                }
+                            }
+                            catch (Exception e)
+                            {
+                                logger.Exception("Exception while calling " + methodName, e);
+                            }
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    logger.Exception("Add to mod list threw an exception in loading " + ass.FullName, e);
+                }
+            }
+
+            foreach (MonoBehaviour obj in UnityEngine.Object.FindObjectsOfType<MonoBehaviour>())
+            {
+                MethodInfo method = obj.GetType().GetMethod("ModuleManagerAddToModList", BindingFlags.Public | BindingFlags.Instance);
+
+                if (method != null && method.GetParameters().Length == 0 && typeof(IEnumerable<string>).IsAssignableFrom(method.ReturnType))
+                {
+                    string methodName = $"{obj.GetType().Name}.{method.Name}()";
+                    try
+                    {
+                        logger.Info("Calling " + methodName);
+                        IEnumerable<string> modsToAdd = (IEnumerable<string>)method.Invoke(obj, null);
+
+                        if (modsToAdd == null)
+                        {
+                            logger.Error("ModuleManagerAddToModList returned null: " + methodName);
+                            continue;
+                        }
+
+                        foreach (string mod in modsToAdd)
+                        {
+                            result.Add(new ModAddedByAssembly(mod, obj.GetType().Assembly.GetName().Name));
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        logger.Exception("Exception while calling " + methodName, e);
+                    }
+                }
+            }
+
+            return result;
         }
     }
 }
