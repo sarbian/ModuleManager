@@ -108,6 +108,7 @@
     <Compile Include="Patches\PatchCompilerTest.cs" />
     <Compile Include="Patches\ProtoPatchBuilderTest.cs" />
     <Compile Include="PatchListTest.cs" />
+    <Compile Include="ProtoUrlConfigTest.cs" />
     <Compile Include="Collections\ArrayEnumeratorTest.cs" />
     <Compile Include="Collections\ImmutableStackTest.cs" />
     <Compile Include="Collections\KeyValueCacheTest.cs" />
