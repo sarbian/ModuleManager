@@ -70,5 +70,18 @@ namespace ModuleManagerTests
 
             Assert.Equal("abc/def.cfg/SOME_NODE", protoUrlConfig.FullUrl);
         }
+
+        [Fact]
+        public void TestFullUrl__NameValue()
+        {
+            ConfigNode node = new TestConfigNode("SOME_NODE")
+            {
+                { "name", "some_value" },
+            };
+
+            ProtoUrlConfig protoUrlConfig = new ProtoUrlConfig(UrlBuilder.CreateFile("abc/def.cfg"), node);
+
+            Assert.Equal("abc/def.cfg/SOME_NODE[some_value]", protoUrlConfig.FullUrl);
+        }
     }
 }

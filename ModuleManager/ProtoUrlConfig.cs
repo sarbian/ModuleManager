@@ -29,6 +29,9 @@ namespace ModuleManager
             Node = node ?? throw new ArgumentNullException(nameof(node));
             FileUrl = UrlFile.url + '.' + urlFile.fileExtension;
             FullUrl = FileUrl + '/' + Node.name;
+
+            if (node.GetValue("name") is string nameValue)
+                FullUrl += '[' + nameValue + ']';
         }
     }
 }
