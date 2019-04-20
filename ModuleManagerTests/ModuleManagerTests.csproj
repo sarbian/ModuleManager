@@ -110,6 +110,7 @@
     <Compile Include="PatchListTest.cs" />
     <Compile Include="Collections\ArrayEnumeratorTest.cs" />
     <Compile Include="Collections\ImmutableStackTest.cs" />
+    <Compile Include="Collections\KeyValueCacheTest.cs" />
     <Compile Include="CommandParserTest.cs" />
     <Compile Include="DummyTest.cs" />
     <Compile Include="Extensions\ConfigNodeExtensionsTest.cs" />

@@ -38,6 +38,7 @@
     <Compile Include="Cats\CatOrbiter.cs" />
     <Compile Include="Collections\ArrayEnumerator.cs" />
     <Compile Include="Collections\ImmutableStack.cs" />
+    <Compile Include="Collections\KeyValueCache.cs" />
     <Compile Include="Command.cs" />
     <Compile Include="CommandParser.cs" />
     <Compile Include="Extensions\ConfigNodeExtensions.cs" />
