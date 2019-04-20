@@ -37,7 +37,7 @@ namespace ModuleManager
 
         public static bool keepPartDB = false;
 
-        private static readonly Dictionary<string, Regex> regexCache = new Dictionary<string, Regex>();
+        private static readonly KeyValueCache<string, Regex> regexCache = new KeyValueCache<string, Regex>();
 
         private string configSha;
         private Dictionary<string, string> filesSha = new Dictionary<string, string>();
@@ -1447,14 +1447,10 @@ namespace ModuleManager
                         {
                             string[] split = value.Split(value[0]);
 
-                            Regex replace;
-                            if (regexCache.ContainsKey(split[1]))
-                                replace = regexCache[split[1]];
-                            else
+                            Regex replace = regexCache.Fetch(split[1], delegate
                             {
-                                replace = new Regex(split[1], RegexOptions.None);
-                                regexCache.Add(split[1], replace);
-                            }
+                                return new Regex(split[1]);
+                            });
 
                             value = replace.Replace(oValue, split[2]);
                         }
@@ -1659,11 +1655,10 @@ namespace ModuleManager
                 return true;
             string pattern = "^" + Regex.Escape(wildcard).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
 
-            if (!regexCache.TryGetValue(pattern, out Regex regex))
+            Regex regex = regexCache.Fetch(pattern, delegate
             {
-                regex = new Regex(pattern);
-                regexCache.Add(pattern, regex);
-            }
+                return new Regex(pattern);
+            });
             return regex.IsMatch(s);
         }
 
