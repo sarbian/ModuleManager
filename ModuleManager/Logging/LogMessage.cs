@@ -6,6 +6,7 @@ namespace ModuleManager.Logging
     public class LogMessage : ILogMessage
     {
         private const string DATETIME_FORMAT_STRING = "yyyy-MM-dd HH:mm:ss.fff";
+        private const string DATETIME_FORMAT_STRING = "HH:mm:ss.fff";
 
         public LogType LogType { get; }
         public string Message { get; }
