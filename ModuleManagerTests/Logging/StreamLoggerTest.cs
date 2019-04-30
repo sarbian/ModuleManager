@@ -147,12 +147,13 @@ namespace ModuleManagerTests.Logging
         [Fact]
         public void TestLog__Exception()
         {
-            byte[] bytes = new byte[50];
+            Exception ex = new Exception("something went wrong");
+            byte[] bytes = new byte[100];
             using (MemoryStream stream = new MemoryStream(bytes, true))
             {
                 using (StreamLogger streamLogger = new StreamLogger(stream))
                 {
-                    streamLogger.Log(LogType.Exception, "a message");
+                    streamLogger.Exception("a message", ex);
                 }
             }
 
@@ -162,7 +163,31 @@ namespace ModuleManagerTests.Logging
                 {
                     string result = reader.ReadToEnd();
                     Assert.Contains("[EXC ", result);
-                    Assert.Contains("] a message", result);
+                    Assert.Contains("] a message: " + ex.ToString(), result);
+                }
+            }
+        }
+
+        [Fact]
+        public void TestLog__Exception__NullMessage()
+        {
+            Exception ex = new Exception("something went wrong");
+            byte[] bytes = new byte[100];
+            using (MemoryStream stream = new MemoryStream(bytes, true))
+            {
+                using (StreamLogger streamLogger = new StreamLogger(stream))
+                {
+                    streamLogger.Exception(null, ex);
+                }
+            }
+
+            using (MemoryStream stream = new MemoryStream(bytes, false))
+            {
+                using (StreamReader reader = new StreamReader(stream))
+                {
+                    string result = reader.ReadToEnd();
+                    Assert.Contains("[EXC ", result);
+                    Assert.Contains("] " + ex.ToString(), result);
                 }
             }
         }

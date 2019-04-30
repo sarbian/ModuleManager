@@ -42,7 +42,9 @@ namespace ModuleManager.Logging
 
         public void Exception(string message, Exception exception)
         {
-            Log(LogType.Exception, exception?.ToString() ?? "<null exception>");
+            if (!string.IsNullOrEmpty(message)) message += ": ";
+            message += exception?.ToString() ?? "<null exception>";
+            Log(LogType.Exception, message);
         }
 
         public void Dispose()
