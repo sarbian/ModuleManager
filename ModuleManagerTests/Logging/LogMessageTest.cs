@@ -1,5 +1,6 @@
 ﻿using System;
 using Xunit;
+using NSubstitute;
 using UnityEngine;
 using ModuleManager.Logging;
 
@@ -16,6 +17,39 @@ namespace ModuleManagerTests.Logging
             });
 
             Assert.Equal("message", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestConstructor__FromOtherMessage()
+        {
+            ILogMessage logMessage = Substitute.For<ILogMessage>();
+            logMessage.LogType.Returns(LogType.Log);
+            logMessage.Message.Returns("the old message");
+            LogMessage newLogMessage = new LogMessage(logMessage, "a new message");
+            Assert.Equal(LogType.Log, newLogMessage.LogType);
+            Assert.Equal("a new message", newLogMessage.Message);
+        }
+
+        [Fact]
+        public void TestConstructor__FromOtherMessage__LogMessageNull()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                new LogMessage(null, "a new message");
+            });
+
+            Assert.Equal("logMessage", ex.ParamName);
+        }
+
+        [Fact]
+        public void TestConstructor__FromOtherMessage__NewMessageNull()
+        {
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                new LogMessage(Substitute.For<ILogMessage>(), null);
+            });
+
+            Assert.Equal("newMessage", ex.ParamName);
         }
 
         [Fact]

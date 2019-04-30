@@ -17,7 +17,7 @@ namespace ModuleManager.Logging
         public void Log(ILogMessage message)
         {
             if (message == null) throw new ArgumentNullException(nameof(message));
-            logger.Log(new LogMessage(message.LogType, prefix + message.Message));
+            logger.Log(new LogMessage(message, prefix + message.Message));
         }
     }
 }

@@ -16,6 +16,13 @@ namespace ModuleManager.Logging
             Message = message ?? throw new ArgumentNullException(nameof(message));
         }
 
+        public LogMessage(ILogMessage logMessage, string newMessage)
+        {
+            if (logMessage == null) throw new ArgumentNullException(nameof(logMessage));
+            LogType = logMessage.LogType;
+            Message = newMessage ?? throw new ArgumentNullException(nameof(newMessage));
+        }
+
         public string ToLogString()
         {
             string prefix;
