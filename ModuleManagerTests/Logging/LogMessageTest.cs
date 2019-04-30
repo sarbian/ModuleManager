@@ -9,6 +9,16 @@ namespace ModuleManagerTests.Logging
     public class LogMessageTest
     {
         [Fact]
+        public void TestConstructor()
+        {
+            LogMessage logMessage = new LogMessage(LogType.Log, "a message");
+            Assert.Equal(LogType.Log, logMessage.LogType);
+            Assert.True(logMessage.Timestamp <= DateTime.Now);
+            Assert.True(logMessage.Timestamp > DateTime.Now - new TimeSpan(0, 0, 5));
+            Assert.Equal("a message", logMessage.Message);
+        }
+
+        [Fact]
         public void TestConstructor__NullMessage()
         {
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
@@ -25,8 +35,10 @@ namespace ModuleManagerTests.Logging
             ILogMessage logMessage = Substitute.For<ILogMessage>();
             logMessage.LogType.Returns(LogType.Log);
             logMessage.Message.Returns("the old message");
+            logMessage.Timestamp.Returns(new DateTime(2000, 1, 1, 12, 34, 45, 678));
             LogMessage newLogMessage = new LogMessage(logMessage, "a new message");
             Assert.Equal(LogType.Log, newLogMessage.LogType);
+            Assert.Equal(logMessage.Timestamp, newLogMessage.Timestamp);
             Assert.Equal("a new message", newLogMessage.Message);
         }
 
@@ -99,6 +111,16 @@ namespace ModuleManagerTests.Logging
         {
             LogMessage message = new LogMessage(LogType.Log, "everything is ok");
             Assert.Equal("[ModuleManager.Logging.LogMessage LogType=Log Message=everything is ok]", message.ToString());
+        }
+
+        [Fact]
+        public void TestToLogMessage__Timestamp()
+        {
+            ILogMessage logMessage = Substitute.For<ILogMessage>();
+            logMessage.LogType.Returns(LogType.Log);
+            logMessage.Timestamp.Returns(new DateTime(2000, 1, 1, 12, 34, 56, 789));
+            LogMessage message = new LogMessage(logMessage, "everything is ok");
+            Assert.Equal("[LOG 12:34:56.789] everything is ok", message.ToLogString());
         }
     }
 }

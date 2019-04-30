@@ -5,15 +5,16 @@ namespace ModuleManager.Logging
 {
     public class LogMessage : ILogMessage
     {
-        private const string DATETIME_FORMAT_STRING = "yyyy-MM-dd HH:mm:ss.fff";
         private const string DATETIME_FORMAT_STRING = "HH:mm:ss.fff";
 
         public LogType LogType { get; }
+        public DateTime Timestamp { get; }
         public string Message { get; }
 
         public LogMessage(LogType logType, string message)
         {
             LogType = logType;
+            Timestamp = DateTime.Now;
             Message = message ?? throw new ArgumentNullException(nameof(message));
         }
 
@@ -21,6 +22,7 @@ namespace ModuleManager.Logging
         {
             if (logMessage == null) throw new ArgumentNullException(nameof(logMessage));
             LogType = logMessage.LogType;
+            Timestamp = logMessage.Timestamp;
             Message = newMessage ?? throw new ArgumentNullException(nameof(newMessage));
         }
 
@@ -40,7 +42,7 @@ namespace ModuleManager.Logging
             else
                 prefix = "???";
             
-            return $"[{prefix} {DateTime.Now.ToString(DATETIME_FORMAT_STRING)}] {Message}";
+            return $"[{prefix} {Timestamp.ToString(DATETIME_FORMAT_STRING)}] {Message}";
         }
 
         public override string ToString()

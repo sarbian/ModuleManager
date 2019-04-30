@@ -1,7 +1,7 @@
 ﻿using System;
 using Xunit;
 using NSubstitute;
-using ModuleManager.Extensions;
+using UnityEngine;
 using ModuleManager.Logging;
 
 namespace ModuleManagerTests.Logging
@@ -53,17 +53,18 @@ namespace ModuleManagerTests.Logging
         [Fact]
         public void TestLog()
         {
-            logger.Info("well hi there");
+            ILogMessage logMessage = Substitute.For<ILogMessage>();
+            logMessage.LogType.Returns(LogType.Log);
+            logMessage.Message.Returns("well hi there");
+            logMessage.Timestamp.Returns(new DateTime(2000, 1, 1, 12, 34, 45, 678));
 
-            innerLogger.AssertInfo("[MyMod] well hi there");
-        }
+            logger.Log(logMessage);
 
-        [Fact]
-        public void TestLog__Warning()
-        {
-            logger.Warning("I'm warning you");
-
-            innerLogger.AssertWarning("[MyMod] I'm warning you");
+            innerLogger.Received().Log(Arg.Is<ILogMessage>(msg =>
+                msg.LogType == LogType.Log &&
+                msg.Timestamp == logMessage.Timestamp &&
+                msg.Message == "[MyMod] well hi there"
+            ));
         }
 
         [Fact]
