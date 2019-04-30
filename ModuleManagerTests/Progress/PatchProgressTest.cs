@@ -36,8 +36,8 @@ namespace ModuleManagerTests
 
             progress2.ApplyingUpdate(original, patch1);
             Assert.Equal(1, progress.Counter.patchedNodes);
-            logger.DidNotReceiveWithAnyArgs().Log(LogType.Log, null);
-            logger2.Received().Log(LogType.Log, "Applying update ghi/jkl/@SOME_NODE to abc/def.cfg/SOME_NODE");
+            logger.AssertNoLog();
+            logger2.AssertInfo("Applying update ghi/jkl/@SOME_NODE to abc/def.cfg/SOME_NODE");
         }
 
         [Fact]
@@ -62,11 +62,11 @@ namespace ModuleManagerTests
 
             progress.ApplyingUpdate(original, patch1);
             Assert.Equal(1, progress.Counter.patchedNodes);
-            logger.Received().Log(LogType.Log, "Applying update ghi/jkl/@SOME_NODE to abc/def.cfg/SOME_NODE");
+            logger.AssertInfo("Applying update ghi/jkl/@SOME_NODE to abc/def.cfg/SOME_NODE");
 
             progress.ApplyingUpdate(original, patch2);
             Assert.Equal(2, progress.Counter.patchedNodes);
-            logger.Received().Log(LogType.Log, "Applying update pqr/stu/@SOME_NODE to abc/def.cfg/SOME_NODE");
+            logger.AssertInfo("Applying update pqr/stu/@SOME_NODE to abc/def.cfg/SOME_NODE");
         }
 
         [Fact]
@@ -81,11 +81,11 @@ namespace ModuleManagerTests
 
             progress.ApplyingCopy(original, patch1);
             Assert.Equal(1, progress.Counter.patchedNodes);
-            logger.Received().Log(LogType.Log, "Applying copy ghi/jkl/+SOME_NODE to abc/def.cfg/SOME_NODE");
+            logger.AssertInfo("Applying copy ghi/jkl/+SOME_NODE to abc/def.cfg/SOME_NODE");
 
             progress.ApplyingCopy(original, patch2);
             Assert.Equal(2, progress.Counter.patchedNodes);
-            logger.Received().Log(LogType.Log, "Applying copy pqr/stu/+SOME_NODE to abc/def.cfg/SOME_NODE");
+            logger.AssertInfo("Applying copy pqr/stu/+SOME_NODE to abc/def.cfg/SOME_NODE");
         }
 
         [Fact]
@@ -100,11 +100,11 @@ namespace ModuleManagerTests
 
             progress.ApplyingDelete(original, patch1);
             Assert.Equal(1, progress.Counter.patchedNodes);
-            logger.Received().Log(LogType.Log, "Applying delete ghi/jkl/!SOME_NODE to abc/def.cfg/SOME_NODE");
+            logger.AssertInfo("Applying delete ghi/jkl/!SOME_NODE to abc/def.cfg/SOME_NODE");
 
             progress.ApplyingDelete(original, patch2);
             Assert.Equal(2, progress.Counter.patchedNodes);
-            logger.Received().Log(LogType.Log, "Applying delete pqr/stu/!SOME_NODE to abc/def.cfg/SOME_NODE");
+            logger.AssertInfo("Applying delete pqr/stu/!SOME_NODE to abc/def.cfg/SOME_NODE");
         }
 
         [Fact]
@@ -131,11 +131,11 @@ namespace ModuleManagerTests
 
             progress.NeedsUnsatisfiedRoot(config1);
             Assert.Equal(1, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting root node in file abc/def node: SOME_NODE as it can't satisfy its NEEDS");
+            logger.AssertInfo("Deleting root node in file abc/def node: SOME_NODE as it can't satisfy its NEEDS");
 
             progress.NeedsUnsatisfiedRoot(config2);
             Assert.Equal(2, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its NEEDS");
+            logger.AssertInfo("Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its NEEDS");
         }
 
         [Fact]
@@ -148,11 +148,11 @@ namespace ModuleManagerTests
 
             progress.NeedsUnsatisfiedNode(config1, "SOME/NODE/PATH/SOME_CHILD_NODE");
             Assert.Equal(0, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting node in file abc/def subnode: SOME/NODE/PATH/SOME_CHILD_NODE as it can't satisfy its NEEDS");
+            logger.AssertInfo("Deleting node in file abc/def subnode: SOME/NODE/PATH/SOME_CHILD_NODE as it can't satisfy its NEEDS");
 
             progress.NeedsUnsatisfiedNode(config2, "SOME/NODE/PATH/SOME_OTHER_CHILD_NODE");
             Assert.Equal(0, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting node in file ghi/jkl subnode: SOME/NODE/PATH/SOME_OTHER_CHILD_NODE as it can't satisfy its NEEDS");
+            logger.AssertInfo("Deleting node in file ghi/jkl subnode: SOME/NODE/PATH/SOME_OTHER_CHILD_NODE as it can't satisfy its NEEDS");
         }
 
         [Fact]
@@ -165,11 +165,11 @@ namespace ModuleManagerTests
 
             progress.NeedsUnsatisfiedValue(config1, "SOME/NODE/PATH/some_value");
             Assert.Equal(0, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting value in file abc/def value: SOME/NODE/PATH/some_value as it can't satisfy its NEEDS");
+            logger.AssertInfo("Deleting value in file abc/def value: SOME/NODE/PATH/some_value as it can't satisfy its NEEDS");
 
             progress.NeedsUnsatisfiedValue(config2, "SOME/NODE/PATH/some_other_value");
             Assert.Equal(0, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting value in file ghi/jkl value: SOME/NODE/PATH/some_other_value as it can't satisfy its NEEDS");
+            logger.AssertInfo("Deleting value in file ghi/jkl value: SOME/NODE/PATH/some_other_value as it can't satisfy its NEEDS");
         }
 
         [Fact]
@@ -182,11 +182,11 @@ namespace ModuleManagerTests
 
             progress.NeedsUnsatisfiedBefore(config1);
             Assert.Equal(1, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting root node in file abc/def node: SOME_NODE as it can't satisfy its BEFORE");
+            logger.AssertInfo("Deleting root node in file abc/def node: SOME_NODE as it can't satisfy its BEFORE");
 
             progress.NeedsUnsatisfiedBefore(config2);
             Assert.Equal(2, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its BEFORE");
+            logger.AssertInfo("Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its BEFORE");
         }
 
         [Fact]
@@ -199,11 +199,11 @@ namespace ModuleManagerTests
 
             progress.NeedsUnsatisfiedFor(config1);
             Assert.Equal(1, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Warning, "Deleting root node in file abc/def node: SOME_NODE as it can't satisfy its FOR (this shouldn't happen)");
+            logger.AssertWarning("Deleting root node in file abc/def node: SOME_NODE as it can't satisfy its FOR (this shouldn't happen)");
 
             progress.NeedsUnsatisfiedFor(config2);
             Assert.Equal(2, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Warning, "Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its FOR (this shouldn't happen)");
+            logger.AssertWarning("Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its FOR (this shouldn't happen)");
         }
 
         [Fact]
@@ -216,11 +216,11 @@ namespace ModuleManagerTests
 
             progress.NeedsUnsatisfiedAfter(config1);
             Assert.Equal(1, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting root node in file abc/def node: SOME_NODE as it can't satisfy its AFTER");
+            logger.AssertInfo("Deleting root node in file abc/def node: SOME_NODE as it can't satisfy its AFTER");
 
             progress.NeedsUnsatisfiedAfter(config2);
             Assert.Equal(2, progress.Counter.needsUnsatisfied);
-            logger.Received().Log(LogType.Log, "Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its AFTER");
+            logger.AssertInfo("Deleting root node in file ghi/jkl node: SOME_OTHER_NODE as it can't satisfy its AFTER");
         }
 
         [Fact]
@@ -233,7 +233,7 @@ namespace ModuleManagerTests
 
             progress.PassStarted(pass1);
 
-            logger.Received().Log(LogType.Log, ":SOME_PASS pass");
+            logger.AssertInfo(":SOME_PASS pass");
             onEvent.Received()(pass1);
         }
 
@@ -250,7 +250,7 @@ namespace ModuleManagerTests
 
             Assert.Equal("pass", ex.ParamName);
 
-            logger.DidNotReceiveWithAnyArgs().Log(LogType.Log, null);
+            logger.AssertNoLog();
             onEvent.DidNotReceiveWithAnyArgs()(null);
         }
 
@@ -265,12 +265,12 @@ namespace ModuleManagerTests
             progress.Warning(config1, "I'm warning you");
             Assert.Equal(1, progress.Counter.warnings);
             Assert.Equal(1, progress.Counter.warningFiles["abc/def.cfg"]);
-            logger.Received().Log(LogType.Warning, "I'm warning you");
+            logger.AssertWarning("I'm warning you");
 
             progress.Warning(config2, "You should probably pay attention to this");
             Assert.Equal(2, progress.Counter.warnings);
             Assert.Equal(2, progress.Counter.warningFiles["abc/def.cfg"]);
-            logger.Received().Log(LogType.Warning, "You should probably pay attention to this");
+            logger.AssertWarning("You should probably pay attention to this");
         }
 
         [Fact]
@@ -297,12 +297,12 @@ namespace ModuleManagerTests
             progress.Error(config1, "An error message no one is going to read");
             Assert.Equal(1, progress.Counter.errors);
             Assert.Equal(1, progress.Counter.errorFiles["abc/def.cfg"]);
-            logger.Received().Log(LogType.Error, "An error message no one is going to read");
+            logger.AssertError("An error message no one is going to read");
 
             progress.Error(config2, "Maybe someone will read this one");
             Assert.Equal(2, progress.Counter.errors);
             Assert.Equal(2, progress.Counter.errorFiles["abc/def.cfg"]);
-            logger.Received().Log(LogType.Error, "Maybe someone will read this one");
+            logger.AssertError("Maybe someone will read this one");
         }
 
         [Fact]
@@ -315,11 +315,11 @@ namespace ModuleManagerTests
 
             progress.Exception("An exception was thrown", e1);
             Assert.Equal(1, progress.Counter.exceptions);
-            logger.Received().Exception("An exception was thrown", e1);
+            logger.AssertException("An exception was thrown", e1);
 
             progress.Exception("An exception was tossed", e2);
             Assert.Equal(2, progress.Counter.exceptions);
-            logger.Received().Exception("An exception was tossed", e2);
+            logger.AssertException("An exception was tossed", e2);
         }
 
         [Fact]
@@ -336,12 +336,12 @@ namespace ModuleManagerTests
             progress.Exception(config1, "An exception was thrown", e1);
             Assert.Equal(1, progress.Counter.exceptions);
             Assert.Equal(1, progress.Counter.errorFiles["abc/def.cfg"]);
-            logger.Received().Exception("An exception was thrown", e1);
+            logger.AssertException("An exception was thrown", e1);
 
             progress.Exception(config2, "An exception was tossed", e2);
             Assert.Equal(2, progress.Counter.exceptions);
             Assert.Equal(2, progress.Counter.errorFiles["abc/def.cfg"]);
-            logger.Received().Exception("An exception was tossed", e2);
+            logger.AssertException("An exception was tossed", e2);
         }
 
         [Fact]

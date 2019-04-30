@@ -1,13 +1,10 @@
 ﻿using System;
 using System.IO;
-using UnityEngine;
 
 namespace ModuleManager.Logging
 {
     public class StreamLogger : IBasicLogger, IDisposable
     {
-        private const string DATETIME_FORMAT_STRING = "yyyy-MM-dd HH:mm:ss.fff";
-
         private readonly Stream stream;
         private readonly StreamWriter streamWriter;
         private bool disposed = false;
@@ -19,32 +16,12 @@ namespace ModuleManager.Logging
             streamWriter = new StreamWriter(stream);
         }
 
-        public void Log(LogType logType, string message)
+        public void Log(ILogMessage message)
         {
             if (disposed) throw new InvalidOperationException("Object has already been disposed");
+            if (message == null) throw new ArgumentNullException(nameof(message));
 
-            string prefix;
-            if (logType == LogType.Log)
-                prefix = "LOG";
-            else if (logType == LogType.Warning)
-                prefix = "WRN";
-            else if (logType == LogType.Error)
-                prefix = "ERR";
-            else if (logType == LogType.Assert)
-                prefix = "AST";
-            else if (logType == LogType.Exception)
-                prefix = "EXC";
-            else
-                prefix = "UNK";
-
-            streamWriter.WriteLine("[{0} {1}] {2}", prefix, DateTime.Now.ToString(DATETIME_FORMAT_STRING), message);
-        }
-
-        public void Exception(string message, Exception exception)
-        {
-            if (!string.IsNullOrEmpty(message)) message += ": ";
-            message += exception?.ToString() ?? "<null exception>";
-            Log(LogType.Exception, message);
+            streamWriter.WriteLine(message.ToLogString());
         }
 
         public void Dispose()

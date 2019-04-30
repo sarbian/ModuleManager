@@ -73,12 +73,12 @@ namespace ModuleManagerTests.Logging
 
             Received.InOrder(delegate
             {
-                message1.LogTo(logger);
-                message2.LogTo(logger);
-                message3.LogTo(logger);
-                message4.LogTo(logger);
-                message5.LogTo(logger);
-                message6.LogTo(logger);
+                logger.Log(message1);
+                logger.Log(message2);
+                logger.Log(message3);
+                logger.Log(message4);
+                logger.Log(message5);
+                logger.Log(message6);
             });
         }
 

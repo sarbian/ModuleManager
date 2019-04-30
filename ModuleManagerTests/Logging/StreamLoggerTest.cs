@@ -45,7 +45,7 @@ namespace ModuleManagerTests.Logging
 
                 InvalidOperationException ex = Assert.Throws<InvalidOperationException>(delegate
                 {
-                    streamLogger.Log(LogType.Log, "a message");
+                    streamLogger.Log(Substitute.For<ILogMessage>());
                 });
 
                 Assert.Contains("Object has already been disposed", ex.Message);
@@ -53,14 +53,16 @@ namespace ModuleManagerTests.Logging
         }
 
         [Fact]
-        public void TestLog__Log()
+        public void TestLog()
         {
-            byte[] bytes = new byte[50];
+            ILogMessage message = Substitute.For<ILogMessage>();
+            message.ToLogString().Returns("[OMG wtf] bbq");
+            byte[] bytes = new byte[15];
             using (MemoryStream stream = new MemoryStream(bytes, true))
             {
                 using (StreamLogger streamLogger = new StreamLogger(stream))
                 {
-                    streamLogger.Log(LogType.Log, "a message");
+                    streamLogger.Log(message);
                 }
             }
 
@@ -68,150 +70,25 @@ namespace ModuleManagerTests.Logging
             {
                 using (StreamReader reader = new StreamReader(stream))
                 {
-                    string result = reader.ReadToEnd();
-                    Assert.Contains("[LOG ", result);
-                    Assert.Contains("] a message", result);
+                    string result = reader.ReadToEnd().Trim();
+                    Assert.Equal("[OMG wtf] bbq", result);
                 }
             }
         }
 
         [Fact]
-        public void TestLog__Assert()
+        public void TestLog__MessageNull()
         {
-            byte[] bytes = new byte[50];
-            using (MemoryStream stream = new MemoryStream(bytes, true))
+            using (MemoryStream stream = new MemoryStream(new byte[0], true))
             {
-                using (StreamLogger streamLogger = new StreamLogger(stream))
-                {
-                    streamLogger.Log(LogType.Assert, "a message");
-                }
-            }
+                StreamLogger streamLogger = new StreamLogger(stream);
 
-            using (MemoryStream stream = new MemoryStream(bytes, false))
-            {
-                using (StreamReader reader = new StreamReader(stream))
+                ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
                 {
-                    string result = reader.ReadToEnd();
-                    Assert.Contains("[AST ", result);
-                    Assert.Contains("] a message", result);
-                }
-            }
-        }
+                    streamLogger.Log(null);
+                });
 
-        [Fact]
-        public void TestLog__Warning()
-        {
-            byte[] bytes = new byte[50];
-            using (MemoryStream stream = new MemoryStream(bytes, true))
-            {
-                using (StreamLogger streamLogger = new StreamLogger(stream))
-                {
-                    streamLogger.Log(LogType.Warning, "a message");
-                }
-            }
-
-            using (MemoryStream stream = new MemoryStream(bytes, false))
-            {
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    string result = reader.ReadToEnd();
-                    Assert.Contains("[WRN ", result);
-                    Assert.Contains("] a message", result);
-                }
-            }
-        }
-
-        [Fact]
-        public void TestLog__Error()
-        {
-            byte[] bytes = new byte[50];
-            using (MemoryStream stream = new MemoryStream(bytes, true))
-            {
-                using (StreamLogger streamLogger = new StreamLogger(stream))
-                {
-                    streamLogger.Log(LogType.Error, "a message");
-                }
-            }
-
-            using (MemoryStream stream = new MemoryStream(bytes, false))
-            {
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    string result = reader.ReadToEnd();
-                    Assert.Contains("[ERR ", result);
-                    Assert.Contains("] a message", result);
-                }
-            }
-        }
-
-        [Fact]
-        public void TestLog__Exception()
-        {
-            Exception ex = new Exception("something went wrong");
-            byte[] bytes = new byte[100];
-            using (MemoryStream stream = new MemoryStream(bytes, true))
-            {
-                using (StreamLogger streamLogger = new StreamLogger(stream))
-                {
-                    streamLogger.Exception("a message", ex);
-                }
-            }
-
-            using (MemoryStream stream = new MemoryStream(bytes, false))
-            {
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    string result = reader.ReadToEnd();
-                    Assert.Contains("[EXC ", result);
-                    Assert.Contains("] a message: " + ex.ToString(), result);
-                }
-            }
-        }
-
-        [Fact]
-        public void TestLog__Exception__NullMessage()
-        {
-            Exception ex = new Exception("something went wrong");
-            byte[] bytes = new byte[100];
-            using (MemoryStream stream = new MemoryStream(bytes, true))
-            {
-                using (StreamLogger streamLogger = new StreamLogger(stream))
-                {
-                    streamLogger.Exception(null, ex);
-                }
-            }
-
-            using (MemoryStream stream = new MemoryStream(bytes, false))
-            {
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    string result = reader.ReadToEnd();
-                    Assert.Contains("[EXC ", result);
-                    Assert.Contains("] " + ex.ToString(), result);
-                }
-            }
-        }
-
-        [Fact]
-        public void TestLog__Unknown()
-        {
-            byte[] bytes = new byte[50];
-            using (MemoryStream stream = new MemoryStream(bytes, true))
-            {
-                using (StreamLogger streamLogger = new StreamLogger(stream))
-                {
-                    streamLogger.Log((LogType)1000, "a message");
-                }
-            }
-
-            using (MemoryStream stream = new MemoryStream(bytes, false))
-            {
-                using (StreamReader reader = new StreamReader(stream))
-                {
-                    string result = reader.ReadToEnd();
-                    Assert.Contains("[UNK ", result);
-                    Assert.Contains("] a message", result);
-                }
+                Assert.Equal("message", ex.ParamName);
             }
         }
     }

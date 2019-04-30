@@ -47,13 +47,12 @@
     <Compile Include="Extensions\StringExtensions.cs" />
     <Compile Include="Extensions\UrlConfigExtensions.cs" />
     <Compile Include="FatalErrorHandler.cs" />
-    <Compile Include="Logging\ExceptionMessage.cs" />
     <Compile Include="Logging\StreamLogger.cs" />
     <Compile Include="Logging\IBasicLogger.cs" />
     <Compile Include="Logging\ILogMessage.cs" />
     <Compile Include="Logging\LogSplitter.cs" />
     <Compile Include="Logging\ModLogger.cs" />
-    <Compile Include="Logging\NormalMessage.cs" />
+    <Compile Include="Logging\LogMessage.cs" />
     <Compile Include="Logging\QueueLogger.cs" />
     <Compile Include="Logging\QueueLogRunner.cs" />
     <Compile Include="Collections\MessageQueue.cs" />

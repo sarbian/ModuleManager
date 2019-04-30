@@ -73,12 +73,12 @@ namespace ModuleManagerTests
 
             Received.InOrder(delegate
             {
-                logger.Log(LogType.Log, "Running tests...");
-                logger.Log(LogType.Error, $"Test blah1 failed as expected number of nodes differs expected: 1 found: 2");
-                logger.Log(LogType.Log, testNode1.ToString());
-                logger.Log(LogType.Log, testNode2.ToString());
-                logger.Log(LogType.Log, expectNode.ToString());
-                logger.Log(LogType.Log, "tests complete.");
+                logger.AssertInfo("Running tests...");
+                logger.AssertError($"Test blah1 failed as expected number of nodes differs expected: 1 found: 2");
+                logger.AssertInfo(testNode1.ToString());
+                logger.AssertInfo(testNode2.ToString());
+                logger.AssertInfo(expectNode.ToString());
+                logger.AssertInfo("tests complete.");
             });
 
             Assert.Equal(3, file1.configs.Count);
@@ -131,11 +131,11 @@ namespace ModuleManagerTests
 
             Received.InOrder(delegate
             {
-                logger.Log(LogType.Log, "Running tests...");
-                logger.Log(LogType.Log, "tests complete.");
+                logger.AssertInfo("Running tests...");
+                logger.AssertInfo("tests complete.");
             });
 
-            logger.DidNotReceive().Log(LogType.Error, Arg.Any<string>());
+            logger.AssertNoError();
 
             Assert.Empty(file1.configs);
             Assert.Empty(file2.configs);
@@ -176,9 +176,9 @@ namespace ModuleManagerTests
 
             Received.InOrder(delegate
             {
-                logger.Log(LogType.Log, "Running tests...");
-                logger.Log(LogType.Error, $"Test blah1[0] failed as expected output and actual output differ.\nexpected:\n{expectNode1}\nActually got:\n{testNode1}");
-                logger.Log(LogType.Log, "tests complete.");
+                logger.AssertInfo("Running tests...");
+                logger.AssertError($"Test blah1[0] failed as expected output and actual output differ.\nexpected:\n{expectNode1}\nActually got:\n{testNode1}");
+                logger.AssertInfo("tests complete.");
             });
 
 

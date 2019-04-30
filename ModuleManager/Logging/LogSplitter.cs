@@ -1,5 +1,4 @@
 using System;
-using UnityEngine;
 
 namespace ModuleManager.Logging
 {
@@ -14,16 +13,11 @@ namespace ModuleManager.Logging
             this.logger2 = logger2 ?? throw new ArgumentNullException(nameof(logger2));
         }
 
-        public void Log(LogType logType, string message)
+        public void Log(ILogMessage message)
         {
-            logger1.Log(logType, message);
-            logger2.Log(logType, message);
-        }
-
-        public void Exception(string message, Exception exception)
-        {
-            logger1.Exception(message, exception);
-            logger2.Exception(message, exception);
+            if (message == null) throw new ArgumentNullException(nameof(message));
+            logger1.Log(message);
+            logger2.Log(message);
         }
     }
 }

@@ -236,7 +236,7 @@ namespace ModuleManagerTests.Patches
 
             Received.InOrder(delegate
             {
-                logger.Log(LogType.Log, "Looping on ghi/jkl/@NODE to abc/def.cfg/NODE");
+                logger.AssertInfo("Looping on ghi/jkl/@NODE to abc/def.cfg/NODE");
                 progress.ApplyingUpdate(urlConfig, patch.UrlConfig);
                 progress.ApplyingUpdate(modifiedUrlConfigs[1], patch.UrlConfig);
                 progress.ApplyingUpdate(modifiedUrlConfigs[2], patch.UrlConfig);

@@ -82,9 +82,9 @@ namespace ModuleManagerTests
             progress.DidNotReceiveWithAnyArgs().Exception(null, null);
             progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
 
-            logger.DidNotReceive().Log(LogType.Warning, Arg.Any<string>());
-            logger.DidNotReceive().Log(LogType.Error, Arg.Any<string>());
-            logger.DidNotReceive().Log(LogType.Exception, Arg.Any<string>());
+            logger.AssertNoWarning();
+            logger.AssertNoError();
+            logger.AssertNoException();
         }
     }
 }

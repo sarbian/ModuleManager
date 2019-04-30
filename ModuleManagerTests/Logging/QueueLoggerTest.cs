@@ -1,7 +1,6 @@
 ﻿using System;
 using Xunit;
 using NSubstitute;
-using UnityEngine;
 using ModuleManager.Collections;
 using ModuleManager.Logging;
 
@@ -19,33 +18,34 @@ namespace ModuleManagerTests.Logging
         }
 
         [Fact]
-        public void TestLog__Info()
+        public void TestConstructor__QueueNull()
         {
-            logger.Log(LogType.Log, "useful information");
-            queue.Received().Add(Arg.Is<NormalMessage>(m => m.logType == LogType.Log && m.message == "useful information"));
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                new QueueLogger(null);
+            });
+
+            Assert.Equal("queue", ex.ParamName);
         }
 
         [Fact]
-        public void TestLog__Warning()
+        public void TestLog()
         {
-            logger.Log(LogType.Warning, "not to alarm you, but something might be wrong");
-            queue.Received().Add(Arg.Is<NormalMessage>(m => m.logType == LogType.Warning && m.message == "not to alarm you, but something might be wrong"));
+            ILogMessage message = Substitute.For<ILogMessage>();
+            logger.Log(message);
+            queue.Received().Add(message);
         }
 
         [Fact]
-        public void TestLog__Error()
+        public void TestLog__MessageNull()
         {
-            logger.Log(LogType.Error, "you broke everything");
-            queue.Received().Add(Arg.Is<NormalMessage>(m => m.logType == LogType.Error && m.message == "you broke everything"));
-        }
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                logger.Log(null);
+            });
 
-
-        [Fact]
-        public void TestException()
-        {
-            Exception e = new Exception();
-            logger.Exception("An exception was thrown", e);
-            queue.Received().Add(Arg.Is<ExceptionMessage>(m => m.message == "An exception was thrown" && m.exception == e));
+            Assert.Equal("message", ex.ParamName);
         }
+        
     }
 }

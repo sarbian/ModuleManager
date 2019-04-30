@@ -2,6 +2,7 @@
 using Xunit;
 using NSubstitute;
 using UnityEngine;
+using ModuleManager.Extensions;
 using ModuleManager.Logging;
 
 namespace ModuleManagerTests.Logging
@@ -31,7 +32,7 @@ namespace ModuleManagerTests.Logging
         [Fact]
         public void TestLog__Info()
         {
-            logger.Log(LogType.Log, "well hi there");
+            logger.Info("well hi there");
 
             innerLogger.Received().Log(LogType.Log, "well hi there");
         }
@@ -39,27 +40,20 @@ namespace ModuleManagerTests.Logging
         [Fact]
         public void TestLog__Warning()
         {
-            logger.Log(LogType.Warning, "I'm warning you");
+            logger.Warning("I'm warning you");
 
             innerLogger.Received().Log(LogType.Warning, "I'm warning you");
         }
 
         [Fact]
-        public void TestLog__Error()
+        public void TestLog__MessageNull()
         {
-            logger.Log(LogType.Error, "You have made a grave mistake");
+            ArgumentNullException e = Assert.Throws<ArgumentNullException>(delegate
+            {
+                logger.Log(null);
+            });
 
-            innerLogger.Received().Log(LogType.Error, "You have made a grave mistake");
-        }
-
-        [Fact]
-        public void TestException()
-        {
-            Exception e = new Exception();
-            logger.Exception("An exception was thrown", e);
-
-            innerLogger.Received().Log(LogType.Error, "An exception was thrown");
-            innerLogger.Received().LogException(e);
+            Assert.Equal("message", e.ParamName);
         }
     }
 }
