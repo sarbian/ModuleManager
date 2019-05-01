@@ -36,21 +36,22 @@ namespace ModuleManagerTests.Logging
             IBasicLogger logger1 = Substitute.For<IBasicLogger>();
             IBasicLogger logger2 = Substitute.For<IBasicLogger>();
             LogSplitter logSplitter = new LogSplitter(logger1, logger2);
-            logSplitter.Log(LogType.Log, "some stuff");
-            logger1.Received().Log(LogType.Log, "some stuff");
-            logger2.Received().Log(LogType.Log, "some stuff");
+            ILogMessage message = Substitute.For<ILogMessage>();
+            logSplitter.Log(message);
+            logger1.Received().Log(message);
+            logger2.Received().Log(message);
         }
 
         [Fact]
-        public void TestException()
+        public void TestLog__MessageNull()
         {
-            IBasicLogger logger1 = Substitute.For<IBasicLogger>();
-            IBasicLogger logger2 = Substitute.For<IBasicLogger>();
-            LogSplitter logSplitter = new LogSplitter(logger1, logger2);
-            Exception ex = new Exception();
-            logSplitter.Exception("some stuff", ex);
-            logger1.Received().Exception("some stuff", ex);
-            logger2.Received().Exception("some stuff", ex);
+            LogSplitter logSplitter = new LogSplitter(Substitute.For<IBasicLogger>(), Substitute.For<IBasicLogger>());
+            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            {
+                logSplitter.Log(null);
+            });
+
+            Assert.Equal("message", ex.ParamName);
         }
     }
 }

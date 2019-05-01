@@ -1,9 +1,13 @@
 ﻿using System;
+using UnityEngine;
 
 namespace ModuleManager.Logging
 {
     public interface ILogMessage
     {
-        void LogTo(IBasicLogger logger);
+        LogType LogType { get; }
+        DateTime Timestamp { get; }
+        string Message { get; }
+        string ToLogString();
     }
 }

@@ -132,7 +132,7 @@ namespace ModuleManager
                 Log(string.Format("Adding post patch to the loading screen {0}", list.Count));
                 list.Insert(gameDatabaseIndex + 1, aGameObject.AddComponent<PostPatchLoader>());
 
-                patchRunner = new MMPatchRunner(new ModLogger("ModuleManager", new UnityLogger(Debug.unityLogger)));
+                patchRunner = new MMPatchRunner(new PrefixLogger("ModuleManager", new UnityLogger(Debug.unityLogger)));
                 StartCoroutine(patchRunner.Run());
 
                 // Workaround for 1.6.0 Editor bug after a PartDatabase rebuild.
@@ -314,7 +314,7 @@ namespace ModuleManager
             QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = -1;
 
-            patchRunner = new MMPatchRunner(new ModLogger("ModuleManager", new UnityLogger(Debug.unityLogger)));
+            patchRunner = new MMPatchRunner(new PrefixLogger("ModuleManager", new UnityLogger(Debug.unityLogger)));
 
             float totalLoadWeight = GameDatabase.Instance.LoadWeight() + PartLoader.Instance.LoadWeight();
             bool startedReload = false;

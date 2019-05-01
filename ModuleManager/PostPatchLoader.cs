@@ -22,7 +22,7 @@ namespace ModuleManager
 
         private static readonly List<ModuleManagerPostPatchCallback> postPatchCallbacks = new List<ModuleManagerPostPatchCallback>();
 
-        private readonly IBasicLogger logger = new ModLogger("ModuleManager", new UnityLogger(UnityEngine.Debug.unityLogger));
+        private readonly IBasicLogger logger = new PrefixLogger("ModuleManager", new UnityLogger(UnityEngine.Debug.unityLogger));
 
         private bool ready = false;
 

@@ -79,14 +79,14 @@
     <Compile Include="Extensions\StringExtensionsTest.cs" />
     <Compile Include="Extensions\UrlConfigExtensionsTest.cs" />
     <Compile Include="InGameTestRunnerTest.cs" />
+    <Compile Include="LoggingAssertionHelpers.cs" />
     <Compile Include="Logging\StreamLoggerTest.cs" />
     <Compile Include="Logging\UnityLoggerTest.cs" />
     <Compile Include="MMPatchLoaderTest.cs" />
     <Compile Include="NeedsCheckerTest.cs" />
     <Compile Include="Collections\MessageQueueTest.cs" />
-    <Compile Include="Logging\ExceptionMessageTest.cs" />
     <Compile Include="Logging\LogSplitterTest.cs" />
-    <Compile Include="Logging\NormalMessageTest.cs" />
+    <Compile Include="Logging\LogMessageTest.cs" />
     <Compile Include="Logging\QueueLoggerTest.cs" />
     <Compile Include="Logging\QueueLogRunnerTest.cs" />
     <Compile Include="NodeMatcherTest.cs" />
@@ -116,7 +116,7 @@
     <Compile Include="DummyTest.cs" />
     <Compile Include="Extensions\ConfigNodeExtensionsTest.cs" />
     <Compile Include="Extensions\NodeStackExtensionsTest.cs" />
-    <Compile Include="Logging\ModLoggerTest.cs" />
+    <Compile Include="Logging\PrefixLoggerTest.cs" />
     <Compile Include="PatchExtractorTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Progress\PatchProgressTest.cs" />

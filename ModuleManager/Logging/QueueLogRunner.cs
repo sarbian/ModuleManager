@@ -47,7 +47,7 @@ namespace ModuleManager.Logging
 
                 foreach (ILogMessage message in logQueue.TakeAll())
                 {
-                    message.LogTo(logger);
+                    logger.Log(message);
                 }
 
                 long timeRemaining = timeToWaitForLogsMs - stopwatch.ElapsedMilliseconds;
@@ -59,7 +59,7 @@ namespace ModuleManager.Logging
 
             foreach (ILogMessage message in logQueue.TakeAll())
             {
-                message.LogTo(logger);
+                logger.Log(message);
             }
 
             state = State.Stopped;

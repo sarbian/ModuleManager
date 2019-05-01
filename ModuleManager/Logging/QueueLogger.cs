@@ -1,5 +1,4 @@
 ﻿using System;
-using UnityEngine;
 using ModuleManager.Collections;
 
 namespace ModuleManager.Logging
@@ -10,10 +9,13 @@ namespace ModuleManager.Logging
 
         public QueueLogger(IMessageQueue<ILogMessage> queue)
         {
-            this.queue = queue;
+            this.queue = queue ?? throw new ArgumentNullException(nameof(queue));
         }
 
-        public void Log(LogType logType, string message) => queue.Add(new NormalMessage(logType, message));
-        public void Exception(string message, Exception exception) => queue.Add(new ExceptionMessage(message, exception));
+        public void Log(ILogMessage message)
+        {
+            if (message == null) throw new ArgumentNullException(nameof(message));
+            queue.Add(message);
+        }
     }
 }

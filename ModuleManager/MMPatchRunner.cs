@@ -40,6 +40,7 @@ namespace ModuleManager
             {
                 using (StreamLogger streamLogger = new StreamLogger(new FileStream(logPath, FileMode.Create)))
                 {
+                    streamLogger.Info("Log started at " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
                     logRunner.Run(streamLogger);
                     streamLogger.Info("Done!");
                 }
