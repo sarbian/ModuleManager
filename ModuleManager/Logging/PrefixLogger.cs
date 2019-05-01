@@ -2,12 +2,12 @@
 
 namespace ModuleManager.Logging
 {
-    public class ModLogger : IBasicLogger
+    public class PrefixLogger : IBasicLogger
     {
         private readonly string prefix;
         private readonly IBasicLogger logger;
 
-        public ModLogger(string prefix, IBasicLogger logger)
+        public PrefixLogger(string prefix, IBasicLogger logger)
         {
             if (string.IsNullOrEmpty(prefix)) throw new ArgumentNullException(nameof(prefix));
             this.prefix = $"[{prefix}] ";

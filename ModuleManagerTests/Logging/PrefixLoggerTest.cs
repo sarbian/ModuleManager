@@ -6,15 +6,15 @@ using ModuleManager.Logging;
 
 namespace ModuleManagerTests.Logging
 {
-    public class ModLoggerTest
+    public class PrefixLoggerTest
     {
         private IBasicLogger innerLogger;
-        private ModLogger logger;
+        private PrefixLogger logger;
 
-        public ModLoggerTest()
+        public PrefixLoggerTest()
         {
             innerLogger = Substitute.For<IBasicLogger>();
-            logger = new ModLogger("MyMod", innerLogger);
+            logger = new PrefixLogger("MyMod", innerLogger);
         }
 
         [Fact]
@@ -22,7 +22,7 @@ namespace ModuleManagerTests.Logging
         {
             ArgumentNullException e = Assert.Throws<ArgumentNullException>(delegate
             {
-                new ModLogger(null, innerLogger);
+                new PrefixLogger(null, innerLogger);
             });
 
             Assert.Equal("prefix", e.ParamName);
@@ -33,7 +33,7 @@ namespace ModuleManagerTests.Logging
         {
             ArgumentNullException e = Assert.Throws<ArgumentNullException>(delegate
             {
-                new ModLogger("", innerLogger);
+                new PrefixLogger("", innerLogger);
             });
 
             Assert.Equal("prefix", e.ParamName);
@@ -44,7 +44,7 @@ namespace ModuleManagerTests.Logging
         {
             ArgumentNullException e = Assert.Throws<ArgumentNullException>(delegate
             {
-                new ModLogger("blah", null);
+                new PrefixLogger("blah", null);
             });
 
             Assert.Equal("logger", e.ParamName);

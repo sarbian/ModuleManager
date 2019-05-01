@@ -51,7 +51,7 @@
     <Compile Include="Logging\IBasicLogger.cs" />
     <Compile Include="Logging\ILogMessage.cs" />
     <Compile Include="Logging\LogSplitter.cs" />
-    <Compile Include="Logging\ModLogger.cs" />
+    <Compile Include="Logging\PrefixLogger.cs" />
     <Compile Include="Logging\LogMessage.cs" />
     <Compile Include="Logging\QueueLogger.cs" />
     <Compile Include="Logging\QueueLogRunner.cs" />

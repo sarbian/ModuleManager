@@ -116,7 +116,7 @@
     <Compile Include="DummyTest.cs" />
     <Compile Include="Extensions\ConfigNodeExtensionsTest.cs" />
     <Compile Include="Extensions\NodeStackExtensionsTest.cs" />
-    <Compile Include="Logging\ModLoggerTest.cs" />
+    <Compile Include="Logging\PrefixLoggerTest.cs" />
     <Compile Include="PatchExtractorTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Progress\PatchProgressTest.cs" />
