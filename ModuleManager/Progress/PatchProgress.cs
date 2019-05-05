@@ -1,7 +1,6 @@
 ﻿using System;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
-using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManager.Progress
 {
