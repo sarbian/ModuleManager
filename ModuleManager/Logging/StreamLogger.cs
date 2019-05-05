@@ -3,7 +3,7 @@ using System.IO;
 
 namespace ModuleManager.Logging
 {
-    public class StreamLogger : IBasicLogger, IDisposable
+    public sealed class StreamLogger : IBasicLogger, IDisposable
     {
         private readonly Stream stream;
         private readonly StreamWriter streamWriter;

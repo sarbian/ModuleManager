@@ -12,7 +12,7 @@ namespace ModuleManager.Collections
 
     public class MessageQueue<T> : IMessageQueue<T>, IEnumerable<T>
     {
-        public class Enumerator : IEnumerator<T>
+        public sealed class Enumerator : IEnumerator<T>
         {
             private readonly MessageQueue<T> queue;
             private Node current;
