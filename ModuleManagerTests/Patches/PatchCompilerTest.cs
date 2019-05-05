@@ -44,7 +44,7 @@ namespace ModuleManagerTests.Patches
 
             patch.Apply(configs, progress, logger);
 
-            Assert.Equal(1, configs.Count);
+            Assert.Single(configs);
             Assert.NotSame(protoPatch.urlConfig.config, configs.First.Value.Node);
             AssertNodesEqual(new TestConfigNode("NODE")
             {
