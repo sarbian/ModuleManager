@@ -139,7 +139,7 @@ namespace ModuleManager.Progress
 
         private void RecordWarningFile(UrlDir.UrlConfig url)
         {
-            string key = url.parent.url + "." + url.parent.fileExtension;
+            string key = url.parent.GetUrlWithExtension();
             if (key[0] == '/')
                 key = key.Substring(1);
 
@@ -151,7 +151,7 @@ namespace ModuleManager.Progress
 
         private void RecordErrorFile(UrlDir.UrlConfig url)
         {
-            string key = url.parent.url + "." + url.parent.fileExtension;
+            string key = url.parent.GetUrlWithExtension();
             if (key[0] == '/')
                 key = key.Substring(1);
 

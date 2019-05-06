@@ -79,6 +79,7 @@
     <Compile Include="Extensions\StringExtensionsTest.cs" />
     <Compile Include="Extensions\UrlConfigExtensionsTest.cs" />
     <Compile Include="Extensions\UrlDirExtensionsTest.cs" />
+    <Compile Include="Extensions\UrlFileExtensionsTest.cs" />
     <Compile Include="InGameTestRunnerTest.cs" />
     <Compile Include="LoggingAssertionHelpers.cs" />
     <Compile Include="Logging\StreamLoggerTest.cs" />
