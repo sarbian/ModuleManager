@@ -31,6 +31,7 @@
     <ConsolePause>False</ConsolePause>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Extensions\UrlDirExtensions.cs" />
     <Compile Include="Fix16.cs" />
     <Compile Include="Cats\CatAnimator.cs" />
     <Compile Include="Cats\CatManager.cs" />
