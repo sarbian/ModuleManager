@@ -5,7 +5,7 @@ namespace ModuleManager.Extensions
 {
     public static class UrlDirExtensions
     {
-        public static UrlDir.UrlFile FindFile(this UrlDir urlDir, string url)
+        public static UrlDir.UrlFile FindFile(this UrlDir urlDir, string url, UrlDir.FileType? fileType = null)
         {
             if (urlDir == null) throw new ArgumentNullException(nameof(urlDir));
             if (url == null) throw new ArgumentNullException(nameof(url));
@@ -34,6 +34,7 @@ namespace ModuleManager.Extensions
             {
                 if (file.name != fileName) continue;
                 if (fileExtension != null && fileExtension != file.fileExtension) continue;
+                if (fileType != null && file.fileType != fileType) continue;
                 return file;
             }
 

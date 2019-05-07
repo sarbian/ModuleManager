@@ -37,6 +37,17 @@ namespace ModuleManagerTests.Extensions
         }
 
         [Fact]
+        public void TestFindFile__FileType()
+        {
+            UrlDir urlDir = UrlBuilder.CreateDir("abc");
+            UrlBuilder.CreateFile("def/ghi.yyy", urlDir);
+            UrlDir.UrlFile urlFile = UrlBuilder.CreateFile("def/ghi.cfg", urlDir);
+            UrlBuilder.CreateFile("def/ghi.zzz", urlDir);
+
+            Assert.Equal(urlFile, urlDir.FindFile("def/ghi", UrlDir.FileType.Config));
+        }
+
+        [Fact]
         public void TestFindFile__NotFound()
         {
             UrlDir urlDir = UrlBuilder.CreateDir("abc");
@@ -53,6 +64,16 @@ namespace ModuleManagerTests.Extensions
             UrlBuilder.CreateFile("def/ghi.zzz", urlDir);
 
             Assert.Null(urlDir.FindFile("def/ghi.cfg"));
+        }
+
+        [Fact]
+        public void TestFindFile__FileType__NotFound()
+        {
+            UrlDir urlDir = UrlBuilder.CreateDir("abc");
+            UrlBuilder.CreateFile("def/ghi.yyy", urlDir);
+            UrlBuilder.CreateFile("def/ghi.zzz", urlDir);
+
+            Assert.Null(urlDir.FindFile("def/ghi", UrlDir.FileType.Config));
         }
 
         [Fact]
