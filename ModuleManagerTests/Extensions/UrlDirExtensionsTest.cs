@@ -7,7 +7,6 @@ namespace ModuleManagerTests.Extensions
 {
     public class UrlDirExtensionsTest
     {
-
         [Fact]
         public void TestFindFile__IndirectChild()
         {
