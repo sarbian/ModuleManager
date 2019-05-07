@@ -528,7 +528,7 @@ namespace ModuleManager
             {
                 string parentUrl = node.GetValue("parentUrl");
 
-                UrlDir.UrlFile parent = gameDataDir.Find(parentUrl);
+                UrlDir.UrlFile parent = gameDataDir.FindFile(parentUrl);
                 if (parent != null)
                 {
                     databaseConfigs.Add(new ProtoUrlConfig(parent, node.nodes[0]));

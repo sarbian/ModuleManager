@@ -5,7 +5,7 @@ namespace ModuleManager.Extensions
 {
     public static class UrlDirExtensions
     {
-        public static UrlDir.UrlFile Find(this UrlDir urlDir, string url)
+        public static UrlDir.UrlFile FindFile(this UrlDir urlDir, string url)
         {
             if (urlDir == null) throw new ArgumentNullException(nameof(urlDir));
             if (url == null) throw new ArgumentNullException(nameof(url));
@@ -18,7 +18,7 @@ namespace ModuleManager.Extensions
                 currentDir = currentDir.children.FirstOrDefault(subDir => subDir.name == splits[i]);
                 if (currentDir == null) return null;
             }
-            
+
             string fileName = splits[splits.Length - 1];
             string fileExtension = null;
 

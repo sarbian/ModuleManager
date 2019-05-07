@@ -9,77 +9,77 @@ namespace ModuleManagerTests.Extensions
     {
 
         [Fact]
-        public void TestFind__IndirectChild()
+        public void TestFindFile__IndirectChild()
         {
             UrlDir urlDir = UrlBuilder.CreateDir("abc");
             UrlDir.UrlFile urlFile = UrlBuilder.CreateFile("def/ghi.cfg", urlDir);
 
-            Assert.Equal(urlFile, urlDir.Find("def/ghi"));
+            Assert.Equal(urlFile, urlDir.FindFile("def/ghi"));
         }
 
         [Fact]
-        public void TestFind__DirectChild()
+        public void TestFindFile__DirectChild()
         {
             UrlDir urlDir = UrlBuilder.CreateDir("abc");
             UrlDir.UrlFile urlFile = UrlBuilder.CreateFile("def.cfg", urlDir);
 
-            Assert.Equal(urlFile, urlDir.Find("def"));
+            Assert.Equal(urlFile, urlDir.FindFile("def"));
         }
 
         [Fact]
-        public void TestFind__Extension()
+        public void TestFindFile__Extension()
         {
             UrlDir urlDir = UrlBuilder.CreateDir("abc");
             UrlBuilder.CreateFile("def/ghi.yyy", urlDir);
             UrlDir.UrlFile urlFile = UrlBuilder.CreateFile("def/ghi.cfg", urlDir);
             UrlBuilder.CreateFile("def/ghi.zzz", urlDir);
 
-            Assert.Equal(urlFile, urlDir.Find("def/ghi.cfg"));
+            Assert.Equal(urlFile, urlDir.FindFile("def/ghi.cfg"));
         }
 
         [Fact]
-        public void TestFind__NotFound()
+        public void TestFindFile__NotFound()
         {
             UrlDir urlDir = UrlBuilder.CreateDir("abc");
             UrlBuilder.CreateDir("def", urlDir);
 
-            Assert.Null(urlDir.Find("def/ghi"));
+            Assert.Null(urlDir.FindFile("def/ghi"));
         }
 
         [Fact]
-        public void TestFind__Extension__NotFound()
+        public void TestFindFile__Extension__NotFound()
         {
             UrlDir urlDir = UrlBuilder.CreateDir("abc");
             UrlBuilder.CreateFile("def/ghi.yyy", urlDir);
             UrlBuilder.CreateFile("def/ghi.zzz", urlDir);
 
-            Assert.Null(urlDir.Find("def/ghi.cfg"));
+            Assert.Null(urlDir.FindFile("def/ghi.cfg"));
         }
 
         [Fact]
-        public void TestFind__IntermediateDirectoryNotFound()
+        public void TestFindFile__IntermediateDirectoryNotFound()
         {
             UrlDir urlDir = UrlBuilder.CreateDir("abc");
-            Assert.Null(urlDir.Find("def/ghi"));
+            Assert.Null(urlDir.FindFile("def/ghi"));
         }
 
         [Fact]
-        public void TestFind__UrlDirNull()
+        public void TestFindFile__UrlDirNull()
         {
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                UrlDirExtensions.Find(null, "abc");
+                UrlDirExtensions.FindFile(null, "abc");
             });
 
             Assert.Equal("urlDir", ex.ParamName);
         }
 
         [Fact]
-        public void TestFind__UrlNull()
+        public void TestFindFile__UrlNull()
         {
             ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
             {
-                UrlDirExtensions.Find(UrlBuilder.CreateDir("abc"), null);
+                UrlDirExtensions.FindFile(UrlBuilder.CreateDir("abc"), null);
             });
 
             Assert.Equal("url", ex.ParamName);
