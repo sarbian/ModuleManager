@@ -114,7 +114,7 @@ namespace ModuleManager
                 status = "Extracting patches";
                 patchLogger.Info(status);
 
-                UrlDir gameData = GameDatabase.Instance.root.children.First(dir => dir.type == UrlDir.DirectoryType.GameData && dir.name == "");
+                UrlDir gameData = GameDatabase.Instance.GetGameData();
                 INeedsChecker needsChecker = new NeedsChecker(mods, gameData, progress, patchLogger);
                 ITagListParser tagListParser = new TagListParser(progress);
                 IProtoPatchBuilder protoPatchBuilder = new ProtoPatchBuilder(progress);
@@ -248,7 +248,7 @@ namespace ModuleManager
         private void LoadPhysicsConfig()
         {
             logger.Info("Loading Physics.cfg");
-            UrlDir gameDataDir = GameDatabase.Instance.root.AllDirectories.First(d => d.path.EndsWith("GameData") && d.name == "" && d.url == "");
+            UrlDir gameDataDir = GameDatabase.Instance.GetGameData();
             // need to use a file with a cfg extension to get the right fileType or you can't AddConfig on it
             UrlDir.UrlFile physicsUrlFile = new UrlDir.UrlFile(gameDataDir, new FileInfo(defaultPhysicsPath));
             // Since it loaded the default config badly (sub node only) we clear it first
@@ -517,7 +517,7 @@ namespace ModuleManager
                 status = "ModuleManager: " + patchedNodeCount + " patch" + (patchedNodeCount != 1 ? "es" : "") +  " loaded from cache";
 
             // Create the fake file where we load the physic config cache
-            UrlDir gameDataDir = GameDatabase.Instance.root.AllDirectories.First(d => d.path.EndsWith("GameData") && d.name == "" && d.url == "");
+            UrlDir gameDataDir = GameDatabase.Instance.GetGameData();
             // need to use a file with a cfg extension to get the right fileType or you can't AddConfig on it
             UrlDir.UrlFile physicsUrlFile = new UrlDir.UrlFile(gameDataDir, new FileInfo(defaultPhysicsPath));
             gameDataDir.files.Add(physicsUrlFile);

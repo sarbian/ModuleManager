@@ -42,6 +42,7 @@
     <Compile Include="Command.cs" />
     <Compile Include="CommandParser.cs" />
     <Compile Include="Extensions\ConfigNodeExtensions.cs" />
+    <Compile Include="Extensions\GameDatabaseExtensions.cs" />
     <Compile Include="Extensions\IBasicLoggerExtensions.cs" />
     <Compile Include="Extensions\NodeStackExtensions.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />

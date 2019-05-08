@@ -117,7 +117,7 @@ namespace ModuleManager
                 }
             }
             modListInfo.Append("Mods by directory (sub directories of GameData):\n");
-            UrlDir gameData = GameDatabase.Instance.root.children.First(dir => dir.type == UrlDir.DirectoryType.GameData);
+            UrlDir gameData = GameDatabase.Instance.GetGameData();
             foreach (UrlDir subDir in gameData.children)
             {
                 string cleanName = subDir.name.RemoveWS();
