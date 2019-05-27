@@ -72,6 +72,8 @@
     <Compile Include="Operator.cs" />
     <Compile Include="OperatorParser.cs" />
     <Compile Include="Pass.cs" />
+    <Compile Include="PartDatabaseCache.cs" />
+    <Compile Include="PartShaGenerator.cs" />
     <Compile Include="PatchApplier.cs" />
     <Compile Include="PatchContext.cs" />
     <Compile Include="Patches\CopyPatch.cs" />
@@ -106,7 +108,10 @@
     <Compile Include="Threading\TaskStatus.cs" />
     <Compile Include="Threading\TaskStatusWrapper.cs" />
     <Compile Include="Utils\Counter.cs" />
+    <Compile Include="Utils\FileShaGenerator.cs" />
     <Compile Include="Utils\FileUtils.cs" />
+    <Compile Include="Utils\ReadableObject.cs" />
+    <Compile Include="Utils\UrlFileToReadableObjectConverter.cs" />
     <Compile Include="CustomConfigsManager.cs" />
     <Compile Include="Threading\BackgroundTask.cs" />
   </ItemGroup>
