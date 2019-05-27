@@ -31,9 +31,6 @@
     <ConsolePause>False</ConsolePause>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Extensions\UrlDirExtensions.cs" />
-    <Compile Include="Extensions\UrlFileExtensions.cs" />
-    <Compile Include="Fix16.cs" />
     <Compile Include="Cats\CatAnimator.cs" />
     <Compile Include="Cats\CatManager.cs" />
     <Compile Include="Cats\CatMover.cs" />
@@ -41,6 +38,7 @@
     <Compile Include="Collections\ArrayEnumerator.cs" />
     <Compile Include="Collections\ImmutableStack.cs" />
     <Compile Include="Collections\KeyValueCache.cs" />
+    <Compile Include="Collections\MessageQueue.cs" />
     <Compile Include="Command.cs" />
     <Compile Include="CommandParser.cs" />
     <Compile Include="Extensions\ConfigNodeExtensions.cs" />
@@ -48,22 +46,24 @@
     <Compile Include="Extensions\NodeStackExtensions.cs" />
     <Compile Include="Extensions\StringExtensions.cs" />
     <Compile Include="Extensions\UrlConfigExtensions.cs" />
+    <Compile Include="Extensions\UrlDirExtensions.cs" />
+    <Compile Include="Extensions\UrlFileExtensions.cs" />
     <Compile Include="FatalErrorHandler.cs" />
-    <Compile Include="Logging\StreamLogger.cs" />
+    <Compile Include="FilePathRepository.cs" />
+    <Compile Include="Fix16.cs" />
     <Compile Include="Logging\IBasicLogger.cs" />
     <Compile Include="Logging\ILogMessage.cs" />
+    <Compile Include="Logging\LogMessage.cs" />
     <Compile Include="Logging\LogSplitter.cs" />
     <Compile Include="Logging\PrefixLogger.cs" />
-    <Compile Include="Logging\LogMessage.cs" />
     <Compile Include="Logging\QueueLogger.cs" />
     <Compile Include="Logging\QueueLogRunner.cs" />
-    <Compile Include="Collections\MessageQueue.cs" />
+    <Compile Include="Logging\StreamLogger.cs" />
     <Compile Include="Logging\UnityLogger.cs" />
     <Compile Include="MMPatchLoader.cs" />
     <Compile Include="MMPatchRunner.cs" />
     <Compile Include="ModuleManager.cs" />
     <Compile Include="ModListGenerator.cs" />
-    <Compile Include="FilePathRepository.cs" />
     <Compile Include="PostPatchLoader.cs" />
     <Compile Include="ModuleManagerTestRunner.cs" />
     <Compile Include="NeedsChecker.cs" />
@@ -73,7 +73,11 @@
     <Compile Include="Pass.cs" />
     <Compile Include="PatchApplier.cs" />
     <Compile Include="PatchContext.cs" />
+    <Compile Include="Patches\CopyPatch.cs" />
+    <Compile Include="Patches\DeletePatch.cs" />
+    <Compile Include="Patches\EditPatch.cs" />
     <Compile Include="Patches\InsertPatch.cs" />
+    <Compile Include="Patches\IPatch.cs" />
     <Compile Include="Patches\PassSpecifiers\AfterPassSpecifier.cs" />
     <Compile Include="Patches\PassSpecifiers\BeforePassSpecifier.cs" />
     <Compile Include="Patches\PassSpecifiers\FinalPassSpecifier.cs" />
@@ -83,10 +87,6 @@
     <Compile Include="Patches\PassSpecifiers\IPassSpecifier.cs" />
     <Compile Include="Patches\PassSpecifiers\LegacyPassSpecifier.cs" />
     <Compile Include="Patches\PassSpecifiers\LastPassSpecifier.cs" />
-    <Compile Include="Patches\CopyPatch.cs" />
-    <Compile Include="Patches\DeletePatch.cs" />
-    <Compile Include="Patches\EditPatch.cs" />
-    <Compile Include="Patches\IPatch.cs" />
     <Compile Include="Patches\PatchCompiler.cs" />
     <Compile Include="Patches\ProtoPatch.cs" />
     <Compile Include="Patches\ProtoPatchBuilder.cs" />
