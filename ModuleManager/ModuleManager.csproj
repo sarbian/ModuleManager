@@ -41,6 +41,7 @@
     <Compile Include="Collections\MessageQueue.cs" />
     <Compile Include="Command.cs" />
     <Compile Include="CommandParser.cs" />
+    <Compile Include="Extensions\ByteArrayExtensions.cs" />
     <Compile Include="Extensions\ConfigNodeExtensions.cs" />
     <Compile Include="Extensions\IBasicLoggerExtensions.cs" />
     <Compile Include="Extensions\NodeStackExtensions.cs" />

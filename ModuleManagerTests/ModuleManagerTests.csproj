@@ -81,6 +81,7 @@
     <Compile Include="Collections\MessageQueueTest.cs" />
     <Compile Include="CommandParserTest.cs" />
     <Compile Include="DummyTest.cs" />
+    <Compile Include="Extensions\ByteArrayExtensionsTest.cs" />
     <Compile Include="Extensions\ConfigNodeExtensionsTest.cs" />
     <Compile Include="Extensions\IBasicLoggerExtensionsTest.cs" />
     <Compile Include="Extensions\NodeStackExtensionsTest.cs" />
