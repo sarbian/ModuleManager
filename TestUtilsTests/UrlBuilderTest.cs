@@ -209,23 +209,22 @@ namespace TestUtilsTests
             Assert.Contains(file, root.AllFiles);
         }
 
-        // KSP tries to load .cfg files so need to have special handling
-        [Fact]
-        public void TestCreateFile__cfg()
+        [InlineData("cfg", UrlDir.FileType.Config)]
+        [Theory]
+        public void TestCreateFile__Extension(string extension, UrlDir.FileType fileType)
         {
-            UrlDir root = UrlBuilder.CreateRoot();
-            UrlDir dir = UrlBuilder.CreateDir("someDir", root);
-            UrlDir.UrlFile file = UrlBuilder.CreateFile("someFile.cfg", dir);
+            UrlDir.UrlFile file = UrlBuilder.CreateFile("someFile." + extension);
 
             Assert.Equal("someFile", file.name);
             Assert.Equal("cfg", file.fileExtension);
-            Assert.Equal(UrlDir.FileType.Config, file.fileType);
-            Assert.Same(dir, file.parent);
-            Assert.Same(root, file.root);
+            Assert.Equal(fileType, file.fileType);
 
-            Assert.Equal("someDir/someFile", file.url);
-            Assert.Contains(file, dir.files);
-            Assert.Contains(file, root.AllConfigFiles);
+            UrlDir root = file.parent;
+            Assert.NotNull(root);
+            Assert.Equal("root", root.name);
+            Assert.Null(root.parent);
+            Assert.Contains(file, root.files);
+            Assert.Same(root, file.root);
         }
 
         [Fact]

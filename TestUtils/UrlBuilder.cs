@@ -118,6 +118,7 @@ namespace TestUtils
             bool cfg = false;
             string newName = name;
 
+            // KSP tries to load .cfg files so need to have special handling
             if (extension == "cfg")
             {
                 cfg = true;
