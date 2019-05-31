@@ -209,14 +209,29 @@ namespace TestUtilsTests
             Assert.Contains(file, root.AllFiles);
         }
 
+        [InlineData("dll", UrlDir.FileType.Assembly)]
+        [InlineData("ksp", UrlDir.FileType.AssetBundle)]
+        [InlineData("wav", UrlDir.FileType.Audio)]
+        [InlineData("ogg", UrlDir.FileType.Audio)]
         [InlineData("cfg", UrlDir.FileType.Config)]
+        [InlineData("dae", UrlDir.FileType.Model)]
+        [InlineData("mu", UrlDir.FileType.Model)]
+        [InlineData("dds", UrlDir.FileType.Texture)]
+        [InlineData("jpg", UrlDir.FileType.Texture)]
+        [InlineData("jpeg", UrlDir.FileType.Texture)]
+        [InlineData("mbm", UrlDir.FileType.Texture)]
+        [InlineData("png", UrlDir.FileType.Texture)]
+        [InlineData("tga", UrlDir.FileType.Texture)]
+        [InlineData("truecolor", UrlDir.FileType.Texture)]
+        [InlineData("txt", UrlDir.FileType.Unknown)]
+        [InlineData("xml", UrlDir.FileType.Unknown)]
         [Theory]
         public void TestCreateFile__Extension(string extension, UrlDir.FileType fileType)
         {
             UrlDir.UrlFile file = UrlBuilder.CreateFile("someFile." + extension);
 
             Assert.Equal("someFile", file.name);
-            Assert.Equal("cfg", file.fileExtension);
+            Assert.Equal(extension, file.fileExtension);
             Assert.Equal(fileType, file.fileType);
 
             UrlDir root = file.parent;

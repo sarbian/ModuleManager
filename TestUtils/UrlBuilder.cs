@@ -118,6 +118,38 @@ namespace TestUtils
             bool cfg = false;
             string newName = name;
 
+            UrlDir.FileType fileType = UrlDir.FileType.Unknown;
+
+            switch (extension)
+            {
+                case "dll":
+                    fileType = UrlDir.FileType.Assembly;
+                    break;
+                case "ksp":
+                    fileType = UrlDir.FileType.AssetBundle;
+                    break;
+                case "wav":
+                case "ogg":
+                    fileType = UrlDir.FileType.Audio;
+                    break;
+                case "cfg":
+                    fileType = UrlDir.FileType.Config;
+                    break;
+                case "dae":
+                case "mu":
+                    fileType = UrlDir.FileType.Model;
+                    break;
+                case "dds":
+                case "jpg":
+                case "jpeg":
+                case "mbm":
+                case "png":
+                case "tga":
+                case "truecolor":
+                    fileType = UrlDir.FileType.Texture;
+                    break;
+            }
+
             // KSP tries to load .cfg files so need to have special handling
             if (extension == "cfg")
             {
@@ -127,11 +159,12 @@ namespace TestUtils
 
             UrlDir.UrlFile file = new UrlDir.UrlFile(parent, new FileInfo(newName));
 
+            UrlFile__field__fileType.SetValue(file, fileType);
+
             if (cfg)
             {
                 UrlFile__field__name.SetValue(file, nameWithoutExtension);
                 UrlFile__field__fileExtension.SetValue(file, "cfg");
-                UrlFile__field__fileType.SetValue(file, UrlDir.FileType.Config);
             }
 
             parent.files.Add(file);
