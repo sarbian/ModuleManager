@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using UnityEngine;
 using Xunit;
 using NSubstitute;
 using ModuleManager.Logging;
