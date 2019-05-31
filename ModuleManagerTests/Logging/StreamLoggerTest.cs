@@ -69,7 +69,7 @@ namespace ModuleManagerTests.Logging
             {
                 using (StreamReader reader = new StreamReader(stream))
                 {
-                    string result = reader.ReadToEnd().Trim();
+                    string result = reader.ReadToEnd().Trim('\r', '\n', '\0');
                     Assert.Equal("[OMG wtf] bbq", result);
                 }
             }
