@@ -269,6 +269,21 @@ XX}
             Assert.Equal(expected, sb.ToString());
         }
 
+        [Fact]
+        public void TestAddValueSafe()
+        {
+            ConfigNode node = new TestConfigNode
+            {
+                { "key1", "value1" },
+            };
+
+            node.AddValueSafe("weird_values", "some\r\n\tstuff");
+
+            Assert.Equal(2, node.values.Count);
+            AssertValue("key1", "value1", node.values[0]);
+            AssertValue("weird_values", "some\r\n\tstuff", node.values[1]);
+        }
+
         private void AssertValue(string name, string value, ConfigNode.Value nodeValue)
         {
             Assert.Equal(name, nodeValue.name);
