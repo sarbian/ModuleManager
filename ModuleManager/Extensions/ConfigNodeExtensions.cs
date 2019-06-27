@@ -19,7 +19,7 @@ namespace ModuleManager.Extensions
         {
             ConfigNode to = new ConfigNode(from.name);
             foreach (ConfigNode.Value value in from.values)
-                to.AddValue(value.name, value.value);
+                to.values.Add(new ConfigNode.Value(value.name, value.value));
             foreach (ConfigNode node in from.nodes)
             {
                 ConfigNode newNode = DeepCopy(node);

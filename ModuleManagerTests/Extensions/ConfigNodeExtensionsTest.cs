@@ -89,6 +89,7 @@ namespace ModuleManagerTests.Extensions
                 new TestConfigNode("INNER_NODE_1")
                 {
                     { "mno", "pqr" },
+                    { "weird_values", "some\r\n\tstuff" },
                     new TestConfigNode("INNER_INNER_NODE_1"),
                 },
                 new TestConfigNode("INNER_NODE_2")
@@ -115,9 +116,11 @@ namespace ModuleManagerTests.Extensions
             ConfigNode innerNode1 = toNode.nodes[0];
             Assert.NotSame(fromNode.nodes[0], innerNode1);
             Assert.Equal("INNER_NODE_1", innerNode1.name);
-            Assert.Equal(1, innerNode1.values.Count);
+            Assert.Equal(2, innerNode1.values.Count);
             Assert.NotSame(fromNode.nodes[0].values[0], innerNode1.values[0]);
             AssertValue("mno", "pqr", innerNode1.values[0]);
+            Assert.NotSame(fromNode.nodes[0].values[1], innerNode1.values[1]);
+            AssertValue("weird_values", "some\r\n\tstuff", innerNode1.values[1]);
             Assert.Equal(1, toNode.nodes[0].nodes.Count);
             Assert.NotSame(fromNode.nodes[0].nodes[0], innerNode1.nodes[0]);
             Assert.Equal("INNER_INNER_NODE_1", innerNode1.nodes[0].name);
