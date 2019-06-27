@@ -34,31 +34,40 @@ namespace TestUtilsTests
                 },
             };
 
-            Assert.Equal("something", node.GetValue("value1"));
-            Assert.Equal("something else", node.GetValue("value2"));
-            Assert.Equal(new[] { "first", "second" }, node.GetValues("multiple"));
-            Assert.Equal("bar", node.GetValue("foo"));
+            Assert.Equal(5, node.values.Count);
+            AssertValue("value1", "something", node.values[0]);
+            AssertValue("value2", "something else", node.values[1]);
+            AssertValue("multiple", "first", node.values[2]);
+            AssertValue("multiple", "second", node.values[3]);
+            AssertValue("foo", "bar", node.values[4]);
 
+            Assert.Equal(3, node.nodes.Count);
             ConfigNode innerNode1 = node.GetNode("NODE_1");
             Assert.NotNull(innerNode1);
 
-            Assert.Equal("NODE_1", innerNode1.name);
-            Assert.Equal("something", innerNode1.GetValue("name"));
-            Assert.Equal("something else", innerNode1.GetValue("stuff"));
+            Assert.Equal("NODE_1", node.nodes[0].name);
+            Assert.Equal(2, node.nodes[0].values.Count);
+            AssertValue("name", "something", node.nodes[0].values[0]);
+            AssertValue("stuff", "something else", node.nodes[0].values[1]);
+            Assert.Empty(node.nodes[0].nodes);
 
-            ConfigNode[] innerNodes2 = node.GetNodes("MULTIPLE");
-            Assert.NotNull(innerNodes2);
-            Assert.Equal(2, innerNodes2.Length);
+            Assert.Equal("MULTIPLE", node.nodes[1].name);
+            Assert.Equal(2, node.nodes[1].values.Count);
+            AssertValue("value3", "blah", node.nodes[1].values[0]);
+            AssertValue("value4", "bleh", node.nodes[1].values[1]);
+            Assert.Empty(node.nodes[1].nodes);
 
-            ConfigNode innerNode2a = innerNodes2[0];
-            Assert.NotNull(innerNode2a);
-            Assert.Equal("blah", innerNode2a.GetValue("value3"));
-            Assert.Equal("bleh", innerNode2a.GetValue("value4"));
+            Assert.Equal("MULTIPLE", node.nodes[2].name);
+            Assert.Equal(2, node.nodes[2].values.Count);
+            AssertValue("value3", "blih", node.nodes[2].values[0]);
+            AssertValue("value4", "bloh", node.nodes[2].values[1]);
+            Assert.Empty(node.nodes[2].nodes);
+        }
 
-            ConfigNode innerNode2b = innerNodes2[1];
-            Assert.NotNull(innerNode2b);
-            Assert.Equal("blih", innerNode2b.GetValue("value3"));
-            Assert.Equal("bloh", innerNode2b.GetValue("value4"));
+        private void AssertValue(string name, string value, ConfigNode.Value nodeValue)
+        {
+            Assert.Equal(name, nodeValue.name);
+            Assert.Equal(value, nodeValue.value);
         }
     }
 }
