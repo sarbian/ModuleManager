@@ -16,6 +16,7 @@ namespace TestUtilsTests
                 { "multiple", "first" },
                 { "multiple", "second" },
                 new ConfigNode.Value("foo", "bar"),
+                { "weird_values", "some\r\n\tstuff" },
                 { "NODE_1", new TestConfigNode
                     {
                         { "name", "something" },
@@ -34,12 +35,13 @@ namespace TestUtilsTests
                 },
             };
 
-            Assert.Equal(5, node.values.Count);
+            Assert.Equal(6, node.values.Count);
             AssertValue("value1", "something", node.values[0]);
             AssertValue("value2", "something else", node.values[1]);
             AssertValue("multiple", "first", node.values[2]);
             AssertValue("multiple", "second", node.values[3]);
             AssertValue("foo", "bar", node.values[4]);
+            AssertValue("weird_values", "some\r\n\tstuff", node.values[5]);
 
             Assert.Equal(3, node.nodes.Count);
             ConfigNode innerNode1 = node.GetNode("NODE_1");
