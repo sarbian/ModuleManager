@@ -49,13 +49,11 @@ namespace ModuleManagerTests.Extensions
 
             Assert.Same(value1, fromNode.values[0]);
             Assert.Same(value1, toNode.values[0]);
-            Assert.Equal("abc", value1.name);
-            Assert.Equal("def", value1.value);
+            AssertValue("abc", "def", value1);
 
             Assert.Same(value2, fromNode.values[1]);
             Assert.Same(value2, toNode.values[1]);
-            Assert.Equal("ghi", value2.name);
-            Assert.Equal("jkl", value2.value);
+            AssertValue("ghi", "jkl", value2);
 
             Assert.Equal(2, fromNode.nodes.Count);
             Assert.Equal(2, toNode.nodes.Count);
@@ -64,23 +62,21 @@ namespace ModuleManagerTests.Extensions
             Assert.Same(innerNode1, toNode.nodes[0]);
             Assert.Equal("INNER_NODE_1", innerNode1.name);
             Assert.Equal(1, innerNode1.values.Count);
-            Assert.Equal("mno", innerNode1.values[0].name);
-            Assert.Equal("pqr", innerNode1.values[0].value);
+            AssertValue("mno", "pqr", innerNode1.values[0]);
             Assert.Equal(1, innerNode1.nodes.Count);
             Assert.Equal("INNER_INNER_NODE_1", innerNode1.nodes[0].name);
-            Assert.Equal(0, innerNode1.nodes[0].values.Count);
-            Assert.Equal(0, innerNode1.nodes[0].nodes.Count);
+            Assert.Empty(innerNode1.nodes[0].values);
+            Assert.Empty(innerNode1.nodes[0].nodes);
 
             Assert.Same(innerNode2, fromNode.nodes[1]);
             Assert.Same(innerNode2, toNode.nodes[1]);
             Assert.Equal("INNER_NODE_2", innerNode2.name);
             Assert.Equal(1, innerNode2.values.Count);
-            Assert.Equal("stu", innerNode2.values[0].name);
-            Assert.Equal("vwx", innerNode2.values[0].value);
+            AssertValue("stu", "vwx", innerNode2.values[0]);
             Assert.Equal(1, innerNode2.nodes.Count);
             Assert.Equal("INNER_INNER_NODE_2", innerNode2.nodes[0].name);
-            Assert.Equal(0, innerNode2.nodes[0].values.Count);
-            Assert.Equal(0, innerNode2.nodes[0].nodes.Count);
+            Assert.Empty(innerNode2.nodes[0].values);
+            Assert.Empty(innerNode2.nodes[0].nodes);
         }
 
         [Fact]
@@ -93,6 +89,7 @@ namespace ModuleManagerTests.Extensions
                 new TestConfigNode("INNER_NODE_1")
                 {
                     { "mno", "pqr" },
+                    { "weird_values", "some\r\n\tstuff" },
                     new TestConfigNode("INNER_INNER_NODE_1"),
                 },
                 new TestConfigNode("INNER_NODE_2")
@@ -109,40 +106,38 @@ namespace ModuleManagerTests.Extensions
             Assert.Equal(2, toNode.values.Count);
             
             Assert.NotSame(fromNode.values[0], toNode.values[0]);
-            Assert.Equal("abc", toNode.values[0].name);
-            Assert.Equal("def", toNode.values[0].value);
-            
+            AssertValue("abc", "def", toNode.values[0]);
+
             Assert.NotSame(fromNode.values[1], toNode.values[1]);
-            Assert.Equal("ghi", toNode.values[1].name);
-            Assert.Equal("jkl", toNode.values[1].value);
-            
+            AssertValue("ghi", "jkl", toNode.values[1]);
+
             Assert.Equal(2, toNode.nodes.Count);
 
             ConfigNode innerNode1 = toNode.nodes[0];
             Assert.NotSame(fromNode.nodes[0], innerNode1);
             Assert.Equal("INNER_NODE_1", innerNode1.name);
-            Assert.Equal(1, innerNode1.values.Count);
+            Assert.Equal(2, innerNode1.values.Count);
             Assert.NotSame(fromNode.nodes[0].values[0], innerNode1.values[0]);
-            Assert.Equal("mno", innerNode1.values[0].name);
-            Assert.Equal("pqr", innerNode1.values[0].value);
+            AssertValue("mno", "pqr", innerNode1.values[0]);
+            Assert.NotSame(fromNode.nodes[0].values[1], innerNode1.values[1]);
+            AssertValue("weird_values", "some\r\n\tstuff", innerNode1.values[1]);
             Assert.Equal(1, toNode.nodes[0].nodes.Count);
             Assert.NotSame(fromNode.nodes[0].nodes[0], innerNode1.nodes[0]);
             Assert.Equal("INNER_INNER_NODE_1", innerNode1.nodes[0].name);
-            Assert.Equal(0, innerNode1.nodes[0].values.Count);
-            Assert.Equal(0, innerNode1.nodes[0].nodes.Count);
+            Assert.Empty(innerNode1.nodes[0].values);
+            Assert.Empty(innerNode1.nodes[0].nodes);
 
             ConfigNode innerNode2 = toNode.nodes[1];
             Assert.NotSame(fromNode.nodes[1], innerNode2);
             Assert.Equal("INNER_NODE_2", innerNode2.name);
             Assert.Equal(1, innerNode2.values.Count);
             Assert.NotSame(fromNode.nodes[1].values[0], innerNode2.values[0]);
-            Assert.Equal("stu", innerNode2.values[0].name);
-            Assert.Equal("vwx", innerNode2.values[0].value);
+            AssertValue("stu", "vwx", innerNode2.values[0]);
             Assert.Equal(1, innerNode2.nodes.Count);
             Assert.NotSame(fromNode.nodes[1].nodes[0], innerNode2.nodes[0]);
             Assert.Equal("INNER_INNER_NODE_2", innerNode2.nodes[0].name);
-            Assert.Equal(0, innerNode2.nodes[0].values.Count);
-            Assert.Equal(0, innerNode2.nodes[0].nodes.Count);
+            Assert.Empty(innerNode2.nodes[0].values);
+            Assert.Empty(innerNode2.nodes[0].nodes);
         }
 
         [Fact]
@@ -272,6 +267,27 @@ XX}
             StringBuilder sb = new StringBuilder();
             node.PrettyPrint(ref sb, "XX");
             Assert.Equal(expected, sb.ToString());
+        }
+
+        [Fact]
+        public void TestAddValueSafe()
+        {
+            ConfigNode node = new TestConfigNode
+            {
+                { "key1", "value1" },
+            };
+
+            node.AddValueSafe("weird_values", "some\r\n\tstuff");
+
+            Assert.Equal(2, node.values.Count);
+            AssertValue("key1", "value1", node.values[0]);
+            AssertValue("weird_values", "some\r\n\tstuff", node.values[1]);
+        }
+
+        private void AssertValue(string name, string value, ConfigNode.Value nodeValue)
+        {
+            Assert.Equal(name, nodeValue.name);
+            Assert.Equal(value, nodeValue.value);
         }
     }
 }

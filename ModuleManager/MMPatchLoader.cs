@@ -430,11 +430,30 @@ namespace ModuleManager
 
             cache.AddValue("patchedNodeCount", patchedNodeCount.ToString());
 
+            // Undoes escaping done by the localizer
+            void FixValuesRecursive(ConfigNode theNode)
+            {
+                foreach (ConfigNode subNode in theNode.nodes)
+                {
+                    FixValuesRecursive(subNode);
+                }
+
+                foreach (ConfigNode.Value value in theNode.values)
+                {
+                    value.value = value.value.Replace("\n", "\\n");
+                    value.value = value.value.Replace("\t", "\\t");
+                }
+            }
+
             foreach (IProtoUrlConfig urlConfig in databaseConfigs)
             {
                 ConfigNode node = cache.AddNode("UrlConfig");
                 node.AddValue("parentUrl", urlConfig.UrlFile.GetUrlWithExtension());
-                node.AddNode(urlConfig.Node);
+
+                ConfigNode urlNode = urlConfig.Node.DeepCopy();
+                FixValuesRecursive(urlNode);
+
+                node.AddNode(urlNode);
             }
 
             foreach (var file in GameDatabase.Instance.root.AllConfigFiles)
@@ -524,6 +543,21 @@ namespace ModuleManager
 
             List<IProtoUrlConfig> databaseConfigs = new List<IProtoUrlConfig>(cache.nodes.Count);
 
+            // Evaluate escape sequences
+            void FixValuesRecursive(ConfigNode theNode)
+            {
+                foreach (ConfigNode subNode in theNode.nodes)
+                {
+                    FixValuesRecursive(subNode);
+                }
+
+                foreach (ConfigNode.Value value in theNode.values)
+                {
+                    value.value = value.value.Replace("\\n", "\n");
+                    value.value = value.value.Replace("\\t", "\t");
+                }
+            }
+
             foreach (ConfigNode node in cache.nodes)
             {
                 string parentUrl = node.GetValue("parentUrl");
@@ -531,6 +565,7 @@ namespace ModuleManager
                 UrlDir.UrlFile parent = gameDataDir.Find(parentUrl);
                 if (parent != null)
                 {
+                    FixValuesRecursive(node.nodes[0]);
                     databaseConfigs.Add(new ProtoUrlConfig(parent, node.nodes[0]));
                 }
                 else
@@ -725,7 +760,7 @@ namespace ModuleManager
                             if (varValue != null)
                             {
                                 newNode.RemoveValues(valName);
-                                newNode.AddValue(valName, varValue);
+                                newNode.AddValueSafe(valName, varValue);
                             }
                             else
                             {
@@ -771,7 +806,7 @@ namespace ModuleManager
                                     if (cmd != Command.Copy)
                                         origVal.value = value;
                                     else
-                                        newNode.AddValue(valName, value);
+                                        newNode.AddValueSafe(valName, value);
                                 }
                             }
                             else
@@ -847,7 +882,7 @@ namespace ModuleManager
                             if (varValue != null)
                             {
                                 if (!newNode.HasValue(valName))
-                                    newNode.AddValue(valName, varValue);
+                                    newNode.AddValueSafe(valName, varValue);
                             }
                             else
                             {
@@ -1010,8 +1045,8 @@ namespace ModuleManager
                             msg += "  Applying subnode " + subMod.name + "\n";
                             #endif
                             ConfigNode newSubNode = ModifyNode(nodeStack.Push(subNodes[0]), subMod, context);
-                            subNodes[0].ClearData();
-                            newSubNode.CopyTo(subNodes[0], newSubNode.name);
+                            subNodes[0].ShallowCopyFrom(newSubNode);
+                            subNodes[0].name = newSubNode.name;
                         }
                         else
                         {
@@ -1023,7 +1058,7 @@ namespace ModuleManager
                             ConfigNode copy = new ConfigNode(nodeType);
 
                             if (nodeName != null)
-                                copy.AddValue("name", nodeName);
+                                copy.AddValueSafe("name", nodeName);
 
                             ConfigNode newSubNode = ModifyNode(nodeStack.Push(copy), subMod, context);
                             newNode.nodes.Add(newSubNode);
@@ -1040,7 +1075,7 @@ namespace ModuleManager
                             ConfigNode copy = new ConfigNode(nodeType);
 
                             if (nodeName != null)
-                                copy.AddValue("name", nodeName);
+                                copy.AddValueSafe("name", nodeName);
 
                             ConfigNode newSubNode = ModifyNode(nodeStack.Push(copy), subMod, context);
                             newNode.nodes.Add(newSubNode);
@@ -1066,8 +1101,8 @@ namespace ModuleManager
 
                                     // Edit in place
                                     newSubNode = ModifyNode(nodeStack.Push(subNode), subMod, context);
-                                    subNode.ClearData();
-                                    newSubNode.CopyTo(subNode, newSubNode.name);
+                                    subNode.ShallowCopyFrom(newSubNode);
+                                    subNode.name = newSubNode.name;
                                     break;
 
                                 case Command.Delete:
@@ -1698,13 +1733,13 @@ namespace ModuleManager
                 newNode.RemoveValues(name);
                 int i = 0;
                 for (; i < index; ++i)
-                    newNode.AddValue(name, oldValues[i]);
-                newNode.AddValue(name, value);
+                    newNode.AddValueSafe(name, oldValues[i]);
+                newNode.AddValueSafe(name, value);
                 for (; i < oldValues.Length; ++i)
-                    newNode.AddValue(name, oldValues[i]);
+                    newNode.AddValueSafe(name, oldValues[i]);
                 return;
             }
-            newNode.AddValue(name, value);
+            newNode.AddValueSafe(name, value);
         }
 
         //FindConfigNodeIn finds and returns a ConfigNode in src of type nodeType.

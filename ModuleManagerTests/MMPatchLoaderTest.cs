@@ -71,6 +71,84 @@ namespace ModuleManagerTests
             }, c3);
         }
 
+        [Fact]
+        public void TestModifyNode__EditNode__SpecialCharacters()
+        {
+            ConfigNode c1 = new TestConfigNode("NODE")
+            {
+                new TestConfigNode("INNER_NODE")
+                {
+                    { "weird_values", "some\r\n\tstuff" },
+                },
+            };
+
+            UrlDir.UrlConfig c2u = UrlBuilder.CreateConfig("abc/def", new TestConfigNode("@NODE")
+            {
+                new TestConfigNode("@INNER_NODE")
+                {
+                    { "another_weird_value", "some\r\nmore\tstuff" },
+                },
+            });
+
+            PatchContext context = new PatchContext(c2u, Enumerable.Empty<IProtoUrlConfig>(), logger, progress);
+
+            ConfigNode c3 = MMPatchLoader.ModifyNode(new NodeStack(c1), c2u.config, context);
+
+            EnsureNoErrors();
+
+            AssertConfigNodesEqual(new TestConfigNode("NODE")
+            {
+                new TestConfigNode("INNER_NODE")
+                {
+                    { "weird_values", "some\r\n\tstuff" },
+                    { "another_weird_value", "some\r\nmore\tstuff" },
+                },
+            }, c3);
+        }
+
+        [Fact]
+        public void TestModifyNode__ReplaceNode__SpecialCharacters()
+        {
+            ConfigNode c1 = new TestConfigNode("NODE")
+            {
+                new TestConfigNode("INNER_NODE")
+                {
+                    { "weird_values", "some\r\n\tstuff" },
+                },
+            };
+
+            UrlDir.UrlConfig c2u = UrlBuilder.CreateConfig("abc/def", new TestConfigNode("@NODE")
+            {
+                new TestConfigNode("%INNER_NODE")
+                {
+                    { "another_weird_value", "some\r\nmore\tstuff" },
+                },
+                new TestConfigNode("%OTHER_INNER_NODE")
+                {
+                    { "another_weirder_value", "even\r\nmore\tstuff" },
+                },
+            });
+
+            PatchContext context = new PatchContext(c2u, Enumerable.Empty<IProtoUrlConfig>(), logger, progress);
+
+            ConfigNode c3 = MMPatchLoader.ModifyNode(new NodeStack(c1), c2u.config, context);
+
+            EnsureNoErrors();
+
+            AssertConfigNodesEqual(new TestConfigNode("NODE")
+            {
+                new TestConfigNode("INNER_NODE")
+                {
+                    { "weird_values", "some\r\n\tstuff" },
+                    { "another_weird_value", "some\r\nmore\tstuff" },
+                },
+                new TestConfigNode("OTHER_INNER_NODE")
+                {
+                    { "another_weirder_value", "even\r\nmore\tstuff" },
+                },
+            }, c3);
+        }
+
         private void AssertConfigNodesEqual(ConfigNode expected, ConfigNode observed)
         {
             Assert.Equal(expected.ToString(), observed.ToString());
