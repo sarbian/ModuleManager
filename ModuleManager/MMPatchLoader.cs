@@ -430,28 +430,13 @@ namespace ModuleManager
 
             cache.AddValue("patchedNodeCount", patchedNodeCount.ToString());
 
-            // Undoes escaping done by the localizer
-            void FixValuesRecursive(ConfigNode theNode)
-            {
-                foreach (ConfigNode subNode in theNode.nodes)
-                {
-                    FixValuesRecursive(subNode);
-                }
-
-                foreach (ConfigNode.Value value in theNode.values)
-                {
-                    value.value = value.value.Replace("\n", "\\n");
-                    value.value = value.value.Replace("\t", "\\t");
-                }
-            }
-
             foreach (IProtoUrlConfig urlConfig in databaseConfigs)
             {
                 ConfigNode node = cache.AddNode("UrlConfig");
                 node.AddValue("parentUrl", urlConfig.UrlFile.GetUrlWithExtension());
 
                 ConfigNode urlNode = urlConfig.Node.DeepCopy();
-                FixValuesRecursive(urlNode);
+                urlNode.EscapeValuesRecursive();
 
                 node.AddNode(urlNode);
             }
@@ -543,21 +528,6 @@ namespace ModuleManager
 
             List<IProtoUrlConfig> databaseConfigs = new List<IProtoUrlConfig>(cache.nodes.Count);
 
-            // Evaluate escape sequences
-            void FixValuesRecursive(ConfigNode theNode)
-            {
-                foreach (ConfigNode subNode in theNode.nodes)
-                {
-                    FixValuesRecursive(subNode);
-                }
-
-                foreach (ConfigNode.Value value in theNode.values)
-                {
-                    value.value = value.value.Replace("\\n", "\n");
-                    value.value = value.value.Replace("\\t", "\t");
-                }
-            }
-
             foreach (ConfigNode node in cache.nodes)
             {
                 string parentUrl = node.GetValue("parentUrl");
@@ -565,7 +535,7 @@ namespace ModuleManager
                 UrlDir.UrlFile parent = gameDataDir.Find(parentUrl);
                 if (parent != null)
                 {
-                    FixValuesRecursive(node.nodes[0]);
+                    node.nodes[0].UnescapeValuesRecursive();
                     databaseConfigs.Add(new ProtoUrlConfig(parent, node.nodes[0]));
                 }
                 else

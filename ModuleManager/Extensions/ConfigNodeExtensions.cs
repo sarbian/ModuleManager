@@ -73,5 +73,35 @@ namespace ModuleManager.Extensions
         {
             node.values.Add(new ConfigNode.Value(name, value));
         }
+
+        public static void EscapeValuesRecursive(this ConfigNode theNode)
+        {
+            foreach (ConfigNode subNode in theNode.nodes)
+            {
+                subNode.EscapeValuesRecursive();
+            }
+
+            foreach (ConfigNode.Value value in theNode.values)
+            {
+                value.value = value.value.Replace("\n", "\\n");
+                value.value = value.value.Replace("\r", "\\r");
+                value.value = value.value.Replace("\t", "\\t");
+            }
+        }
+
+        public static void UnescapeValuesRecursive(this ConfigNode theNode)
+        {
+            foreach (ConfigNode subNode in theNode.nodes)
+            {
+                subNode.UnescapeValuesRecursive();
+            }
+
+            foreach (ConfigNode.Value value in theNode.values)
+            {
+                value.value = value.value.Replace("\\n", "\n");
+                value.value = value.value.Replace("\\r", "\r");
+                value.value = value.value.Replace("\\t", "\t");
+            }
+        }
     }
 }
