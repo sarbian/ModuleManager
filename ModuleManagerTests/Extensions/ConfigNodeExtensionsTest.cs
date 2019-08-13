@@ -284,6 +284,52 @@ XX}
             AssertValue("weird_values", "some\r\n\tstuff", node.values[1]);
         }
 
+        [Fact]
+        public void TestEscapeValuesRecursive()
+        {
+            ConfigNode node = new TestConfigNode
+            {
+                { "key1", "value1" },
+                { "key2", "value\nwith\rescped\tchars" },
+                new TestConfigNode("SUBNODE")
+                {
+                    { "key3", "value\nwith\rescped\tchars2" },
+                },
+            };
+
+            node.EscapeValuesRecursive();
+
+            Assert.Equal(2, node.values.Count);
+            AssertValue("key1", "value1", node.values[0]);
+            AssertValue("key2", "value\\nwith\\rescped\\tchars", node.values[1]);
+            Assert.Equal(1, node.nodes.Count);
+            Assert.Equal(1, node.nodes[0].values.Count);
+            AssertValue("key3", "value\\nwith\\rescped\\tchars2", node.nodes[0].values[0]);
+        }
+
+        [Fact]
+        public void TestUnescapeValuesRecursive()
+        {
+            ConfigNode node = new TestConfigNode
+            {
+                { "key1", "value1" },
+                { "key2", "value\\nwith\\rescped\\tchars" },
+                new TestConfigNode("SUBNODE")
+                {
+                    { "key3", "value\\nwith\\rescped\\tchars2" },
+                },
+            };
+
+            node.UnescapeValuesRecursive();
+
+            Assert.Equal(2, node.values.Count);
+            AssertValue("key1", "value1", node.values[0]);
+            AssertValue("key2", "value\nwith\rescped\tchars", node.values[1]);
+            Assert.Equal(1, node.nodes.Count);
+            Assert.Equal(1, node.nodes[0].values.Count);
+            AssertValue("key3", "value\nwith\rescped\tchars2", node.nodes[0].values[0]);
+        }
+
         private void AssertValue(string name, string value, ConfigNode.Value nodeValue)
         {
             Assert.Equal(name, nodeValue.name);

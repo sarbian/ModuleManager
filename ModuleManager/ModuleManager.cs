@@ -344,7 +344,7 @@ namespace ModuleManager
                             {
                                 progressFraction = 0f;
                             }
-                            else if (!GameDatabase.Instance.IsReady())
+                            else if (!GameDatabase.Instance.IsReady() || !PostPatchLoader.Instance.IsReady())
                             {
                                 progressFraction = GameDatabase.Instance.ProgressFraction() * GameDatabase.Instance.LoadWeight();
                                 progressFraction /= totalLoadWeight;
@@ -430,7 +430,7 @@ namespace ModuleManager
 
         public static void OutputAllConfigs()
         {
-            string path = KSPUtil.ApplicationRootPath + "/_MMCfgOutput/";
+            string path = Path.GetFullPath(Path.Combine(KSPUtil.ApplicationRootPath, "_MMCfgOutput"));
             try
             {
                 Directory.CreateDirectory(path);
@@ -451,50 +451,51 @@ namespace ModuleManager
             {
                 Log("Exception while cleaning the export dir\n" + unauthorizedAccessException);
             }
-            Stack<UrlDir> dirs = new Stack<UrlDir>();
-            dirs.Push(GameDatabase.Instance.root);
-            Stack<String> paths = new Stack<string>();
-            paths.Push("");
 
-            try
+            void WriteDirectoryRecursive(UrlDir currentDir, string dirPath)
             {
-                while (dirs.Count > 0)
-                {
-                    var currentDir = dirs.Pop();
-                    string currentPath = paths.Pop();
-                
-                    foreach (UrlDir.UrlFile urlFile in currentDir.files)
-                    {
-                        if (urlFile.fileType == UrlDir.FileType.Config)
-                        {
-                            string dirPath = path + currentPath;
-                            if (!Directory.Exists(dirPath))
-                            {
-                                Directory.CreateDirectory(dirPath);
-                            }
+                if (currentDir.files.Count > 0) Directory.CreateDirectory(dirPath);
 
-                            Log("Exporting " + currentPath + urlFile.GetUrlWithExtension());
-                            string filePath = dirPath + urlFile.GetUrlWithExtension();
-                            foreach (UrlDir.UrlConfig urlConfig in urlFile.configs)
+                foreach (UrlDir.UrlFile urlFile in currentDir.files)
+                {
+                    if (urlFile.fileType != UrlDir.FileType.Config) continue;
+
+                    Log("Exporting " + urlFile.GetUrlWithExtension());
+                    string filePath = Path.Combine(dirPath, urlFile.GetNameWithExtension());
+
+                    bool first = true;
+
+                    using (FileStream stream = new FileStream(filePath, FileMode.Create))
+                    using (StreamWriter writer = new StreamWriter(stream))
+                    {
+                        foreach (UrlDir.UrlConfig urlConfig in urlFile.configs)
+                        {
+                            try
                             {
-                                try
-                                {
-                                    File.AppendAllText(filePath, urlConfig.config.ToString());
-                                }
-                                catch (Exception e)
-                                {
-                                    Log("Exception while trying to write the file " + filePath + "\n" + e);
-                                }
+                                if (first) first = false;
+                                else writer.Write("\n");
+
+                                ConfigNode copy = urlConfig.config.DeepCopy();
+                                copy.EscapeValuesRecursive();
+                                writer.Write(copy.ToString());
+                            }
+                            catch (Exception e)
+                            {
+                                Log("Exception while trying to write the file " + filePath + "\n" + e);
                             }
                         }
                     }
-
-                    foreach (UrlDir urlDir in currentDir.children)
-                    {
-                        dirs.Push(urlDir);
-                        paths.Push(currentPath + urlDir.name + "/");
-                    }
                 }
+
+                foreach (UrlDir urlDir in currentDir.children)
+                {
+                    WriteDirectoryRecursive(urlDir, Path.Combine(dirPath, urlDir.name));
+                }
+            }
+
+            try
+            {
+                WriteDirectoryRecursive(GameDatabase.Instance.root, path);
             }
             catch (DirectoryNotFoundException directoryNotFoundException)
             {
