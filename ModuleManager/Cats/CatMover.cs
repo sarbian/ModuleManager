@@ -21,6 +21,8 @@ namespace ModuleManager.Cats
         private const float time = 5;
         private const float trailTime = time / 4;
 
+        private bool clearTrail = false;
+
         // Use this for initialization
         void Start()
         {
@@ -36,6 +38,7 @@ namespace ModuleManager.Cats
             totalLenth = (int) (Screen.width / time * trail.time) + 150;
             trail.time = trailTime;
             trail.widthCurve = new AnimationCurve(new Keyframe(0, trail.startWidth ), new Keyframe(0.7f, trail.startWidth), new Keyframe(1, trail.startWidth * 0.9f));
+            clearTrail = true;
         }
 
         void Update()
@@ -50,7 +53,7 @@ namespace ModuleManager.Cats
             if (activePos > (Screen.width + totalLenth))
             {
                 activePos = -spriteRenderer.sprite.rect.width;
-                trail.time = 0;
+                clearTrail = true;
             }
 
             float f = 2f * Mathf.PI * (activePos) / (Screen.width * 0.5f);
@@ -62,6 +65,13 @@ namespace ModuleManager.Cats
             
             transform.position = KSP.UI.UIMainCamera.Camera.ScreenToWorldPoint(spos);
             transform.rotation = Quaternion.Euler(0, 0, Mathf.Cos(f) * 0.25f * Mathf.PI * Mathf.Rad2Deg);
+
+            if (clearTrail)
+            {
+                trail.Clear();
+                clearTrail = false;
+            }
+
         }
 
         

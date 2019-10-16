@@ -81,7 +81,7 @@ namespace ModuleManager
 
             totalTime.Start();
 
-            // Allow loading the background in the laoding screen
+            // Allow loading the background in the loading screen
             Application.runInBackground = true;
             QualitySettings.vSyncCount = 0;
             Application.targetFrameRate = -1;
