@@ -103,6 +103,18 @@ namespace ModuleManager
                 patchLogger.Info(status);
                 IEnumerable<string> mods = ModListGenerator.GenerateModList(modsAddedByAssemblies, progress, patchLogger);
 
+                //Begin static part database substitution code.  Use static template rather than outright deleting partDatabase
+                string pathToStaticDB = Path.Combine(KSPUtil.ApplicationRootPath, "StaticPartDatabase.dbk");
+                if (keepPartDB == false && File.Exists(pathToStaticDB))
+                {
+                    if (File.Exists(partDatabasePath))
+                    {
+                        File.Delete(partDatabasePath);
+                    }
+                        File.Copy(pathToStaticDB, partDatabasePath);
+                        keepPartDB = true;
+                }
+
                 // If we don't use the cache then it is best to clean the PartDatabase.cfg
                 if (!keepPartDB && File.Exists(partDatabasePath))
                     File.Delete(partDatabasePath);
