@@ -184,6 +184,18 @@ namespace ModuleManager
             //    //if (GUI.Button(new Rect(Screen.width / 2f - 100, offsetY, 200, 20), "Click to open the Forum thread"))
             //    //    Application.OpenURL("http://forum.kerbalspaceprogram.com/index.php?/topic/124998-silent-patch-for-ksp-105-published/");
             //}
+
+            if (Versioning.version_major == 1 && Versioning.version_minor >= 8)
+            {
+                foreach (AssemblyLoader.LoadedAssembly assembly in AssemblyLoader.loadedAssemblies)
+                {
+                    AssemblyName assemblyName = assembly.assembly.GetName();
+                    if (assemblyName.Name == "Firespitter" && assemblyName.Version <= Version.Parse("7.3.7175.38653"))
+                    {
+                        warning.text = "You are using a version of Firespitter that does not run properly on KSP 1.8+\nThis version may prevent the game from loading properly and may create problems for other mods";
+                    }
+                }
+            }
         }
 
         private TextMeshProUGUI CreateTextObject(Canvas canvas, string name)
