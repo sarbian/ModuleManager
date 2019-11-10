@@ -40,7 +40,7 @@ namespace ModuleManager
         private static readonly KeyValueCache<string, Regex> regexCache = new KeyValueCache<string, Regex>();
 
         private string configSha;
-        private Dictionary<string, string> filesSha = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> filesSha = new Dictionary<string, string>();
 
         private const int STATUS_UPDATE_INVERVAL_MS = 33;
 
@@ -89,12 +89,10 @@ namespace ModuleManager
                 QueueLogRunner logRunner = new QueueLogRunner(patchLogQueue);
                 ITaskStatus loggingThreadStatus = BackgroundTask.Start(delegate
                 {
-                    using (StreamLogger streamLogger = new StreamLogger(new FileStream(patchLogPath, FileMode.Create)))
-                    {
-                        streamLogger.Info("Log started at " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-                        logRunner.Run(streamLogger);
-                        streamLogger.Info("Done!");
-                    }
+                    using StreamLogger streamLogger = new StreamLogger(new FileStream(patchLogPath, FileMode.Create));
+                    streamLogger.Info("Log started at " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+                    logRunner.Run(streamLogger);
+                    streamLogger.Info("Done!");
                 });
                 IBasicLogger patchLogger = new LogSplitter(logger, new QueueLogger(patchLogQueue));
 
@@ -284,8 +282,8 @@ namespace ModuleManager
             Stopwatch sw = new Stopwatch();
             sw.Start();
 
-            System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
-            System.Security.Cryptography.SHA256 filesha = System.Security.Cryptography.SHA256.Create();
+            using System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
+            using System.Security.Cryptography.SHA256 filesha = System.Security.Cryptography.SHA256.Create();
             UrlDir.UrlFile[] files = GameDatabase.Instance.root.AllConfigFiles.ToArray();
 
             filesSha.Clear();
@@ -570,7 +568,7 @@ namespace ModuleManager
         #region Applying Patches
 
         // Name is group 1, index is group 2, vector related filed is group 3, vector separator is group 4, operator is group 5
-        private static Regex parseValue = new Regex(@"([\w\&\-\.\?\*+/^!\(\) ]+(?:,[^*\d][\w\&\-\.\?\*\(\) ]*)*)(?:,(-?[0-9\*]+))?(?:\[((?:[0-9\*]+)+)(?:,(.))?\])?");
+        private static readonly Regex parseValue = new Regex(@"([\w\&\-\.\?\*+/^!\(\) ]+(?:,[^*\d][\w\&\-\.\?\*\(\) ]*)*)(?:,(-?[0-9\*]+))?(?:\[((?:[0-9\*]+)+)(?:,(.))?\])?");
 
         // ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original, then returns the patched ConfigNode.
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
@@ -1401,7 +1399,7 @@ namespace ModuleManager
                 StringBuilder builder = new StringBuilder();
                 builder.Append(split[0].Substring(1));
 
-                for (int i = 1; i < split.Length - 1; i = i + 2)
+                for (int i = 1; i < split.Length - 1; i += 2)
                 {
                     ConfigNode.Value result = RecurseVariableSearch(split[i], nodeStack, context);
                     if (result == null || result.value == null)
