@@ -108,6 +108,7 @@
     <Compile Include="Threading\ITaskStatus.cs" />
     <Compile Include="Threading\TaskStatus.cs" />
     <Compile Include="Threading\TaskStatusWrapper.cs" />
+    <Compile Include="ExceptionIntercept\InterceptLogHandler.cs" />
     <Compile Include="Utils\Counter.cs" />
     <Compile Include="Utils\FileUtils.cs" />
     <Compile Include="CustomConfigsManager.cs" />
@@ -194,6 +195,7 @@
   <ItemGroup>
     <None Include="Properties\rainbow2.png" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent>sh -c "TARGET_PATH='$(TargetPath)' TARGET_DIR='$(TargetDir)' TARGET_NAME='$(TargetName)' sh '$(ProjectDir)/copy_build.sh'"</PostBuildEvent>

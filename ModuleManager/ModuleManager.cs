@@ -11,6 +11,7 @@ using Debug = UnityEngine.Debug;
 using ModuleManager.Cats;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
+using ModuleManager.UnityLogHandle;
 
 namespace ModuleManager
 {
@@ -39,6 +40,8 @@ namespace ModuleManager
         private PopupDialog menu;
 
         private MMPatchRunner patchRunner;
+
+        private InterceptLogHandler interceptLogHandler;
 
         #endregion state
 
@@ -196,6 +199,7 @@ namespace ModuleManager
                     }
                 }
             }
+            interceptLogHandler = new InterceptLogHandler();
         }
 
         private TextMeshProUGUI CreateTextObject(Canvas canvas, string name)
@@ -289,6 +293,7 @@ namespace ModuleManager
             {
                 if (warning)
                 {
+                    warning.text = InterceptLogHandler.Warnings;
                     h = warning.text.Length > 0 ? warning.textBounds.size.y : 0;
                     offsetY = offsetY + h;
                     warning.rectTransform.localPosition = new Vector3(0, offsetY);
