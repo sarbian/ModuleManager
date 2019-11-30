@@ -34,23 +34,32 @@ namespace ModuleManager.UnityLogHandle
 
             if (exception is ReflectionTypeLoadException ex)
             {
-                ModuleManager.Log("Intercepted a ReflectionTypeLoadException. List of broken DLLs:");
-                var assemblies = ex.Types.Where(x => x != null).Select(x => x.Assembly).Distinct();
-                foreach (Assembly assembly in assemblies)
+                string message = "Intercepted a ReflectionTypeLoadException. List of broken DLLs:\n";
+                try
                 {
-                    if (Warnings == "")
+                    var assemblies = ex.Types.Where(x => x != null).Select(x => x.Assembly).Distinct();
+                    foreach (Assembly assembly in assemblies)
                     {
-                        Warnings = "ModuleManager mod(s) DLL that are not compatible with this version of KSP\n";
+                        if (Warnings == "")
+                        {
+                            Warnings = "Mod(s) DLL that are not compatible with this version of KSP\n";
+                        }
+                        string modInfo = assembly.GetName().Name + " " + assembly.GetName().Version + " " +
+                                         assembly.Location.Remove(0, gamePathLength) + "\n";
+                        if (!brokenAssemblies.Contains(assembly))
+                        {
+                            brokenAssemblies.Add(assembly);
+                            Warnings += modInfo;
+                        }
+                        message += modInfo;
                     }
-                    if (!brokenAssemblies.Contains(assembly))
-                    {
-                        brokenAssemblies.Add(assembly);
-                        Warnings += assembly.GetName().Name + " " + assembly.GetName().Version + " " + assembly.Location.Remove(0, gamePathLength) + "\n";
-                    }
-                    ModuleManager.Log(assembly.GetName().Name + " " + assembly.GetName().Version + " " + assembly.Location.Remove(0, gamePathLength));
                 }
+                catch (Exception e)
+                {
+                    message += "Exception " + e.GetType().Name + " while handling the exception...";
+                }
+                ModuleManager.Log(message);
             }
-            baseLogHandler.LogException(exception, context);
         }
     }
 }
