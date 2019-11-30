@@ -83,6 +83,8 @@ namespace ModuleManager
             }
 
             totalTime.Start();
+            
+            interceptLogHandler = new InterceptLogHandler();
 
             // Allow loading the background in the loading screen
             Application.runInBackground = true;
@@ -199,7 +201,6 @@ namespace ModuleManager
                     }
                 }
             }
-            interceptLogHandler = new InterceptLogHandler();
         }
 
         private TextMeshProUGUI CreateTextObject(Canvas canvas, string name)
