@@ -113,6 +113,7 @@ namespace ModuleManagerTests
                 Substitute.For<IPatch>(),
                 Substitute.For<IPatch>(),
                 Substitute.For<IPatch>(),
+                Substitute.For<IPatch>(),
             };
 
             UrlDir.UrlConfig urlConfig = UrlBuilder.CreateConfig("abc/def", new ConfigNode("NODE"));
@@ -139,8 +140,9 @@ namespace ModuleManagerTests
             patches[19].PassSpecifier.Returns(new AfterPassSpecifier("MOD2", urlConfig));
             patches[20].PassSpecifier.Returns(new LastPassSpecifier("mod2"));
             patches[21].PassSpecifier.Returns(new LastPassSpecifier("MOD2"));
-            patches[22].PassSpecifier.Returns(new FinalPassSpecifier());
+            patches[22].PassSpecifier.Returns(new LastPassSpecifier("mod3"));
             patches[23].PassSpecifier.Returns(new FinalPassSpecifier());
+            patches[24].PassSpecifier.Returns(new FinalPassSpecifier());
 
             patches[00].CountsAsPatch.Returns(false);
             patches[01].CountsAsPatch.Returns(false);
@@ -166,6 +168,7 @@ namespace ModuleManagerTests
             patches[21].CountsAsPatch.Returns(true);
             patches[22].CountsAsPatch.Returns(true);
             patches[23].CountsAsPatch.Returns(true);
+            patches[24].CountsAsPatch.Returns(true);
 
             IPatchProgress progress = Substitute.For<IPatchProgress>();
 
@@ -173,7 +176,7 @@ namespace ModuleManagerTests
 
             IPass[] passes = patchList.ToArray();
 
-            Assert.Equal(12, passes.Length);
+            Assert.Equal(13, passes.Length);
 
             Assert.Equal(":INSERT (initial)", passes[0].Name);
             Assert.Equal(new[] { patches[0], patches[1] }, passes[0]);
@@ -208,10 +211,13 @@ namespace ModuleManagerTests
             Assert.Equal(":LAST[MOD2]", passes[10].Name);
             Assert.Equal(new[] { patches[20], patches[21] }, passes[10]);
 
-            Assert.Equal(":FINAL", passes[11].Name);
-            Assert.Equal(new[] { patches[22], patches[23] }, passes[11]);
+            Assert.Equal(":LAST[MOD3]", passes[11].Name);
+            Assert.Equal(new[] { patches[22] }, passes[11]);
 
-            progress.Received(22).PatchAdded();
+            Assert.Equal(":FINAL", passes[12].Name);
+            Assert.Equal(new[] { patches[23], patches[24] }, passes[12]);
+
+            progress.Received(23).PatchAdded();
         }
     }
 }

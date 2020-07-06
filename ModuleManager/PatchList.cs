@@ -76,6 +76,7 @@ namespace ModuleManager
         private readonly Pass finalPatches = new Pass(":FINAL");
 
         private readonly ModPassCollection modPasses;
+        private readonly SortedDictionary<string, Pass> lastPasses = new SortedDictionary<string, Pass>(StringComparer.InvariantCultureIgnoreCase);
 
         public PatchList(IEnumerable<string> modList, IEnumerable<IPatch> patches, IPatchProgress progress)
         {
@@ -114,8 +115,12 @@ namespace ModuleManager
                 }
                 else if (patch.PassSpecifier is LastPassSpecifier lastPassSpecifier)
                 {
-                    EnsureMod(lastPassSpecifier.mod);
-                    modPasses[lastPassSpecifier.mod].AddLastPatch(patch);
+                    if (!lastPasses.TryGetValue(lastPassSpecifier.mod, out Pass thisPass))
+                    {
+                        thisPass = new Pass($":LAST[{lastPassSpecifier.mod.ToUpperInvariant()}]");
+                        lastPasses.Add(lastPassSpecifier.mod.ToLowerInvariant(), thisPass);
+                    }
+                    thisPass.Add(patch);
                 }
                 else if (patch.PassSpecifier is FinalPassSpecifier)
                 {
@@ -143,9 +148,9 @@ namespace ModuleManager
                 yield return modPass.afterPass;
             }
 
-            foreach (ModPass modPass in modPasses)
+            foreach (Pass lastPass in lastPasses.Values)
             {
-                yield return modPass.lastPass;
+                yield return lastPass;
             }
 
             yield return finalPatches;
