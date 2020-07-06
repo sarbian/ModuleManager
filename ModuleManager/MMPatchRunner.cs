@@ -80,12 +80,14 @@ namespace ModuleManager
             {
                 kspLogger.Exception("The patching thread threw an exception", patchingThreadStatus.Exception);
                 FatalErrorHandler.HandleFatalError("The patching thread threw an exception");
+                yield break;
             }
 
             if (loggingThreadStatus.IsExitedWithError)
             {
                 kspLogger.Exception("The logging thread threw an exception", loggingThreadStatus.Exception);
                 FatalErrorHandler.HandleFatalError("The logging thread threw an exception");
+                yield break;
             }
 
             if (databaseConfigs == null)
