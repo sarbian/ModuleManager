@@ -37,51 +37,24 @@ namespace ModuleManager
             public void AddLastPatch(IPatch patch) => lastPass.Add(patch ?? throw new ArgumentNullException(nameof(patch)));
         }
 
-        private class ModPassCollection : IEnumerable<ModPass>
-        {
-            private readonly ModPass[] passesArray;
-            private readonly Dictionary<string, ModPass> passesDict;
-
-            public ModPassCollection(IEnumerable<string> modList)
-            {
-                int count = modList.Count();
-                passesArray = new ModPass[count];
-                passesDict = new Dictionary<string, ModPass>(count);
-
-                int i = 0;
-                foreach (string mod in modList)
-                {
-                    ModPass pass = new ModPass(mod);
-                    passesArray[i] = pass;
-                    passesDict.Add(mod.ToLowerInvariant(), pass);
-                    i++;
-                }
-            }
-
-            public ModPass this[string name] => passesDict[name.ToLowerInvariant()];
-            public ModPass this[int index] => passesArray[index];
-
-            public bool HasMod(string name) => passesDict.ContainsKey(name.ToLowerInvariant());
-
-            public int Count => passesArray.Length;
-
-            public ArrayEnumerator<ModPass> GetEnumerator() => new ArrayEnumerator<ModPass>(passesArray);
-            IEnumerator<ModPass> IEnumerable<ModPass>.GetEnumerator() => GetEnumerator();
-            IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-        }
-
         private readonly Pass insertPatches = new Pass(":INSERT (initial)");
         private readonly Pass firstPatches = new Pass(":FIRST");
         private readonly Pass legacyPatches = new Pass(":LEGACY (default)");
         private readonly Pass finalPatches = new Pass(":FINAL");
 
-        private readonly ModPassCollection modPasses;
+        private readonly SortedDictionary<string, ModPass> modPasses = new SortedDictionary<string, ModPass>(StringComparer.InvariantCultureIgnoreCase);
+        private readonly SortedDictionary<string, Pass> lastPasses = new SortedDictionary<string, Pass>(StringComparer.InvariantCultureIgnoreCase);
 
         public PatchList(IEnumerable<string> modList, IEnumerable<IPatch> patches, IPatchProgress progress)
         {
-            modPasses = new ModPassCollection(modList ?? throw new ArgumentNullException(nameof(modList)));
+            if (modList == null) throw new ArgumentNullException(nameof(modList));
             if (patches == null) throw new ArgumentNullException(nameof(patches));
             if (progress == null) throw new ArgumentNullException(nameof(progress));
+
+            foreach (string mod in modList)
+            {
+                modPasses.Add(mod, new ModPass(mod));
+            }
 
             foreach (IPatch patch in patches)
             {
@@ -114,8 +87,12 @@ namespace ModuleManager
                 }
                 else if (patch.PassSpecifier is LastPassSpecifier lastPassSpecifier)
                 {
-                    EnsureMod(lastPassSpecifier.mod);
-                    modPasses[lastPassSpecifier.mod].AddLastPatch(patch);
+                    if (!lastPasses.TryGetValue(lastPassSpecifier.mod, out Pass thisPass))
+                    {
+                        thisPass = new Pass($":LAST[{lastPassSpecifier.mod.ToUpperInvariant()}]");
+                        lastPasses.Add(lastPassSpecifier.mod.ToLowerInvariant(), thisPass);
+                    }
+                    thisPass.Add(patch);
                 }
                 else if (patch.PassSpecifier is FinalPassSpecifier)
                 {
@@ -136,16 +113,16 @@ namespace ModuleManager
             yield return firstPatches;
             yield return legacyPatches;
 
-            foreach (ModPass modPass in modPasses)
+            foreach (ModPass modPass in modPasses.Values)
             {
                 yield return modPass.beforePass;
                 yield return modPass.forPass;
                 yield return modPass.afterPass;
             }
 
-            foreach (ModPass modPass in modPasses)
+            foreach (Pass lastPass in lastPasses.Values)
             {
-                yield return modPass.lastPass;
+                yield return lastPass;
             }
 
             yield return finalPatches;
@@ -157,7 +134,7 @@ namespace ModuleManager
         {
             if (mod == null) throw new ArgumentNullException(nameof(mod));
             if (mod == string.Empty) throw new ArgumentException("can't be empty", nameof(mod));
-            if (!modPasses.HasMod(mod)) throw new KeyNotFoundException($"Mod '{mod}' not found");
+            if (!modPasses.ContainsKey(mod)) throw new KeyNotFoundException($"Mod '{mod}' not found");
         }
     }
 }
