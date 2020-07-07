@@ -9,6 +9,7 @@ using ModuleManager.Extensions;
 using ModuleManager.Logging;
 
 using static ModuleManager.FilePathRepository;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ModuleManager
 {
@@ -34,6 +35,7 @@ namespace ModuleManager
                 postPatchCallbacks.Add(callback);
         }
 
+        [SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by Unity")]
         private void Awake()
         {
             if (Instance != null)

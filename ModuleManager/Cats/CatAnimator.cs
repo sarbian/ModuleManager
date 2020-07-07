@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using UnityEngine;
 
 namespace ModuleManager.Cats
@@ -12,9 +13,10 @@ namespace ModuleManager.Cats
         private SpriteRenderer spriteRenderer;
         private int spriteIdx;
 
+        [SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by Unity")]
         void Start()
         {
-            spriteRenderer = this.GetComponent<SpriteRenderer>();
+            spriteRenderer = GetComponent<SpriteRenderer>();
             spriteRenderer.sortingOrder = 3;
             StartCoroutine(Animate());
         }

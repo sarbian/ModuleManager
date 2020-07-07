@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
 using ModuleManager.Patches;
@@ -10,6 +11,7 @@ namespace ModuleManager
     public class PatchExtractor
     {
         private readonly IPatchProgress progress;
+        [SuppressMessage("CodeQuality", "IDE0052", Justification = "Reserved for future use")]
         private readonly IBasicLogger logger;
         private readonly INeedsChecker needsChecker;
         private readonly ITagListParser tagListParser;

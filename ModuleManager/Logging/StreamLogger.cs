@@ -5,14 +5,11 @@ namespace ModuleManager.Logging
 {
     public sealed class StreamLogger : IBasicLogger, IDisposable
     {
-        private readonly Stream stream;
         private readonly StreamWriter streamWriter;
         private bool disposed = false;
 
         public StreamLogger(Stream stream)
         {
-            this.stream = stream ?? throw new ArgumentNullException(nameof(stream));
-            if (!stream.CanWrite) throw new ArgumentException("must be writable", nameof(stream));
             streamWriter = new StreamWriter(stream);
         }
 

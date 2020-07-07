@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
@@ -20,6 +21,7 @@ namespace ModuleManager
         private readonly IEnumerable<string> mods;
         private readonly UrlDir gameData;
         private readonly IPatchProgress progress;
+        [SuppressMessage("CodeQuality", "IDE0052", Justification = "Reserved for future use")]
         private readonly IBasicLogger logger;
 
         public NeedsChecker(IEnumerable<string> mods, UrlDir gameData, IPatchProgress progress, IBasicLogger logger)

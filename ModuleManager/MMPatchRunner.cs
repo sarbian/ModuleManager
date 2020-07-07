@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
-using UnityEngine;
 using ModuleManager.Collections;
 using ModuleManager.Extensions;
 using ModuleManager.Logging;
@@ -14,8 +13,6 @@ namespace ModuleManager
 {
     public class MMPatchRunner
     {
-        private const float TIME_TO_WAIT_FOR_LOGS = 0.05f;
-
         private readonly IBasicLogger kspLogger;
 
         public string Status { get; private set; } = "";
@@ -38,12 +35,10 @@ namespace ModuleManager
             QueueLogRunner logRunner = new QueueLogRunner(mmLogQueue);
             ITaskStatus loggingThreadStatus = BackgroundTask.Start(delegate
             {
-                using (StreamLogger streamLogger = new StreamLogger(new FileStream(logPath, FileMode.Create)))
-                {
-                    streamLogger.Info("Log started at " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-                    logRunner.Run(streamLogger);
-                    streamLogger.Info("Done!");
-                }
+                using StreamLogger streamLogger = new StreamLogger(new FileStream(logPath, FileMode.Create));
+                streamLogger.Info("Log started at " + DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"));
+                logRunner.Run(streamLogger);
+                streamLogger.Info("Done!");
             });
 
             // Wait for game database to be initialized for the 2nd time and wait for any plugins to initialize

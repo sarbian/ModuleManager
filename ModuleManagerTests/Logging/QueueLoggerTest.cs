@@ -8,12 +8,11 @@ namespace ModuleManagerTests.Logging
 {
     public class QueueLoggerTest
     {
-        private IMessageQueue<ILogMessage> queue;
-        private QueueLogger logger;
+        private readonly IMessageQueue<ILogMessage> queue = Substitute.For<IMessageQueue<ILogMessage>>();
+        private readonly QueueLogger logger;
 
         public QueueLoggerTest()
         {
-            queue = Substitute.For<IMessageQueue<ILogMessage>>();
             logger = new QueueLogger(queue);
         }
 

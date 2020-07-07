@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Linq;
 using Xunit;
 using NSubstitute;
 using TestUtils;
@@ -385,11 +384,6 @@ namespace ModuleManagerTests
             progress.DidNotReceiveWithAnyArgs().Error(null, null);
             progress.DidNotReceiveWithAnyArgs().Exception(null, null);
             progress.DidNotReceiveWithAnyArgs().Exception(null, null, null);
-        }
-
-        private void AssertConfigNodesEqual(ConfigNode expected, ConfigNode observed)
-        {
-            Assert.Equal(expected.ToString(), observed.ToString());
         }
     }
 }

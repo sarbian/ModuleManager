@@ -8,7 +8,7 @@ namespace ModuleManager.Progress
     {
         public ProgressCounter Counter { get; private set; }
 
-        private IBasicLogger logger;
+        private readonly IBasicLogger logger;
 
         public float ProgressFraction
         {

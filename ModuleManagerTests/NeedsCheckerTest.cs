@@ -5,7 +5,6 @@ using TestUtils;
 using ModuleManager;
 using ModuleManager.Logging;
 using ModuleManager.Progress;
-using NodeStack = ModuleManager.Collections.ImmutableStack<ConfigNode>;
 
 namespace ModuleManagerTests
 {
@@ -13,17 +12,13 @@ namespace ModuleManagerTests
     {
         private readonly UrlDir gameData;
 
-        private readonly IPatchProgress progress;
-        private readonly IBasicLogger logger;
-        private NeedsChecker needsChecker;
+        private readonly IPatchProgress progress = Substitute.For<IPatchProgress>();
+        private readonly IBasicLogger logger = Substitute.For<IBasicLogger>();
+        private readonly NeedsChecker needsChecker;
 
         public NeedsCheckerTest()
         {
             gameData = UrlBuilder.CreateGameData();
-
-            progress = Substitute.For<IPatchProgress>();
-            logger = Substitute.For<IBasicLogger>();
-
             needsChecker = new NeedsChecker(new[] { "mod1", "mod2", "mod/2" }, gameData, progress, logger);
         }
 

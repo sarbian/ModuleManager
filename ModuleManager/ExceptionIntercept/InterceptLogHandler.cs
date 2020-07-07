@@ -16,10 +16,9 @@ namespace ModuleManager.UnityLogHandle
 
         public static string Warnings { get; private set; } = "";
 
-        public InterceptLogHandler()
+        public InterceptLogHandler(ILogHandler baseLogHandler)
         {
-            baseLogHandler = Debug.unityLogger.logHandler;
-            Debug.unityLogger.logHandler = this;
+            this.baseLogHandler = baseLogHandler ?? throw new ArgumentNullException(nameof(baseLogHandler));
             gamePathLength = Path.GetFullPath(KSPUtil.ApplicationRootPath).Length;
         }
 

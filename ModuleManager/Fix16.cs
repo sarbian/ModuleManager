@@ -1,9 +1,11 @@
 ﻿using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 
 namespace ModuleManager
 {
     class Fix16 : LoadingSystem
     {
+        [SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by Unity")]
         private void Awake()
         {
             if (Instance != null)

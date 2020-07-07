@@ -8,7 +8,7 @@ namespace ModuleManagerTests.Collections
     {
         private class TestClass { }
 
-        private MessageQueue<TestClass> queue = new MessageQueue<TestClass>();
+        private readonly MessageQueue<TestClass> queue = new MessageQueue<TestClass>();
 
         [Fact]
         public void Test__Empty()

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using ModuleManager.Collections;
 using ModuleManager.Patches;
 using ModuleManager.Patches.PassSpecifiers;
 using ModuleManager.Progress;

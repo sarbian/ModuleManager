@@ -11,12 +11,10 @@ namespace ModuleManagerTests.Logging
         [Fact]
         public void TestConstructor__StreamNull()
         {
-            ArgumentNullException ex = Assert.Throws<ArgumentNullException>(delegate
+            Assert.Throws<ArgumentNullException>(delegate
             {
                 new StreamLogger(null);
             });
-
-            Assert.Equal("stream", ex.ParamName);
         }
 
         [Fact]
@@ -24,13 +22,10 @@ namespace ModuleManagerTests.Logging
         {
             using (MemoryStream stream = new MemoryStream(new byte[0], false))
             {
-                ArgumentException ex = Assert.Throws<ArgumentException>(delegate
+                Assert.Throws<ArgumentException>(delegate
                 {
                     new StreamLogger(stream);
                 });
-
-                Assert.Equal("stream", ex.ParamName);
-                Assert.Contains("must be writable", ex.Message);
             }
         }
 

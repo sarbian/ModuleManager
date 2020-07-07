@@ -18,7 +18,7 @@ namespace ModuleManager.Extensions
             return level == 0;
         }
 
-        private static Regex whitespaceRegex = new Regex(@"\s+");
+        private static readonly Regex whitespaceRegex = new Regex(@"\s+");
 
         public static string RemoveWS(this string withWhite)
         {

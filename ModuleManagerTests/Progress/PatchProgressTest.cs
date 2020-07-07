@@ -1,7 +1,6 @@
 ﻿using System;
 using Xunit;
 using NSubstitute;
-using UnityEngine;
 using TestUtils;
 using ModuleManager;
 using ModuleManager.Logging;
@@ -11,12 +10,11 @@ namespace ModuleManagerTests
 {
     public class PatchProgressTest
     {
-        private IBasicLogger logger;
-        private PatchProgress progress;
+        private readonly IBasicLogger logger = Substitute.For<IBasicLogger>();
+        private readonly PatchProgress progress;
 
         public PatchProgressTest()
         {
-            logger = Substitute.For<IBasicLogger>();
             progress = new PatchProgress(logger);
         }
 

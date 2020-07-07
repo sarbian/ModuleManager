@@ -10,11 +10,9 @@ namespace ModuleManager
 
     public class NodeMatcher : INodeMatcher
     {
-        private static readonly char[] sep = { '[', ']' };
-
-        private string type;
-        private string[] namePatterns = null;
-        private string constraints = "";
+        private readonly string type;
+        private readonly string[] namePatterns = null;
+        private readonly string constraints = "";
 
         public NodeMatcher(string type, string name, string constraints)
         {

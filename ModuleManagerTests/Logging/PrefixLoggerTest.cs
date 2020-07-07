@@ -8,12 +8,11 @@ namespace ModuleManagerTests.Logging
 {
     public class PrefixLoggerTest
     {
-        private IBasicLogger innerLogger;
-        private PrefixLogger logger;
+        private readonly IBasicLogger innerLogger = Substitute.For<IBasicLogger>();
+        private readonly PrefixLogger logger;
 
         public PrefixLoggerTest()
         {
-            innerLogger = Substitute.For<IBasicLogger>();
             logger = new PrefixLogger("MyMod", innerLogger);
         }
 

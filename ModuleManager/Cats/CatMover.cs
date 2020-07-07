@@ -1,4 +1,4 @@
-﻿using System.Collections;
+﻿using System.Diagnostics.CodeAnalysis;
 using UnityEngine;
 
 namespace ModuleManager.Cats
@@ -24,12 +24,13 @@ namespace ModuleManager.Cats
         private bool clearTrail = false;
 
         // Use this for initialization
+        [SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by Unity")]
         void Start()
         {
-            trail = this.GetComponent<TrailRenderer>();
+            trail = GetComponent<TrailRenderer>();
             trail.sortingOrder = 2;
 
-            spriteRenderer = this.GetComponent<SpriteRenderer>();
+            spriteRenderer = GetComponent<SpriteRenderer>();
 
             offsetY = Mathf.FloorToInt(0.2f * Screen.height);
 
@@ -41,6 +42,7 @@ namespace ModuleManager.Cats
             clearTrail = true;
         }
 
+        [SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by Unity")]
         void Update()
         {
             if (trail.time <= 0f)

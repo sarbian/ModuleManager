@@ -4,12 +4,10 @@ namespace ModuleManager.Threading
 {
     public class TaskStatus : ITaskStatus
     {
-        private bool isRunning = true;
-        private Exception exception = null;
-        private object lockObject = new object();
+        private readonly object lockObject = new object();
 
-        public bool IsRunning => isRunning;
-        public Exception Exception => exception;
+        public bool IsRunning { get; private set; } = true;
+        public Exception Exception { get; private set; } = null;
 
         public bool IsFinished
         {
@@ -17,7 +15,7 @@ namespace ModuleManager.Threading
             {
                 lock (lockObject)
                 {
-                    return !isRunning && exception == null;
+                    return !IsRunning && Exception == null;
                 }
             }
         }
@@ -28,7 +26,7 @@ namespace ModuleManager.Threading
             {
                 lock (lockObject)
                 {
-                    return !isRunning && exception != null;
+                    return !IsRunning && Exception != null;
                 }
             }
         }
@@ -37,8 +35,8 @@ namespace ModuleManager.Threading
         {
             lock (lockObject)
             {
-                if (!isRunning) throw new InvalidOperationException("Task is not running");
-                isRunning = false;
+                if (!IsRunning) throw new InvalidOperationException("Task is not running");
+                IsRunning = false;
             }
         }
 
@@ -46,9 +44,9 @@ namespace ModuleManager.Threading
         {
             lock(lockObject)
             {
-                if (!isRunning) throw new InvalidOperationException("Task is not running");
-                this.exception = exception ?? throw new ArgumentNullException(nameof(exception));
-                isRunning = false;
+                if (!IsRunning) throw new InvalidOperationException("Task is not running");
+                this.Exception = exception ?? throw new ArgumentNullException(nameof(exception));
+                IsRunning = false;
             }
         }
     }

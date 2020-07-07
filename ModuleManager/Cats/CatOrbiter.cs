@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using KSP.UI;
 using UnityEngine;
 using Random = UnityEngine.Random;
@@ -8,7 +9,7 @@ namespace ModuleManager.Cats
 {
     class CatOrbiter : MonoBehaviour
     {
-        private static List<CatOrbiter> orbiters = new List<CatOrbiter>();
+        private static readonly List<CatOrbiter> orbiters = new List<CatOrbiter>();
 
         private static CatOrbiter sun;
 
@@ -20,7 +21,7 @@ namespace ModuleManager.Cats
         private Vector2d force;
         private float scale = 1;
 
-        private double G = 6.67408E-11;
+        private const double G = 6.67408E-11;
 
         public double Mass
         {
@@ -113,13 +114,14 @@ namespace ModuleManager.Cats
             }
         }
 
-
+        [SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by Unity")]
         void OnDestroy()
         {
             orbiters.Remove(this);
             TimingManager.FixedUpdateRemove(TimingManager.TimingStage.Earlyish, DoForces);
         }
 
+        [SuppressMessage("CodeQuality", "IDE0051", Justification = "Called by Unity")]
         void FixedUpdate()
         {
             //if (this == sun)

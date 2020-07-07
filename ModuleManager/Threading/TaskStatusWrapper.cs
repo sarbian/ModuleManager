@@ -4,7 +4,7 @@ namespace ModuleManager.Threading
 {
     public class TaskStatusWrapper : ITaskStatus
     {
-        private ITaskStatus inner;
+        private readonly ITaskStatus inner;
 
         public TaskStatusWrapper(ITaskStatus inner)
         {

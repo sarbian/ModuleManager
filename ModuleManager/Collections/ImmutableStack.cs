@@ -8,7 +8,7 @@ namespace ModuleManager.Collections
     {
         public struct Enumerator : IEnumerator<T>
         {
-            private ImmutableStack<T> head;
+            private readonly ImmutableStack<T> head;
             private ImmutableStack<T> currentStack;
 
             public Enumerator(ImmutableStack<T> stack)

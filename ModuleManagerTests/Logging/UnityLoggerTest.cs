@@ -9,12 +9,11 @@ namespace ModuleManagerTests.Logging
 {
     public class UnityLoggerTest
     {
-        private ILogger innerLogger;
-        private UnityLogger logger;
+        private readonly ILogger innerLogger = Substitute.For<ILogger>();
+        private readonly UnityLogger logger;
 
         public UnityLoggerTest()
         {
-            innerLogger = Substitute.For<ILogger>();
             logger = new UnityLogger(innerLogger);
         }
 

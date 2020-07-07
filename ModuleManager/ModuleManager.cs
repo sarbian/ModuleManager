@@ -38,8 +38,6 @@ namespace ModuleManager
 
         private MMPatchRunner patchRunner;
 
-        private InterceptLogHandler interceptLogHandler;
-
         #endregion state
 
         private static bool loadedInScene;
@@ -80,8 +78,8 @@ namespace ModuleManager
             }
 
             totalTime.Start();
-            
-            interceptLogHandler = new InterceptLogHandler();
+
+            Debug.unityLogger.logHandler = new InterceptLogHandler(Debug.unityLogger.logHandler);
 
             // Allow loading the background in the loading screen
             Application.runInBackground = true;

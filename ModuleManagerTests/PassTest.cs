@@ -2,7 +2,6 @@
 using System.Linq;
 using Xunit;
 using NSubstitute;
-using TestUtils;
 using ModuleManager;
 using ModuleManager.Patches;
 
@@ -10,13 +9,6 @@ namespace ModuleManagerTests
 {
     public class PassTest
     {
-        private UrlDir.UrlFile file;
-
-        public PassTest()
-        {
-            file = UrlBuilder.CreateFile("abc/def.cfg");
-        }
-
         [Fact]
         public void TestConstructor__NameNull()
         {

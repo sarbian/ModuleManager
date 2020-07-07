@@ -14,7 +14,7 @@ namespace ModuleManager.Cats
             InitCats();
 
             GameObject cat = LaunchCat(scale);
-            CatMover catMover = cat.AddComponent<CatMover>();
+            cat.AddComponent<CatMover>();
         }
 
         public static void LaunchCats()

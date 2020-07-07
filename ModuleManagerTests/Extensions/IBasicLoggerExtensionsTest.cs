@@ -1,7 +1,6 @@
 ﻿using System;
 using Xunit;
 using NSubstitute;
-using UnityEngine;
 using ModuleManager.Logging;
 using ModuleManager.Extensions;
 
@@ -9,12 +8,7 @@ namespace ModuleManagerTests.Extensions
 {
     public class IBasicLoggerExtensionsTest
     {
-        private IBasicLogger logger;
-
-        public IBasicLoggerExtensionsTest()
-        {
-            logger = Substitute.For<IBasicLogger>();
-        }
+        private readonly IBasicLogger logger = Substitute.For<IBasicLogger>();
 
         [Fact]
         public void TestInfo()
