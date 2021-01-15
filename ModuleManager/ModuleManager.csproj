@@ -33,6 +33,9 @@
     <ConsolePause>False</ConsolePause>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
+  <PropertyGroup>
+    <LangVersion>8.0</LangVersion>
+  </PropertyGroup>
   <ItemGroup>
     <Compile Include="Cats\CatAnimator.cs" />
     <Compile Include="Cats\CatManager.cs" />
