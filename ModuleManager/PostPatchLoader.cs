@@ -130,6 +130,8 @@ namespace ModuleManager
             logger.Info("Reloading Part Upgrades");
             PartUpgradeManager.Handler.FillUpgrades();
 
+            LoadModdedPhysics();
+
             yield return null;
 
             progressTitle = "ModuleManager: Running post patch callbacks";
@@ -208,6 +210,24 @@ namespace ModuleManager
             logger.Info("Post patch ran in " + ((float)postPatchTimer.ElapsedMilliseconds / 1000).ToString("F3") + "s");
 
             ready = true;
+        }
+
+        private void LoadModdedPhysics()
+        {
+            if (PhysicsGlobals.PhysicsDatabaseFilename == physicsFile) return;
+
+            if (!File.Exists(physicsPath))
+            {
+                logger.Error("Physics file not found");
+                return;
+            }
+
+            logger.Info("Setting modded physics as the active one");
+
+            PhysicsGlobals.PhysicsDatabaseFilename = physicsFile;
+
+            if (!PhysicsGlobals.Instance.LoadDatabase())
+                logger.Error("Something went wrong while setting the active physics config.");
         }
     }
 }
