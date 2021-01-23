@@ -214,8 +214,6 @@ namespace ModuleManager
 
         private void LoadModdedPhysics()
         {
-            if (PhysicsGlobals.PhysicsDatabaseFilename == physicsFile) return;
-
             if (!File.Exists(physicsPath))
             {
                 logger.Error("Physics file not found");
