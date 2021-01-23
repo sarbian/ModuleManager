@@ -33,10 +33,10 @@ build: info
 		${INCLUDEFILES}
 
 tar.gz: build
-	${TAR} zcf ModuleManager-0.$(shell ${GIT} rev-list --count HEAD).g$(shell ${GIT} log -1 --format="%h").tar.gz build/ModuleManager.dll
+	${TAR} zcf ModuleManager-0.$(shell ${GIT} rev-list --count HEAD).g$(shell ${GIT} log -1 --format="%h").tar.gz ModuleManager.version build/ModuleManager.dll
 
 zip: build
-	${ZIP} -9 -r ModuleManager-0.$(shell ${GIT} rev-list --count HEAD).g$(shell ${GIT} log -1 --format="%h").zip build/ModuleManager.dll
+	${ZIP} -9 -r ModuleManager-0.$(shell ${GIT} rev-list --count HEAD).g$(shell ${GIT} log -1 --format="%h").zip ModuleManager.version build/ModuleManager.dll
 
 clean:
 	@echo "Cleaning up build and package directories..."
