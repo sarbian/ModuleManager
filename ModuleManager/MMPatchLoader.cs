@@ -22,8 +22,6 @@ using static ModuleManager.FilePathRepository;
 
 namespace ModuleManager
 {
-    [SuppressMessage("ReSharper", "StringLastIndexOfIsCultureSpecific.1")]
-    [SuppressMessage("ReSharper", "StringIndexOfIsCultureSpecific.1")]
     public class MMPatchLoader
     {
         private const string PHYSICS_NODE_NAME = "PHYSICSGLOBALS";
@@ -922,7 +920,7 @@ namespace ModuleManager
 
                     ConfigNode newSubMod = new ConfigNode(toPaste.name);
                     newSubMod = ModifyNode(nodeStack.Push(newSubMod), toPaste, context);
-                    if (subName.LastIndexOf(",") > 0 && int.TryParse(subName.Substring(subName.LastIndexOf(",") + 1), out int index))
+                    if (subName.LastIndexOf(',') > 0 && int.TryParse(subName.Substring(subName.LastIndexOf(',') + 1), out int index))
                     {
                         // In this case insert the node at position index
                         InsertNode(newNode, newSubMod, index);
@@ -945,11 +943,10 @@ namespace ModuleManager
                     // NODE,n will match the nth node (NODE is the same as NODE,0)
                     // NODE,* will match ALL nodes
                     // NODE:HAS[condition] will match ALL nodes with condition
-                    if (subName.Contains(":HAS["))
+                    if (subName.Contains(":HAS[", out int hasStart))
                     {
-                        int start = subName.IndexOf(":HAS[");
-                        constraints = subName.Substring(start + 5, subName.LastIndexOf(']') - start - 5);
-                        subName = subName.Substring(0, start);
+                        constraints = subName.Substring(hasStart + 5, subName.LastIndexOf(']') - hasStart - 5);
+                        subName = subName.Substring(0, hasStart);
                     }
 
                     if (subName.Contains(","))
@@ -1117,11 +1114,10 @@ namespace ModuleManager
             string constraint = "";
 
             int index = 0;
-            if (subName.Contains(":HAS["))
+            if (subName.Contains(":HAS[", out int hasStart))
             {
-                int start = subName.IndexOf(":HAS[");
-                constraint = subName.Substring(start + 5, subName.LastIndexOf(']') - start - 5);
-                subName = subName.Substring(0, start);
+                constraint = subName.Substring(hasStart + 5, subName.LastIndexOf(']') - hasStart - 5);
+                subName = subName.Substring(0, hasStart);
             }
             else if (subName.Contains(","))
             {
@@ -1290,13 +1286,12 @@ namespace ModuleManager
                 string constraint = "";
                 string nodeType, nodeName;
                 int index = 0;
-                if (subName.Contains(":HAS["))
+                if (subName.Contains(":HAS[", out int hasStart))
                 {
-                    int start = subName.IndexOf(":HAS[");
-                    constraint = subName.Substring(start + 5, subName.LastIndexOf(']') - start - 5);
-                    subName = subName.Substring(0, start);
+                    constraint = subName.Substring(hasStart + 5, subName.LastIndexOf(']') - hasStart - 5);
+                    subName = subName.Substring(0, hasStart);
                 }
-                else if (subName.Contains(","))
+                else if (subName.Contains(','))
                 {
                     string tag = subName.Split(',')[1];
                     subName = subName.Split(',')[0];
@@ -1551,11 +1546,11 @@ namespace ModuleManager
                 constraints = constraintList[0];
 
                 string remainingConstraints = "";
-                if (constraints.Contains("HAS["))
+                if (constraints.Contains(":HAS[", out int hasStart))
                 {
-                    int start = constraints.IndexOf("HAS[") + 4;
-                    remainingConstraints = constraints.Substring(start, constraintList[0].LastIndexOf(']') - start);
-                    constraints = constraints.Substring(0, start - 5);
+                    hasStart += 4;
+                    remainingConstraints = constraints.Substring(hasStart, constraintList[0].LastIndexOf(']') - hasStart);
+                    constraints = constraints.Substring(0, hasStart - 5);
                 }
 
                 string[] splits = constraints.Split(contraintSeparators, 3);
