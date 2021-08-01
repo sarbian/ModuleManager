@@ -16,16 +16,6 @@ namespace ModuleManager
                 Log("Setting modded tech tree as the active one");
                 HighLogic.CurrentGame.Parameters.Career.TechTreeUrl = techTreeFile;
             }
-
-            if (PhysicsGlobals.PhysicsDatabaseFilename != physicsFile && File.Exists(physicsPath))
-            {
-                Log("Setting modded physics as the active one");
-
-                PhysicsGlobals.PhysicsDatabaseFilename = physicsFile;
-
-                if (!PhysicsGlobals.Instance.LoadDatabase())
-                    Log("Something went wrong while setting the active physics config.");
-            }
         }
 
         public static void Log(String s)
