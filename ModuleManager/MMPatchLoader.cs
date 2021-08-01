@@ -1548,7 +1548,7 @@ namespace ModuleManager
                 string remainingConstraints = "";
                 if (constraints.Contains(":HAS[", out int hasStart))
                 {
-                    hasStart += 4;
+                    hasStart += 5;
                     remainingConstraints = constraints.Substring(hasStart, constraintList[0].LastIndexOf(']') - hasStart);
                     constraints = constraints.Substring(0, hasStart - 5);
                 }
