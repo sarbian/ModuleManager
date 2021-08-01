@@ -30,7 +30,7 @@ namespace ModuleManager.Extensions
             if (str == null) throw new ArgumentNullException(nameof(str));
             if (value == null) throw new ArgumentNullException(nameof(value));
 
-            index = str.IndexOf(value, StringComparison.CurrentCultureIgnoreCase);
+            index = str.IndexOf(value, StringComparison.Ordinal);
             return index != -1;
         }
     }
