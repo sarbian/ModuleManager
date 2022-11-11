@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -51,42 +52,44 @@ namespace ModuleManager
 
                 if (string.IsNullOrEmpty(mod.assembly.Location)) //Diazo Edit for xEvilReeperx AssemblyReloader mod
                     continue;
-
-                FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(mod.assembly.Location);
-
-                AssemblyName assemblyName = mod.assembly.GetName();
-
-                string kspAssemblyVersion;
-                if (mod.versionMajor == 0 && mod.versionMinor == 0)
-                    kspAssemblyVersion = "";
-                else
-                    kspAssemblyVersion = mod.versionMajor + "." + mod.versionMinor;
-
-                string fileSha = "";
                 try
                 {
-                    fileSha = FileUtils.FileSHA(mod.assembly.Location);
+                    FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(mod.assembly.Location);
+
+                    AssemblyName assemblyName = mod.assembly.GetName();
+
+                    string kspAssemblyVersion;
+                    if (mod.versionMajor == 0 && mod.versionMinor == 0)
+                        kspAssemblyVersion = "";
+                    else
+                        kspAssemblyVersion = mod.versionMajor + "." + mod.versionMinor;
+
+                    string fileSha = "";
+                    try
+                    {
+                        fileSha = FileUtils.FileSHA(mod.assembly.Location);
+                    }
+                    catch (Exception e)
+                    {
+                        progress.Exception("Exception while generating SHA for assembly " + assemblyName.Name, e);
+                    }
+
+                    modListInfo.AppendFormat(
+                        format,
+                        assemblyName.Name,
+                        assemblyName.Version,
+                        fileVersionInfo.FileVersion,
+                        kspAssemblyVersion,
+                        fileSha
+                    );
+
+                    // modlist += String.Format("  {0,-50} SHA256 {1}\n", modInfo, FileSHA(mod.assembly.Location));
+
+                    if (!mods.Contains(assemblyName.Name, StringComparer.OrdinalIgnoreCase))
+                        mods.Add(assemblyName.Name);
                 }
-                catch (Exception e)
-                {
-                    progress.Exception("Exception while generating SHA for assembly " + assemblyName.Name, e);
-                }
-
-                modListInfo.AppendFormat(
-                    format,
-                    assemblyName.Name,
-                    assemblyName.Version,
-                    fileVersionInfo.FileVersion,
-                    kspAssemblyVersion,
-                    fileSha
-                );
-
-                // modlist += String.Format("  {0,-50} SHA256 {1}\n", modInfo, FileSHA(mod.assembly.Location));
-
-                if (!mods.Contains(assemblyName.Name, StringComparer.OrdinalIgnoreCase))
-                    mods.Add(assemblyName.Name);
+                    catch { UnityEngine.Debug.Log("Error accessing file: " + mod.assembly.Location); }
             }
-
             modListInfo.Append("Non-DLL mods added (:FOR[xxx]):\n");
             foreach (UrlDir.UrlConfig cfgmod in GameDatabase.Instance.root.AllConfigs)
             {
