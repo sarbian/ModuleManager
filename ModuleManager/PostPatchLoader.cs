@@ -222,7 +222,7 @@ namespace ModuleManager
 
             logger.Info("Setting modded physics as the active one");
 
-            PhysicsGlobals.PhysicsDatabaseFilename = physicsFile;
+            PhysicsGlobals.PhysicsDatabaseFilename = physicsPath;
 
             if (!PhysicsGlobals.Instance.LoadDatabase())
                 logger.Error("Something went wrong while setting the active physics config.");
