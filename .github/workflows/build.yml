@@ -1,0 +1,230 @@
+name: build
+
+# pull_request:  build the solution and comment the build zip on the PR
+# push (master): build and publish the zip as a rolling pre-release (dev-<version>-<sha>),
+#                pruning old ones (see KEEP in publish-dev)
+# workflow_call: used by create-release.yml, which passes the version to release
+#
+# The test suite (ModuleManagerTests/TestUtilsTests) is intentionally not run here: it extends
+# real KSP types (ConfigNode, UrlDir) and only works against a real KSP install, which public
+# runners can't have. The solution is still built in full so test code is at least compiled.
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: false
+        default: ''
+        description: 'AssemblyVersion to build (major.minor.patch). Empty keeps the one from AssemblyInfo.cs.'
+      ref:
+        type: string
+        required: false
+        default: ''
+        description: 'Git ref to build. Empty checks out the ref that triggered this run.'
+
+concurrency:
+  # Only superseded PR builds get cancelled. Every push gets its own group so that each commit keeps its artifact.
+  group: build-${{ github.event_name == 'pull_request' && github.head_ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write # comment the build on the PR
+    outputs:
+      label: ${{ steps.meta.outputs.label }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.ref }}
+
+      # The project is a legacy (non-SDK) net471 csproj built with Mono's own MSBuild, exactly
+      # like the old Jenkins job did (its "mono-msbuild" tool). Ubuntu's own mono-complete package
+      # only ships the deprecated xbuild, not msbuild, so we pull Mono from the official repo.
+      - name: Install Mono
+        run: |
+          sudo apt-get install -y -qq gnupg ca-certificates
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+          echo "deb https://download.mono-project.com/repo/ubuntu stable-focal main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mono-devel nuget
+          mono --version | head -1
+          msbuild --version | tail -1
+
+      # Compile-only KSP/Unity reference assemblies (method bodies stripped), just enough to
+      # resolve the bare <Reference Include="Assembly-CSharp"/> etc. in the csproj files.
+      - name: Download KSP Libs
+        run: |
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 -o /tmp/ksp.zip https://github.com/KSPModdingLibs/KSPLibs/raw/main/KSP-1.12.5.zip
+          unzip -q /tmp/ksp.zip -d /tmp/ksp
+
+      - name: Compute build metadata
+        id: meta
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          file=ModuleManager/Properties/AssemblyInfo.cs
+          if [ -n "$VERSION" ]; then
+            version="$VERSION"
+            label="$VERSION"
+          else
+            version=$(sed -n -E 's/.*AssemblyVersion\("([^"]*)"\).*/\1/p' "$file")
+            if [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = refs/heads/master ]; then
+              label="dev-$version-${GITHUB_SHA::7}"
+            else
+              label="${GITHUB_SHA::7}"
+            fi
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "label=$label" >> "$GITHUB_OUTPUT"
+
+      # AssemblyVersion is bumped by hand per release; KSPAssembly (the patch-format version) is
+      # separate and changes far less often, so it is never touched here.
+      - name: Stamp version
+        if: ${{ inputs.version != '' }}
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          file=ModuleManager/Properties/AssemblyInfo.cs
+          sed -i -E "s/(AssemblyVersion\(\")[^\"]*(\"\))/\1${VERSION}\2/" "$file"
+          grep -qF "AssemblyVersion(\"$VERSION\")" "$file"
+
+      - name: Restore
+        run: nuget restore ModuleManager.sln -Verbosity quiet
+
+      - name: Build
+        run: >
+          msbuild ModuleManager.sln
+          /p:Configuration=Release
+          /p:ReferencePath=/tmp/ksp/KSP_x64_Data/Managed
+          /p:PostBuildEvent=
+          /nologo /v:minimal
+
+      - name: Package
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          stage="$RUNNER_TEMP/package"
+          rm -rf "$stage"
+          mkdir -p "$stage"
+          cp ModuleManager/bin/Release/ModuleManager.dll "$stage/ModuleManager.$VERSION.dll"
+          cp README.md "$stage/"
+          ls -l "$stage"
+
+      - name: Upload artifact
+        id: upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: ModuleManager-${{ steps.meta.outputs.label }}
+          path: ${{ runner.temp }}/package
+          if-no-files-found: error
+
+      # Forks only get a read-only token: they can still download the artifact from the run page
+      - name: Comment PR
+        if: ${{ !env.ACT && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: actions/github-script@v9
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          ZIP_NAME: ModuleManager-${{ steps.meta.outputs.label }}.zip # the name GitHub gives the artifact download
+        with:
+          script: |
+            const marker = '<!-- modulemanager-build-artifact -->';
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const sha = context.payload.pull_request.head.sha.slice(0, 7);
+            const body = `${marker}\n## Build Artifact\n\n[${process.env.ZIP_NAME}](${process.env.ARTIFACT_URL}) (built from ${sha})`;
+
+            // Update the previous comment instead of adding a new one on every push
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number });
+            const previous = comments.find(c => c.body && c.body.includes(marker));
+            if (previous) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: previous.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+  # Publishes every master push as a public pre-release (dev-<version>-<sha>) and keeps the most
+  # recent ones, giving testers/CKAN a stable download link (replacing Jenkins' public archive).
+  publish-dev:
+    needs: build
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    concurrency:
+      group: publish-dev-release
+      cancel-in-progress: false
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }} # this job has no checkout, so gh can not get the repository from a git directory
+      LABEL: ${{ needs.build.outputs.label }}
+      DLL: package/ModuleManager.${{ needs.build.outputs.version }}.dll
+      KEEP: 15 # dev pre-releases to keep
+    steps:
+      - name: Download the build
+        uses: actions/download-artifact@v4
+        with:
+          name: ModuleManager-${{ needs.build.outputs.label }}
+          path: package
+
+      - name: Create the zip
+        run: |
+          test -f "package/ModuleManager.${{ needs.build.outputs.version }}.dll"
+          (cd package && zip -q -9 -r "$GITHUB_WORKSPACE/ModuleManager-$LABEL.zip" .)
+          unzip -tq "ModuleManager-$LABEL.zip"
+
+      # Skipped when the workflow is run locally with act
+      - name: Publish the dev pre-release
+        if: ${{ !env.ACT }}
+        run: |
+          tag="$LABEL"
+          title="Dev build ${LABEL#dev-}"
+          intro="Automated build of master at ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}. Unstable: use a release for normal play."
+
+          # the newest dev release still published, if any (gh release list is newest-first; this run's own tag excluded in case of a re-run)
+          previous_tag=$(gh release list --limit $((KEEP + 20)) --json tagName --jq \
+            "[.[].tagName | select(test(\"^dev-[0-9.]+-[0-9a-f]{7}\$\")) | select(. != \"$tag\")] | .[0] // empty")
+
+          notes_file=$(mktemp)
+          echo "$intro" > "$notes_file"
+          if [ -n "$previous_tag" ]; then
+            echo >> "$notes_file"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+              -f tag_name="$tag" -f target_commitish="$GITHUB_SHA" -f previous_tag_name="$previous_tag" \
+              --jq .body >> "$notes_file"
+          fi
+
+          if gh release view "$tag" > /dev/null 2>&1; then
+            # re-run of a job: replace the zip and the dll, and refresh the notes
+            gh release upload "$tag" "ModuleManager-$LABEL.zip" "$DLL" --clobber
+            gh release edit "$tag" --notes-file "$notes_file"
+          else
+            gh release create "$tag" "ModuleManager-$LABEL.zip" "$DLL" --prerelease --latest=false --target "$GITHUB_SHA" --title "$title" --notes-file "$notes_file"
+          fi
+
+          # keep the $KEEP most recent dev builds: delete the older ones with their tags
+          # (the list must be longer than $KEEP, or the old builds are never seen)
+          gh release list --limit $((KEEP + 20)) --json tagName --jq "[.[].tagName | select(test(\"^dev-[0-9.]+-[0-9a-f]{7}\$\"))] | .[$KEEP:] | .[]" |
+            while read -r old; do
+              gh release delete "$old" --cleanup-tag --yes
+            done

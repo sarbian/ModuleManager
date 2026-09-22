@@ -1,0 +1,122 @@
+name: create-release
+
+# Builds the given version (build.yml), then commits the version bump, tags it and publishes a
+# GitHub release with the build zipped. Nothing is pushed or created unless the build passes.
+on:
+  workflow_dispatch:
+    inputs:
+      version-string:
+        type: string
+        required: true
+        description: 'Version in major.minor.patch format (e.g. 4.2.4), matching AssemblyVersion'
+      # GitHub's own "Use workflow from" branch picker always defaults to the repo's default
+      # branch, and that can not be changed from here. This input is what is actually built and
+      # released, regardless of it.
+      branch:
+        type: string
+        required: false
+        default: 'master'
+        description: 'Branch to release from'
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check version and branch
+        env:
+          VERSION: ${{ inputs.version-string }}
+          BRANCH: ${{ inputs.branch }}
+        run: |
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'$VERSION' is not in major.minor.patch format (e.g. 4.2.4)"
+            exit 1
+          fi
+          if ! git ls-remote --exit-code --heads "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "refs/heads/$BRANCH" > /dev/null 2>&1; then
+            echo "::error::Branch '$BRANCH' does not exist"
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" "refs/tags/v$VERSION" > /dev/null 2>&1; then
+            echo "::error::The tag v$VERSION already exists"
+            exit 1
+          fi
+
+  build:
+    needs: validate
+    # A called workflow can not be granted more than its caller: build.yml also comments on PRs
+    # and publishes the dev pre-release, which this run never does (each job only asks for what
+    # it needs).
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/build.yml
+    with:
+      version: ${{ inputs.version-string }}
+      ref: ${{ inputs.branch }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ inputs.version-string }}
+      BRANCH: ${{ inputs.branch }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Download the build
+        uses: actions/download-artifact@v4
+        with:
+          name: ModuleManager-${{ inputs.version-string }}
+          path: package
+
+      # Stop here, before anything is pushed, if the build did not come through as expected
+      - name: Create the release zip
+        run: |
+          test -f "package/ModuleManager.$VERSION.dll"
+          (cd package && zip -q -9 -r "$GITHUB_WORKSPACE/ModuleManager-$VERSION.zip" .)
+          unzip -tq "ModuleManager-$VERSION.zip"
+
+      - name: Commit version and create tag
+        run: |
+          file=ModuleManager/Properties/AssemblyInfo.cs
+
+          # AssemblyVersion is bumped every release. KSPAssembly (the patch-config format
+          # version) is a separate, far less frequent, manual edit and is never touched here.
+          sed -i -E "s/(AssemblyVersion\(\")[^\"]*(\"\))/\1${VERSION}\2/" "$file"
+          grep -qF "AssemblyVersion(\"$VERSION\")" "$file"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- "$file"; then
+            echo "$file is already at $VERSION, nothing to commit"
+          else
+            git add "$file"
+            git commit -m "v$VERSION"
+          fi
+          git tag -a "v$VERSION" -m "v$VERSION"
+
+      # These two steps are skipped when the workflow is run locally with act
+      - name: Push version and tag
+        if: ${{ !env.ACT }}
+        run: git push --atomic origin "HEAD:refs/heads/$BRANCH" "refs/tags/v$VERSION"
+
+      - name: Create GitHub release
+        if: ${{ !env.ACT }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh release create "v$VERSION"
+          --verify-tag
+          --title "v$VERSION"
+          --generate-notes
+          "ModuleManager-$VERSION.zip"
+          "package/ModuleManager.$VERSION.dll"
