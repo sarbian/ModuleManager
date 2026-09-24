@@ -1,0 +1,14 @@
+{
+  "NAME": "ModuleManager",
+  "URL": "https://raw.githubusercontent.com/sarbian/ModuleManager/master/ModuleManager.version",
+  "VERSION": {
+    "MAJOR": 2,
+    "MINOR": 0,
+    "PATCH": 7
+  },
+  "KSP_VERSION": {
+    "MAJOR": 0,
+    "MINOR": 23,
+    "PATCH": 5
+  }
+}
