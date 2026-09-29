@@ -112,6 +112,13 @@ namespace ModuleManager.Progress
             RecordWarningFile(url);
         }
 
+        public void ForWithInvalidNeedsWarning(string tag, UrlDir.UrlConfig url)
+        {
+            Counter.warnings.Increment();
+            logger.Warning($"Name {tag} shouldn't be used both on :FOR and :NEEDS, as :FOR takes precedence rendering :NEEDS innocuous. Check file {url.parent.url} node: {url.type}");
+            RecordWarningFile(url);
+        }
+
         public void Error(UrlDir.UrlConfig url, string message)
         {
             Counter.errors.Increment();

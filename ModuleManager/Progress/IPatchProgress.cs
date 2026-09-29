@@ -12,6 +12,7 @@ namespace ModuleManager.Progress
         EventData<IPass> OnPassStarted { get; }
 
         void Warning(UrlDir.UrlConfig url, string message);
+        void ForWithInvalidNeedsWarning(string modName, UrlDir.UrlConfig cfgmod);
         void Error(UrlDir.UrlConfig url, string message);
         void Error(string message);
         void Exception(string message, Exception exception);

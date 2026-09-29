@@ -107,7 +107,17 @@ namespace ModuleManager
                                 mods.Add(dependency);
                                 modListInfo.AppendFormat("  {0}\n", dependency);
                             }
+
+                            if (name.Contains(":NEEDS["))
+                            {
+                                string needs = (name.Substring(name.IndexOf(":NEEDS[") + 7));
+                                needs = needs.Substring(0, needs.IndexOf(']'));
+                                needs = needs.Replace("!", "").Replace('&', ',').Replace('|', ',');
+                                foreach (string s in needs.Split(',')) if (dependency.Equals(s))
+                                    progress.ForWithInvalidNeedsWarning(dependency, cfgmod);
+                            }
                         }
+
                         catch (ArgumentOutOfRangeException)
                         {
                             progress.Error(cfgmod, "Skipping :FOR init for line " + name +
