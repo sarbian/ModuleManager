@@ -24,6 +24,6 @@ namespace ModuleManager.Patches.PassSpecifiers
             return result;
         }
 
-        public string Descriptor => $":FOR[{mod.ToUpper()}]";
+        public string Descriptor => $":FOR[{mod.ToUpperInvariant()}]";
     }
 }

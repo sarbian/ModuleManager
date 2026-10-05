@@ -55,7 +55,7 @@ namespace ModuleManager.Patches
                 if (tag.trailer != null)
                     progress.Warning(urlConfig, "unrecognized trailer: '" + tag.trailer + "' on: " + urlConfig.SafeUrl());
 
-                if (tag.key.Equals("NEEDS", StringComparison.CurrentCultureIgnoreCase))
+                if (tag.key.Equals("NEEDS", StringComparison.OrdinalIgnoreCase))
                 {
                     if (needs != null)
                     {
@@ -71,7 +71,7 @@ namespace ModuleManager.Patches
 
                     needs = tag.value;
                 }
-                else if (tag.key.Equals("HAS", StringComparison.CurrentCultureIgnoreCase))
+                else if (tag.key.Equals("HAS", StringComparison.OrdinalIgnoreCase))
                 {
                     if (command == Command.Insert)
                     {
@@ -93,7 +93,7 @@ namespace ModuleManager.Patches
 
                     has = tag.value;
                 }
-                else if (tag.key.Equals("FIRST", StringComparison.CurrentCultureIgnoreCase))
+                else if (tag.key.Equals("FIRST", StringComparison.OrdinalIgnoreCase))
                 {
                     if (tag.value != null)
                     {
@@ -114,7 +114,7 @@ namespace ModuleManager.Patches
 
                     passSpecifier = new FirstPassSpecifier();
                 }
-                else if (tag.key.Equals("BEFORE", StringComparison.CurrentCultureIgnoreCase))
+                else if (tag.key.Equals("BEFORE", StringComparison.OrdinalIgnoreCase))
                 {
                     if (string.IsNullOrEmpty(tag.value))
                     {
@@ -137,7 +137,7 @@ namespace ModuleManager.Patches
 
                     passSpecifier = new BeforePassSpecifier(tag.value, urlConfig);
                 }
-                else if (tag.key.Equals("FOR", StringComparison.CurrentCultureIgnoreCase))
+                else if (tag.key.Equals("FOR", StringComparison.OrdinalIgnoreCase))
                 {
                     if (string.IsNullOrEmpty(tag.value))
                     {
@@ -160,7 +160,7 @@ namespace ModuleManager.Patches
 
                     passSpecifier = new ForPassSpecifier(tag.value, urlConfig);
                 }
-                else if (tag.key.Equals("AFTER", StringComparison.CurrentCultureIgnoreCase))
+                else if (tag.key.Equals("AFTER", StringComparison.OrdinalIgnoreCase))
                 {
                     if (string.IsNullOrEmpty(tag.value))
                     {
@@ -183,7 +183,7 @@ namespace ModuleManager.Patches
 
                     passSpecifier = new AfterPassSpecifier(tag.value, urlConfig);
                 }
-                else if (tag.key.Equals("LAST", StringComparison.CurrentCultureIgnoreCase))
+                else if (tag.key.Equals("LAST", StringComparison.OrdinalIgnoreCase))
                 {
                     if (string.IsNullOrEmpty(tag.value))
                     {
@@ -206,7 +206,7 @@ namespace ModuleManager.Patches
 
                     passSpecifier = new LastPassSpecifier(tag.value);
                 }
-                else if (tag.key.Equals("FINAL", StringComparison.CurrentCultureIgnoreCase))
+                else if (tag.key.Equals("FINAL", StringComparison.OrdinalIgnoreCase))
                 {
                     if (tag.value != null)
                     {

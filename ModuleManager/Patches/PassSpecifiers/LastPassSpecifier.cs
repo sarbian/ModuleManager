@@ -14,6 +14,6 @@ namespace ModuleManager.Patches.PassSpecifiers
         }
 
         public bool CheckNeeds(INeedsChecker needsChecker, IPatchProgress progress) => true;
-        public string Descriptor => $":LAST[{mod.ToUpper()}]";
+        public string Descriptor => $":LAST[{mod.ToUpperInvariant()}]";
     }
 }

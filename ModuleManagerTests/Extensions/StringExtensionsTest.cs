@@ -51,6 +51,31 @@ namespace ModuleManagerTests.Extensions
             Assert.Equal(expectedIndex, index);
         }
 
+        [InlineData("abc:first", ":FIRST", 3)]
+        [InlineData("abc:FINAL", ":final", 3)]
+        [InlineData("abc:Has[def]", ":HAS[", 3)]
+        [Theory]
+        public void TestContains__CaseInsensitive(string str, string test, int expectedIndex)
+        {
+            bool result = str.Contains(test, out int index);
+            Assert.True(result);
+            Assert.Equal(expectedIndex, index);
+        }
+
+        [InlineData("abc:first", ":FIRST", 3)]
+        [InlineData("abc:FINAL", ":final", 3)]
+        [InlineData("abc:Has[def]", ":HAS[", 3)]
+        [Theory]
+        public void TestContains__CaseInsensitive__TurkishCulture(string str, string test, int expectedIndex)
+        {
+            using (new TemporaryCulture(TemporaryCulture.TURKISH))
+            {
+                bool result = str.Contains(test, out int index);
+                Assert.True(result);
+                Assert.Equal(expectedIndex, index);
+            }
+        }
+
         [Fact]
         public void TestContains__NullStr()
         {

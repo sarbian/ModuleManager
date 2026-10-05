@@ -101,5 +101,14 @@ namespace ModuleManagerTests.Patches
         {
             Assert.Equal(":FOR[MOD1]", passSpecifier.Descriptor);
         }
+
+        [Fact]
+        public void TestDescriptor__TurkishCulture()
+        {
+            using (new TemporaryCulture(TemporaryCulture.TURKISH))
+            {
+                Assert.Equal(":FOR[MINI]", new ForPassSpecifier("mini", urlConfig).Descriptor);
+            }
+        }
     }
 }
