@@ -14,6 +14,9 @@ namespace ModuleManager
         private readonly string[] namePatterns = null;
         private readonly string constraints = "";
 
+        // Only nodes of this type can match: ConfigNode.name is the type (e.g. PART), not the name value.
+        public string Type => type;
+
         public NodeMatcher(string type, string name, string constraints)
         {
             if (type == string.Empty) throw new ArgumentException("can't be empty", nameof(type));
@@ -33,10 +36,24 @@ namespace ModuleManager
         public bool IsMatch(ConfigNode node)
         {
             if (node.name != type) return false;
+            return IsNameAndConstraintsMatch(node, namePatterns != null ? node.GetValue("name") : null);
+        }
 
+        // Same as IsMatch(protoConfig.Node), but takes the name value a ProtoUrlConfig already read.
+        public bool IsMatch(IProtoUrlConfig protoConfig)
+        {
+            ConfigNode node = protoConfig.Node;
+            if (node.name != type) return false;
+            string name = null;
+            if (namePatterns != null)
+                name = protoConfig is ProtoUrlConfig known ? known.NameValue : node.GetValue("name");
+            return IsNameAndConstraintsMatch(node, name);
+        }
+
+        private bool IsNameAndConstraintsMatch(ConfigNode node, string name)
+        {
             if (namePatterns != null)
             {
-                string name = node.GetValue("name");
                 if (name == null) return false;
 
                 bool match = false;
@@ -53,6 +70,17 @@ namespace ModuleManager
             }
 
             return MMPatchLoader.CheckConstraints(node, constraints);
+        }
+    }
+
+    public static class NodeMatcherExtensions
+    {
+        // Uses NodeMatcher.IsMatch(IProtoUrlConfig) when available, so patches can match a config
+        // without looking up its name again. Other matchers get the node.
+        public static bool IsMatch(this INodeMatcher nodeMatcher, IProtoUrlConfig protoConfig)
+        {
+            if (nodeMatcher is NodeMatcher matcher) return matcher.IsMatch(protoConfig);
+            return nodeMatcher.IsMatch(protoConfig.Node);
         }
     }
 }

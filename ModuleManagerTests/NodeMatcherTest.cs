@@ -1,5 +1,6 @@
 ﻿using System;
 using Xunit;
+using NSubstitute;
 using TestUtils;
 using ModuleManager;
 
@@ -329,5 +330,54 @@ namespace ModuleManagerTests
         }
 
         #endregion
+
+        [Fact]
+        public void TestIsMatch__ProtoUrlConfig()
+        {
+            NodeMatcher matcher = new NodeMatcher("NODE", "blah", null);
+            UrlDir.UrlFile file = UrlBuilder.CreateFile("abc/def.cfg");
+
+            Assert.True(matcher.IsMatch(new ProtoUrlConfig(file, new TestConfigNode("NODE") { { "name", "blah" } })));
+            Assert.False(matcher.IsMatch(new ProtoUrlConfig(file, new TestConfigNode("NODE") { { "name", "bleh" } })));
+            Assert.False(matcher.IsMatch(new ProtoUrlConfig(file, new ConfigNode("NODE"))));
+            Assert.False(matcher.IsMatch(new ProtoUrlConfig(file, new TestConfigNode("PART") { { "name", "blah" } })));
+        }
+
+        [Fact]
+        public void TestIsMatch__ProtoUrlConfig__NameChangedInPlace()
+        {
+            NodeMatcher matcher = new NodeMatcher("NODE", "blah", null);
+            ConfigNode node = new TestConfigNode("NODE") { { "name", "bleh" } };
+            ProtoUrlConfig protoConfig = new ProtoUrlConfig(UrlBuilder.CreateFile("abc/def.cfg"), node);
+
+            Assert.False(matcher.IsMatch(protoConfig));
+
+            node.SetValue("name", "blah");
+
+            Assert.True(matcher.IsMatch(protoConfig));
+            Assert.True(matcher.IsMatch(node));
+        }
+
+        [Fact]
+        public void TestIsMatch__ProtoUrlConfig__Constraints()
+        {
+            NodeMatcher matcher = new NodeMatcher("NODE", null, "@INNER");
+            UrlDir.UrlFile file = UrlBuilder.CreateFile("abc/def.cfg");
+
+            Assert.True(matcher.IsMatch(new ProtoUrlConfig(file, new TestConfigNode("NODE") { new ConfigNode("INNER") })));
+            Assert.False(matcher.IsMatch(new ProtoUrlConfig(file, new ConfigNode("NODE"))));
+        }
+
+        [Fact]
+        public void TestIsMatch__Extension__OtherMatcher()
+        {
+            INodeMatcher matcher = NSubstitute.Substitute.For<INodeMatcher>();
+            ConfigNode node = new ConfigNode("NODE");
+            IProtoUrlConfig protoConfig = NSubstitute.Substitute.For<IProtoUrlConfig>();
+            protoConfig.Node.Returns(node);
+            matcher.IsMatch(node).Returns(true);
+
+            Assert.True(NodeMatcherExtensions.IsMatch(matcher, protoConfig));
+        }
     }
 }

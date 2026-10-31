@@ -108,6 +108,8 @@
     <Compile Include="OperatorParserTest.cs" />
     <Compile Include="PassTest.cs" />
     <Compile Include="PatchApplierTest.cs" />
+    <Compile Include="PatchTypeIndexTest.cs" />
+    <Compile Include="PatchApplierRenameTest.cs" />
     <Compile Include="Patches\CopyPatchTest.cs" />
     <Compile Include="Patches\DeletePatchTest.cs" />
     <Compile Include="Patches\EditPatchTest.cs" />

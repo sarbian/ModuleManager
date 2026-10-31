@@ -79,6 +79,7 @@
     <Compile Include="OperatorParser.cs" />
     <Compile Include="Pass.cs" />
     <Compile Include="PatchApplier.cs" />
+    <Compile Include="PatchTypeIndex.cs" />
     <Compile Include="PatchContext.cs" />
     <Compile Include="Patches\CopyPatch.cs" />
     <Compile Include="Patches\DeletePatch.cs" />

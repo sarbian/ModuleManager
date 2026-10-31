@@ -35,24 +35,55 @@ namespace ModuleManager.Patches
             PatchContext context = new PatchContext(UrlConfig, databaseConfigs, logger, progress);
             for (LinkedListNode<IProtoUrlConfig> listNode = databaseConfigs.First; listNode != null; listNode = listNode.Next)
             {
-                IProtoUrlConfig protoConfig = listNode.Value;
-                try
-                {
-                    if (!NodeMatcher.IsMatch(protoConfig.Node)) continue;
-                    if (loop) logger.Info($"Looping on {UrlConfig.SafeUrl()} to {protoConfig.FullUrl}");
+                ApplyTo(listNode, context, progress, logger);
+            }
+        }
 
-                    do
-                    {
-                        progress.ApplyingUpdate(protoConfig, UrlConfig);
-                        listNode.Value = protoConfig = new ProtoUrlConfig(protoConfig.UrlFile, MMPatchLoader.ModifyNode(new NodeStack(protoConfig.Node), UrlConfig.config, context));
-                    } while (loop && NodeMatcher.IsMatch(protoConfig.Node));
+        // Same as Apply, visiting only the nodes the index lists under the matcher's type, which
+        // are the only ones it can match. An edit replaces each node's value in place and keeps
+        // its type, so the index stays valid; if a type does change, the index is invalidated.
+        public void Apply(LinkedList<IProtoUrlConfig> databaseConfigs, PatchTypeIndex index, IPatchProgress progress, IBasicLogger logger)
+        {
+            if (index == null) throw new ArgumentNullException(nameof(index));
+            if (!(NodeMatcher is NodeMatcher nodeMatcher))
+            {
+                Apply(databaseConfigs, progress, logger);
+                return;
+            }
+            if (databaseConfigs == null) throw new ArgumentNullException(nameof(databaseConfigs));
+            if (progress == null) throw new ArgumentNullException(nameof(progress));
+            if (logger == null) throw new ArgumentNullException(nameof(logger));
 
-                    if (loop) protoConfig.Node.RemoveNodes("MM_PATCH_LOOP");
-                }
-                catch (Exception ex)
+            string type = nodeMatcher.Type;
+            bool typeChanged = false;
+            PatchContext context = new PatchContext(UrlConfig, databaseConfigs, logger, progress);
+            foreach (LinkedListNode<IProtoUrlConfig> listNode in index.NodesOfType(type))
+            {
+                ApplyTo(listNode, context, progress, logger);
+                if (listNode.Value.Node.name != type) typeChanged = true;
+            }
+            if (typeChanged) index.Invalidate();
+        }
+
+        private void ApplyTo(LinkedListNode<IProtoUrlConfig> listNode, PatchContext context, IPatchProgress progress, IBasicLogger logger)
+        {
+            IProtoUrlConfig protoConfig = listNode.Value;
+            try
+            {
+                if (!NodeMatcher.IsMatch(protoConfig)) return;
+                if (loop) logger.Info($"Looping on {UrlConfig.SafeUrl()} to {protoConfig.FullUrl}");
+
+                do
                 {
-                    progress.Exception(UrlConfig, $"Exception while applying update {UrlConfig.SafeUrl()} to {protoConfig.FullUrl}", ex);
-                }
+                    progress.ApplyingUpdate(protoConfig, UrlConfig);
+                    listNode.Value = protoConfig = new ProtoUrlConfig(protoConfig.UrlFile, MMPatchLoader.ModifyNode(new NodeStack(protoConfig.Node), UrlConfig.config, context));
+                } while (loop && NodeMatcher.IsMatch(protoConfig));
+
+                if (loop) protoConfig.Node.RemoveNodes("MM_PATCH_LOOP");
+            }
+            catch (Exception ex)
+            {
+                progress.Exception(UrlConfig, $"Exception while applying update {UrlConfig.SafeUrl()} to {protoConfig.FullUrl}", ex);
             }
         }
     }

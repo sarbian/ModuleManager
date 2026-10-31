@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Xunit;
 using TestUtils;
 using ModuleManager;
@@ -82,6 +82,27 @@ namespace ModuleManagerTests
             ProtoUrlConfig protoUrlConfig = new ProtoUrlConfig(UrlBuilder.CreateFile("abc/def.cfg"), node);
 
             Assert.Equal("abc/def.cfg/SOME_NODE[some_value]", protoUrlConfig.FullUrl);
+        }
+
+        [Fact]
+        public void TestNameValue()
+        {
+            ConfigNode node = new TestConfigNode("SOME_NODE")
+            {
+                { "name", "some_value" },
+            };
+
+            ProtoUrlConfig protoUrlConfig = new ProtoUrlConfig(UrlBuilder.CreateFile("abc/def.cfg"), node);
+
+            Assert.Equal("some_value", protoUrlConfig.NameValue);
+        }
+
+        [Fact]
+        public void TestNameValue__None()
+        {
+            ProtoUrlConfig protoUrlConfig = new ProtoUrlConfig(UrlBuilder.CreateFile("abc/def.cfg"), new ConfigNode("SOME_NODE"));
+
+            Assert.Null(protoUrlConfig.NameValue);
         }
     }
 }
