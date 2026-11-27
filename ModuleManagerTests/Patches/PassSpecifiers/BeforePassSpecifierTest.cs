@@ -101,5 +101,14 @@ namespace ModuleManagerTests.Patches.PassSpecifiers
         {
             Assert.Equal(":BEFORE[MOD1]", passSpecifier.Descriptor);
         }
+
+        [Fact]
+        public void TestDescriptor__TurkishCulture()
+        {
+            using (new TemporaryCulture(TemporaryCulture.TURKISH))
+            {
+                Assert.Equal(":BEFORE[MINI]", new BeforePassSpecifier("mini", urlConfig).Descriptor);
+            }
+        }
     }
 }

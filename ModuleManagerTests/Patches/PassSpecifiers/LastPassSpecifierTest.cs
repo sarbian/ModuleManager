@@ -54,5 +54,14 @@ namespace ModuleManagerTests.Patches
         {
             Assert.Equal(":LAST[MOD1]", passSpecifier.Descriptor);
         }
+
+        [Fact]
+        public void TestDescriptor__TurkishCulture()
+        {
+            using (new TemporaryCulture(TemporaryCulture.TURKISH))
+            {
+                Assert.Equal(":LAST[MINI]", new LastPassSpecifier("mini").Descriptor);
+            }
+        }
     }
 }

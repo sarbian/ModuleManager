@@ -260,6 +260,32 @@ namespace ModuleManagerTests.Patches
         }
 
         [Fact]
+        public void TestBuild__First__TurkishCulture()
+        {
+            ITagList tagList = Substitute.For<ITagList>();
+            tagList.PrimaryTag.Returns(new Tag("NODE", null, null));
+            tagList.GetEnumerator().Returns(new ArrayEnumerator<Tag>(
+                new Tag("first", null, null)
+            ));
+
+            ProtoPatch protoPatch;
+            using (new TemporaryCulture(TemporaryCulture.TURKISH))
+            {
+                protoPatch = builder.Build(urlConfig, Command.Copy, tagList);
+            }
+
+            EnsureNoErrors();
+
+            Assert.Same(urlConfig, protoPatch.urlConfig);
+            Assert.Equal(Command.Copy, protoPatch.command);
+            Assert.Equal("NODE", protoPatch.nodeType);
+            Assert.Null(protoPatch.nodeName);
+            Assert.Null(protoPatch.needs);
+            Assert.Null(protoPatch.has);
+            Assert.IsType<FirstPassSpecifier>(protoPatch.passSpecifier);
+        }
+
+        [Fact]
         public void TestBuild__Before()
         {
             ITagList tagList = Substitute.For<ITagList>();
@@ -598,6 +624,32 @@ namespace ModuleManagerTests.Patches
             ));
 
             ProtoPatch protoPatch = builder.Build(urlConfig, Command.Copy, tagList);
+
+            EnsureNoErrors();
+
+            Assert.Same(urlConfig, protoPatch.urlConfig);
+            Assert.Equal(Command.Copy, protoPatch.command);
+            Assert.Equal("NODE", protoPatch.nodeType);
+            Assert.Null(protoPatch.nodeName);
+            Assert.Null(protoPatch.needs);
+            Assert.Null(protoPatch.has);
+            Assert.IsType<FinalPassSpecifier>(protoPatch.passSpecifier);
+        }
+
+        [Fact]
+        public void TestBuild__Final__TurkishCulture()
+        {
+            ITagList tagList = Substitute.For<ITagList>();
+            tagList.PrimaryTag.Returns(new Tag("NODE", null, null));
+            tagList.GetEnumerator().Returns(new ArrayEnumerator<Tag>(
+                new Tag("final", null, null)
+            ));
+
+            ProtoPatch protoPatch;
+            using (new TemporaryCulture(TemporaryCulture.TURKISH))
+            {
+                protoPatch = builder.Build(urlConfig, Command.Copy, tagList);
+            }
 
             EnsureNoErrors();
 
