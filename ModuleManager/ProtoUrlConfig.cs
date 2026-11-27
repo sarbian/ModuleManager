@@ -23,6 +23,13 @@ namespace ModuleManager
         public string NodeType => Node.name;
         public string FullUrl { get; }
 
+        // The node's name value, or null if it had none when this was created, so that NodeMatcher
+        // need not look it up again for every patch. Holds the Value object because a special
+        // command (*@PART[foo]/name = bar) writes to it in place. Edit and copy patches can add or
+        // remove name values, but they modify a copy and wrap it in a new ProtoUrlConfig.
+        private readonly ConfigNode.Value nameValue;
+        public string NameValue => nameValue?.value;
+
         public ProtoUrlConfig(UrlDir.UrlFile urlFile, ConfigNode node)
         {
             UrlFile = urlFile ?? throw new ArgumentNullException(nameof(urlFile));
@@ -30,8 +37,17 @@ namespace ModuleManager
             FileUrl = UrlFile.url + '.' + urlFile.fileExtension;
             FullUrl = FileUrl + '/' + Node.name;
 
-            if (node.GetValue("name") is string nameValue)
-                FullUrl += '[' + nameValue + ']';
+            for (int i = 0; i < node.values.Count; ++i)
+            {
+                if (node.values[i].name == "name")
+                {
+                    nameValue = node.values[i];
+                    break;
+                }
+            }
+
+            if (NameValue != null)
+                FullUrl += '[' + NameValue + ']';
         }
     }
 }

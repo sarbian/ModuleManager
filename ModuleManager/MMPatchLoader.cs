@@ -1535,101 +1535,129 @@ namespace ModuleManager
 
         static readonly char[] contraintSeparators = { '[', ']' };
 
-        public static bool CheckConstraints(ConfigNode node, string constraints)
+        // CheckConstraints is called for every node a patch might apply to, with the same few
+        // constraint strings, so each string is parsed once.
+        private sealed class ParsedConstraints
         {
+            public bool empty;
+            public List<string> list;
+            public char op;
+            public string type;
+            public string name;
+            public string remaining;
+        }
+
+        private static readonly KeyValueCache<string, ParsedConstraints> constraintsCache = new KeyValueCache<string, ParsedConstraints>();
+        private static readonly Func<string, ParsedConstraints> parseConstraints = ParseConstraints;
+
+        private static ParsedConstraints ParseConstraints(string constraints)
+        {
+            ParsedConstraints parsed = new ParsedConstraints();
             constraints = constraints.RemoveWS();
 
             if (constraints.Length == 0)
-                return true;
+            {
+                parsed.empty = true;
+                return parsed;
+            }
 
             List<string> constraintList = SplitConstraints(constraints);
 
-            if (constraintList.Count == 1)
+            if (constraintList.Count != 1)
             {
-                constraints = constraintList[0];
-
-                string remainingConstraints = "";
-                if (constraints.Contains(":HAS[", out int hasStart))
-                {
-                    hasStart += 5;
-                    remainingConstraints = constraints.Substring(hasStart, constraintList[0].LastIndexOf(']') - hasStart);
-                    constraints = constraints.Substring(0, hasStart - 5);
-                }
-
-                string[] splits = constraints.Split(contraintSeparators, 3);
-                string type = splits[0].Substring(1);
-                string name = splits.Length > 1 ? splits[1] : null;
-
-                switch (constraints[0])
-                {
-                    case '@':
-                    case '!':
-
-                        // @MODULE[ModuleAlternator] or !MODULE[ModuleAlternator]
-                        bool not = (constraints[0] == '!');
-
-                        bool any = false;
-                        int index = 0;
-                        ConfigNode last = null;
-                        while (true)
-                        {
-                            ConfigNode subNode = FindConfigNodeIn(node, type, name, index++);
-                            if (subNode == last || subNode == null)
-                                break;
-                            any = any || CheckConstraints(subNode, remainingConstraints);
-                            last = subNode;
-                        }
-                        if (last != null)
-                        {
-                            //print("CheckConstraints: " + constraints + " " + (not ^ any));
-                            return not ^ any;
-                        }
-                        //print("CheckConstraints: " + constraints + " " + (not ^ false));
-                        return not ^ false;
-
-                    case '#':
-
-                        // #module[Winglet]
-                        if (node.HasValue(type) && WildcardMatchValues(node, type, name))
-                        {
-                            bool ret2 = CheckConstraints(node, remainingConstraints);
-                            //print("CheckConstraints: " + constraints + " " + ret2);
-                            return ret2;
-                        }
-                        //print("CheckConstraints: " + constraints + " false");
-                        return false;
-
-                    case '~':
-
-                        // ~breakingForce[]  breakingForce is not present
-                        // or: ~breakingForce[100]  will be true if it's present but not 100, too.
-                        if (name == "" && node.HasValue(type))
-                        {
-                            //print("CheckConstraints: " + constraints + " false");
-                            return false;
-                        }
-                        if (name != "" && WildcardMatchValues(node, type, name))
-                        {
-                            //print("CheckConstraints: " + constraints + " false");
-                            return false;
-                        }
-                        bool ret = CheckConstraints(node, remainingConstraints);
-                        //print("CheckConstraints: " + constraints + " " + ret);
-                        return ret;
-
-                    default:
-                        //print("CheckConstraints: " + constraints + " false");
-                        return false;
-                }
+                parsed.list = constraintList;
+                return parsed;
             }
 
-            bool ret3 = true;
-            foreach (string constraint in constraintList)
+            constraints = constraintList[0];
+
+            string remainingConstraints = "";
+            if (constraints.Contains(":HAS[", out int hasStart))
             {
-                ret3 = ret3 && CheckConstraints(node, constraint);
+                hasStart += 5;
+                remainingConstraints = constraints.Substring(hasStart, constraintList[0].LastIndexOf(']') - hasStart);
+                constraints = constraints.Substring(0, hasStart - 5);
             }
-            //print("CheckConstraints: " + constraints + " " + ret3);
-            return ret3;
+
+            string[] splits = constraints.Split(contraintSeparators, 3);
+            parsed.type = splits[0].Substring(1);
+            parsed.name = splits.Length > 1 ? splits[1] : null;
+            parsed.op = constraints[0];
+            parsed.remaining = remainingConstraints;
+            return parsed;
+        }
+
+        public static bool CheckConstraints(ConfigNode node, string constraints)
+        {
+            if (constraints == null) throw new ArgumentNullException("input");
+            ParsedConstraints parsed = constraintsCache.FetchWithKey(constraints, parseConstraints);
+
+            if (parsed.empty)
+                return true;
+
+            if (parsed.list != null)
+            {
+                bool ret3 = true;
+                foreach (string constraint in parsed.list)
+                {
+                    ret3 = ret3 && CheckConstraints(node, constraint);
+                }
+                return ret3;
+            }
+
+            string type = parsed.type;
+            string name = parsed.name;
+            string remainingConstraints = parsed.remaining;
+
+            switch (parsed.op)
+            {
+                case '@':
+                case '!':
+
+                    // @MODULE[ModuleAlternator] or !MODULE[ModuleAlternator]
+                    bool not = (parsed.op == '!');
+
+                    // Each subnode FindConfigNodeIn (node, type, name, index) returns for index = 0, 1, ...
+                    // until it repeats one, in a single pass.
+                    bool any = false;
+                    ConfigNode last = null;
+                    int c = node.nodes.Count;
+                    for (int i = 0; i < c && !any; ++i)
+                    {
+                        ConfigNode subNode = node.nodes[i];
+                        if (!WildcardMatch(subNode.name, type))
+                            continue;
+                        if (name != null && !(subNode.GetValue("name") is string subName && WildcardMatch(subName, name)))
+                            continue;
+                        if (subNode == last)
+                            break;
+                        any = CheckConstraints(subNode, remainingConstraints);
+                        last = subNode;
+                    }
+                    if (last != null)
+                        return not ^ any;
+                    return not ^ false;
+
+                case '#':
+
+                    // #module[Winglet]
+                    if (node.HasValue(type) && WildcardMatchValues(node, type, name))
+                        return CheckConstraints(node, remainingConstraints);
+                    return false;
+
+                case '~':
+
+                    // ~breakingForce[]  breakingForce is not present
+                    // or: ~breakingForce[100]  will be true if it's present but not 100, too.
+                    if (name == "" && node.HasValue(type))
+                        return false;
+                    if (name != "" && WildcardMatchValues(node, type, name))
+                        return false;
+                    return CheckConstraints(node, remainingConstraints);
+
+                default:
+                    return false;
+            }
         }
 
         public static bool WildcardMatchValues(ConfigNode node, string type, string value)
@@ -1653,16 +1681,23 @@ namespace ModuleManager
             return false;
         }
 
+        private static readonly KeyValueCache<string, Regex> wildcardRegexCache = new KeyValueCache<string, Regex>();
+        private static readonly char[] wildcardChars = { '*', '?' };
+
         public static bool WildcardMatch(string s, string wildcard)
         {
             if (wildcard == null)
                 return true;
-            string pattern = "^" + Regex.Escape(wildcard).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
+            if (s == null)
+                throw new ArgumentNullException("input");
 
-            Regex regex = regexCache.Fetch(pattern, delegate
-            {
-                return new Regex(pattern);
-            });
+            // Without wildcards the pattern is ^literal$, and $ also matches before a final newline.
+            if (wildcard.IndexOfAny(wildcardChars) < 0)
+                return s == wildcard
+                    || (s.Length == wildcard.Length + 1 && s[wildcard.Length] == '\n' && string.CompareOrdinal(s, 0, wildcard, 0, wildcard.Length) == 0);
+
+            Regex regex = wildcardRegexCache.FetchWithKey(wildcard, w =>
+                new Regex("^" + Regex.Escape(w).Replace(@"\*", ".*").Replace(@"\?", ".") + "$"));
             return regex.IsMatch(s);
         }
 
@@ -1715,41 +1750,59 @@ namespace ModuleManager
             string nodeName = null,
             int index = 0)
         {
-            List<ConfigNode> nodes = new List<ConfigNode>();
+            // Among the subnodes whose type matches nodeType: without nodeName, the index-th (from
+            // the end if negative, clamped to the first or last); with nodeName, the index-th of
+            // those whose name matches, or the last one checked if there are fewer than that.
             int c = src.nodes.Count;
-            for(int i = 0; i < c; ++i)
-            {
-                if (WildcardMatch(src.nodes[i].name, nodeType))
-                    nodes.Add(src.nodes[i]);
-            }
-            int nodeCount = nodes.Count;
-            if (nodeCount == 0)
-                return null;
+            ConfigNode last = null;
             if (nodeName == null)
             {
                 if (index >= 0)
-                    return nodes[Math.Min(index, nodeCount - 1)];
-                return nodes[Math.Max(0, nodeCount + index)];
+                {
+                    for (int i = 0; i < c; ++i)
+                    {
+                        ConfigNode n = src.nodes[i];
+                        if (WildcardMatch(n.name, nodeType))
+                        {
+                            last = n;
+                            if (index-- == 0)
+                                return n;
+                        }
+                    }
+                    return last;
+                }
+                for (int i = c - 1; i >= 0; --i)
+                {
+                    ConfigNode n = src.nodes[i];
+                    if (WildcardMatch(n.name, nodeType))
+                    {
+                        last = n;
+                        if (++index == 0)
+                            return n;
+                    }
+                }
+                return last;
             }
-            ConfigNode last = null;
             if (index >= 0)
             {
-                for (int i = 0; i < nodeCount; ++i)
+                for (int i = 0; i < c; ++i)
                 {
-                    if (nodes[i].HasValue("name") && WildcardMatch(nodes[i].GetValue("name"), nodeName))
+                    ConfigNode n = src.nodes[i];
+                    if (WildcardMatch(n.name, nodeType) && n.GetValue("name") is string name && WildcardMatch(name, nodeName))
                     {
-                        last = nodes[i];
+                        last = n;
                         if (--index < 0)
                             return last;
                     }
                 }
                 return last;
             }
-            for (int i = nodeCount - 1; i >= 0; --i)
+            for (int i = c - 1; i >= 0; --i)
             {
-                if (nodes[i].HasValue("name") && WildcardMatch(nodes[i].GetValue("name"), nodeName))
+                ConfigNode n = src.nodes[i];
+                if (WildcardMatch(n.name, nodeType) && n.GetValue("name") is string name && WildcardMatch(name, nodeName))
                 {
-                    last = nodes[i];
+                    last = n;
                     if (++index >= 0)
                         return last;
                 }

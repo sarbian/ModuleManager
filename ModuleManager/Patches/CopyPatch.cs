@@ -35,7 +35,7 @@ namespace ModuleManager.Patches
                 IProtoUrlConfig protoConfig = listNode.Value;
                 try
                 {
-                    if (!NodeMatcher.IsMatch(protoConfig.Node)) continue;
+                    if (!NodeMatcher.IsMatch(protoConfig)) continue;
 
                     ConfigNode clone = MMPatchLoader.ModifyNode(new NodeStack(protoConfig.Node), UrlConfig.config, context);
                     if (protoConfig.Node.GetValue("name") is string name && name == clone.GetValue("name"))

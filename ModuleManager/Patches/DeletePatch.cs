@@ -34,7 +34,7 @@ namespace ModuleManager.Patches
                 try
                 {
                     LinkedListNode<IProtoUrlConfig> nextNode = currentNode.Next;
-                    if (NodeMatcher.IsMatch(protoConfig.Node))
+                    if (NodeMatcher.IsMatch(protoConfig))
                     {
                         progress.ApplyingDelete(protoConfig, UrlConfig);
                         databaseConfigs.Remove(currentNode);
