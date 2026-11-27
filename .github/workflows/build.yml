@@ -44,7 +44,9 @@ defaults:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Pinned: Mono's repository only has packages built for Ubuntu 20.04 (focal), known to install
+    # on 24.04. ubuntu-latest moved to 26.04, which also dropped apt-key.
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       contents: read
@@ -60,11 +62,16 @@ jobs:
       # The project is a legacy (non-SDK) net471 csproj built with Mono's own MSBuild, exactly
       # like the old Jenkins job did (its "mono-msbuild" tool). Ubuntu's own mono-complete package
       # only ships the deprecated xbuild, not msbuild, so we pull Mono from the official repo.
+      # The signing key goes in its own keyring, named by the source (signed-by), as apt-key is
+      # gone from newer Ubuntu releases.
       - name: Install Mono
         run: |
-          sudo apt-get install -y -qq gnupg ca-certificates
-          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
-          echo "deb https://download.mono-project.com/repo/ubuntu stable-focal main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
+          sudo apt-get install -y -qq gnupg ca-certificates curl
+          sudo install -d -m 0755 /etc/apt/keyrings
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 5 \
+            "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF" \
+            | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/mono-official-stable.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/mono-official-stable.gpg] https://download.mono-project.com/repo/ubuntu stable-focal main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
           sudo apt-get update -qq
           sudo apt-get install -y -qq mono-devel nuget
           mono --version | head -1
