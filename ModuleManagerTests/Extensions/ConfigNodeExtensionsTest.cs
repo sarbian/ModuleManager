@@ -79,6 +79,45 @@ namespace ModuleManagerTests.Extensions
             Assert.Empty(innerNode2.nodes[0].nodes);
         }
 
+        [Theory]
+        [InlineData("PART")]
+        [InlineData("")]
+        [InlineData("@PART[foo]:HAS[#bar]")]
+        [InlineData("NODE (id)")]
+        [InlineData("NODE id")]
+        [InlineData("(NODE) (id)")]
+        [InlineData("NODE\tWITH TAB")]
+        [InlineData("NODE\r\nNEWLINE")]
+        [InlineData(" NODE ")]
+        public void TestDeepCopy__NameCleanup(string name)
+        {
+            // Names keep what the ConfigNode(string) constructor makes of them
+            ConfigNode fromNode = new ConfigNode() { name = name };
+            fromNode.AddNode(new ConfigNode() { name = name });
+            ConfigNode expected = new ConfigNode(name);
+
+            ConfigNode toNode = fromNode.DeepCopy();
+
+            Assert.Equal(expected.name, toNode.name);
+            Assert.Equal(expected.id, toNode.id);
+            Assert.Equal(expected.name, toNode.nodes[0].name);
+            Assert.Equal(expected.id, toNode.nodes[0].id);
+        }
+
+        [Fact]
+        public void TestDeepCopy__SanitizesValues()
+        {
+            // A value written in place can hold braces; the copy sanitizes it as AddValue does
+            ConfigNode fromNode = new ConfigNode("NODE");
+            fromNode.AddValue("abc", "def");
+            fromNode.values[0].value = "{x}";
+            fromNode.values[0].name = "a=b{c}";
+
+            ConfigNode toNode = fromNode.DeepCopy();
+
+            AssertValue("a-b[c]", "[x]", toNode.values[0]);
+        }
+
         [Fact]
         public void TestDeepCopy()
         {

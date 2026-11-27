@@ -8,24 +8,78 @@ namespace ModuleManager.Extensions
         public static void ShallowCopyFrom(this ConfigNode toNode, ConfigNode fromeNode)
         {
             toNode.ClearData();
-            foreach (ConfigNode.Value value in fromeNode.values)
-                toNode.values.Add(value);
-            foreach (ConfigNode node in fromeNode.nodes)
-                toNode.nodes.Add(node);
+            ConfigNode.ValueList values = fromeNode.values;
+            for (int i = 0; i < values.Count; i++)
+                toNode.values.Add(values[i]);
+            ConfigNode.ConfigNodeList nodes = fromeNode.nodes;
+            for (int i = 0; i < nodes.Count; i++)
+                toNode.nodes.Add(nodes[i]);
         }
+
+        // Characters that the ConfigNode(string) constructor removes or splits the name on
+        private static readonly char[] nameCleanupChars = { '\n', '\r', '\t', '(', ')', ' ' };
 
         // KSP implementation of ConfigNode.CreateCopy breaks with badly formed nodes (nodes with a blank name)
         public static ConfigNode DeepCopy(this ConfigNode from)
         {
-            ConfigNode to = new ConfigNode(from.name);
-            foreach (ConfigNode.Value value in from.values)
-                to.AddValueSafe(value.name, value.value);
-            foreach (ConfigNode node in from.nodes)
+            // ConfigNode(name) strips newlines and tabs from the name and splits an id off it at
+            // '(', ')' or ' '. A name with none of those comes out unchanged, so skip that work.
+            string name = from.name;
+            ConfigNode to;
+            if (name != null && name.IndexOfAny(nameCleanupChars) < 0)
+                to = new ConfigNode { name = name };
+            else
+                to = new ConfigNode(name);
+
+            // Indexed loops: the lists' enumerators are non-generic and allocate.
+            ConfigNode.ValueList values = from.values;
+            ConfigNode.ValueList toValues = to.values;
+            for (int i = 0; i < values.Count; i++)
             {
-                ConfigNode newNode = DeepCopy(node);
-                to.nodes.Add(newNode);
+                ConfigNode.Value value = values[i];
+                toValues.Add(new ConfigNode.Value(value.name, value.value));
             }
+            ConfigNode.ConfigNodeList nodes = from.nodes;
+            ConfigNode.ConfigNodeList toNodes = to.nodes;
+            for (int i = 0; i < nodes.Count; i++)
+                toNodes.Add(DeepCopy(nodes[i]));
             return to;
+        }
+
+        // DeepCopy of the node itself (its name and values), with the same subnodes, not copies
+        public static ConfigNode CopySharingSubnodes(this ConfigNode from)
+        {
+            string name = from.name;
+            ConfigNode to;
+            if (name != null && name.IndexOfAny(nameCleanupChars) < 0)
+                to = new ConfigNode { name = name };
+            else
+                to = new ConfigNode(name);
+
+            ConfigNode.ValueList values = from.values;
+            ConfigNode.ValueList toValues = to.values;
+            for (int i = 0; i < values.Count; i++)
+            {
+                ConfigNode.Value value = values[i];
+                toValues.Add(new ConfigNode.Value(value.name, value.value));
+            }
+            ConfigNode.ConfigNodeList nodes = from.nodes;
+            ConfigNode.ConfigNodeList toNodes = to.nodes;
+            for (int i = 0; i < nodes.Count; i++)
+                toNodes.Add(nodes[i]);
+            return to;
+        }
+
+        // Puts newChild in place of oldChild, at the same position
+        public static void ReplaceNode(this ConfigNode parent, ConfigNode oldChild, ConfigNode newChild)
+        {
+            ConfigNode.ConfigNodeList nodes = parent.nodes;
+            ConfigNode[] all = new ConfigNode[nodes.Count];
+            for (int i = 0; i < all.Length; i++)
+                all[i] = nodes[i];
+            nodes.Clear();
+            for (int i = 0; i < all.Length; i++)
+                nodes.Add(ReferenceEquals(all[i], oldChild) ? newChild : all[i]);
         }
 
         public static void PrettyPrint(this ConfigNode node, ref StringBuilder sb, string indent)
@@ -89,15 +143,21 @@ namespace ModuleManager.Extensions
             }
         }
 
+        // Only values with a backslash can hold an escape: the others are left as they are
         public static void UnescapeValuesRecursive(this ConfigNode theNode)
         {
-            foreach (ConfigNode subNode in theNode.nodes)
+            ConfigNode.ConfigNodeList nodes = theNode.nodes;
+            for (int i = 0; i < nodes.Count; i++)
             {
-                subNode.UnescapeValuesRecursive();
+                nodes[i].UnescapeValuesRecursive();
             }
 
-            foreach (ConfigNode.Value value in theNode.values)
+            ConfigNode.ValueList values = theNode.values;
+            for (int i = 0; i < values.Count; i++)
             {
+                ConfigNode.Value value = values[i];
+                if (value.value.IndexOf('\\') < 0)
+                    continue;
                 value.value = value.value.Replace("\\n", "\n");
                 value.value = value.value.Replace("\\r", "\r");
                 value.value = value.value.Replace("\\t", "\t");

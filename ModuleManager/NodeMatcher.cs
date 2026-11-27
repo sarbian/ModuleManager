@@ -13,9 +13,14 @@ namespace ModuleManager
         private readonly string type;
         private readonly string[] namePatterns = null;
         private readonly string constraints = "";
+        private MMPatchLoader.ParsedConstraints parsedConstraints;
 
         // Only nodes of this type can match: ConfigNode.name is the type (e.g. PART), not the name value.
         public string Type => type;
+
+        // The name patterns if none has a wildcard, else null. A node can match only if its
+        // name value is one of them, or one of them followed by a newline.
+        public string[] LiteralNames { get; }
 
         public NodeMatcher(string type, string name, string constraints)
         {
@@ -25,7 +30,12 @@ namespace ModuleManager
             if (name == string.Empty) throw new ArgumentException("can't be empty (null allowed)", nameof(name));
             if (constraints == string.Empty) throw new ArgumentException("can't be empty (null allowed)", nameof(constraints));
 
-            if (name != null) namePatterns = name.Split(',', '|');
+            if (name != null)
+            {
+                namePatterns = name.Split(',', '|');
+                if (Array.TrueForAll(namePatterns, pattern => pattern.IndexOfAny(new[] { '*', '?' }) < 0))
+                    LiteralNames = namePatterns;
+            }
             if (constraints != null)
             {
                 if (!constraints.IsBracketBalanced()) throw new ArgumentException("is not bracket balanced: " + constraints, nameof(constraints));
@@ -69,7 +79,9 @@ namespace ModuleManager
                 if (!match) return false;
             }
 
-            return MMPatchLoader.CheckConstraints(node, constraints);
+            // Looked up on first use, so a constraint that does not parse still throws when checked
+            if (parsedConstraints == null) parsedConstraints = MMPatchLoader.GetParsedConstraints(constraints);
+            return MMPatchLoader.CheckConstraints(node, parsedConstraints);
         }
     }
 
