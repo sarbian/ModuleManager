@@ -32,10 +32,21 @@ namespace ModuleManager
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
+        // Every patch's NEEDS asks about the same few hundred mods: the mod list as a set, taken
+        // when first needed, and each expression's answer. Neither the mod list nor GameData's
+        // directories change while patches are extracted.
+        private HashSet<string> modSet;
+        private readonly Dictionary<string, bool> expressionResults = new Dictionary<string, bool>();
+
         public bool CheckNeeds(string mod)
         {
             if (mod == null) throw new ArgumentNullException(nameof(mod));
             if (mod == string.Empty) throw new ArgumentException("can't be empty", nameof(mod));
+            if (modSet == null) modSet = new HashSet<string>(mods, StringComparer.InvariantCultureIgnoreCase);
+            if (modSet.Contains(mod)) return true;
+            // A hit is an equality the comparer agreed to; a miss could come from hash codes that
+            // do not agree with its equality, which nothing promises on every runtime: a miss is
+            // checked the way it always was. Each NEEDS expression is evaluated once anyway.
             return mods.Contains(mod, StringComparer.InvariantCultureIgnoreCase);
         }
 
@@ -44,6 +55,16 @@ namespace ModuleManager
             if (needsExpression == null) throw new ArgumentNullException(nameof(needsExpression));
             if (needsExpression == string.Empty) throw new ArgumentException("can't be empty", nameof(needsExpression));
 
+            if (!expressionResults.TryGetValue(needsExpression, out bool result))
+            {
+                result = EvaluateNeedsExpression(needsExpression);
+                expressionResults.Add(needsExpression, result);
+            }
+            return result;
+        }
+
+        private bool EvaluateNeedsExpression(string needsExpression)
+        {
             foreach (string andDependencies in needsExpression.Split(',', '&'))
             {
                 bool orMatch = false;

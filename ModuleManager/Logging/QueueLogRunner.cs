@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading;
 
 using ModuleManager.Collections;
 
@@ -15,7 +16,8 @@ namespace ModuleManager.Logging
             Stopped,
         }
 
-        private State state = State.Initialized;
+        private volatile State state = State.Initialized;
+        private readonly object stopLock = new object();
         private readonly IMessageQueue<ILogMessage> logQueue;
         private readonly long timeToWaitForLogsMs;
 
@@ -30,7 +32,12 @@ namespace ModuleManager.Logging
         {
             if (state == State.StopRequested || state == State.Stopped) return;
             if (state != State.Running) throw new InvalidOperationException($"Cannot request stop from {state} state");
-            state = State.StopRequested;
+            lock (stopLock)
+            {
+                state = State.StopRequested;
+                // Wakes Run if it waits for more messages: it then writes the last ones at once
+                Monitor.PulseAll(stopLock);
+            }
         }
 
         public void Run(IBasicLogger logger)
@@ -52,7 +59,13 @@ namespace ModuleManager.Logging
 
                 long timeRemaining = timeToWaitForLogsMs - stopwatch.ElapsedMilliseconds;
                 if (timeRemaining > 0)
-                    System.Threading.Thread.Sleep((int)timeRemaining);
+                {
+                    lock (stopLock)
+                    {
+                        if (state == State.Running)
+                            Monitor.Wait(stopLock, (int)timeRemaining);
+                    }
+                }
 
                 stopwatch.Reset();
             }

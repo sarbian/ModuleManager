@@ -83,7 +83,11 @@
     <Compile Include="Collections\ImmutableStackTest.cs" />
     <Compile Include="Collections\KeyValueCacheTest.cs" />
     <Compile Include="Collections\MessageQueueTest.cs" />
+    <Compile Include="CheckFilesChangeTest.cs" />
     <Compile Include="CommandParserTest.cs" />
+    <Compile Include="ConfigNodeWriterTest.cs" />
+    <Compile Include="ConfigFileHasherTest.cs" />
+    <Compile Include="WildcardMatchTest.cs" />
     <Compile Include="DummyTest.cs" />
     <Compile Include="Extensions\ByteArrayExtensionsTest.cs" />
     <Compile Include="Extensions\ConfigNodeExtensionsTest.cs" />

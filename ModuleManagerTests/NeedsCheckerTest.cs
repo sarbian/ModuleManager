@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using Xunit;
 using NSubstitute;
 using TestUtils;
@@ -179,6 +180,16 @@ namespace ModuleManagerTests
 
             Assert.False(needsChecker.CheckNeeds("mod1&mod2"));
             Assert.False(needsChecker.CheckNeeds("ghi/jkl"));
+        }
+
+        [Fact]
+        public void TestCheckNeeds__NonAscii()
+        {
+            // Every answer is the culture comparer's, as with a linear search
+            string[] mods = { "mod1", "Ünïcode", "straße", "ǅ" };
+            NeedsChecker checker = new NeedsChecker(mods, gameData, progress, logger);
+            foreach (string mod in new[] { "mod1", "MOD1", "ünïcode", "ÜNÏCODE", "STRASSE", "strasse", "straße", "Ǆ", "ǆ", "x", "Unicode" })
+                Assert.Equal(mods.Contains(mod, StringComparer.InvariantCultureIgnoreCase), checker.CheckNeeds(mod));
         }
 
         [Fact]

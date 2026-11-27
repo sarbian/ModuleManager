@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -203,9 +203,10 @@ namespace ModuleManager
 
                 logRunner.RequestStop();
 
+                // The log thread writes its last messages as soon as asked to stop
                 while (loggingThreadStatus.IsRunning)
                 {
-                    System.Threading.Thread.Sleep(100);
+                    System.Threading.Thread.Sleep(2);
                 }
 
                 if (loggingThreadStatus.IsExitedWithError)
@@ -282,30 +283,34 @@ namespace ModuleManager
             sw.Start();
 
             using System.Security.Cryptography.SHA256 sha = System.Security.Cryptography.SHA256.Create();
-            using System.Security.Cryptography.SHA256 filesha = System.Security.Cryptography.SHA256.Create();
             UrlDir.UrlFile[] files = GameDatabase.Instance.root.AllConfigFiles.ToArray();
 
             filesSha.Clear();
 
-            for (int i = 0; i < files.Length; i++)
+            // Worker threads hash each file, while this thread hashes the paths and the files'
+            // hashes all together, in order, as they become ready.
+            using (ConfigFileHasher hasher = new ConfigFileHasher(files.Select(file => file.fullPath).ToArray()))
             {
-                string url = files[i].GetUrlWithExtension();
-                // Hash the file path so the checksum change if files are moved
-                byte[] pathBytes = Encoding.UTF8.GetBytes(url);
-                sha.TransformBlock(pathBytes, 0, pathBytes.Length, pathBytes, 0);
-
-                // hash the file content
-                byte[] contentBytes = File.ReadAllBytes(files[i].fullPath);
-                sha.TransformBlock(contentBytes, 0, contentBytes.Length, contentBytes, 0);
-
-                filesha.ComputeHash(contentBytes);
-                if (!filesSha.ContainsKey(url))
+                for (int i = 0; i < files.Length; i++)
                 {
-                    filesSha.Add(url, BitConverter.ToString(filesha.Hash));
-                }
-                else
-                {
-                    logger.Warning("Duplicate fileSha key. This should not append. The key is " + url);
+                    string url = files[i].GetUrlWithExtension();
+                    // Hash the file path so the checksum change if files are moved
+                    byte[] pathBytes = Encoding.UTF8.GetBytes(url);
+                    sha.TransformBlock(pathBytes, 0, pathBytes.Length, pathBytes, 0);
+
+                    // hash the file content, through its own hash
+                    string fileHash = hasher.WaitForHash(i);
+                    byte[] hashBytes = Encoding.ASCII.GetBytes(fileHash);
+                    sha.TransformBlock(hashBytes, 0, hashBytes.Length, hashBytes, 0);
+
+                    if (!filesSha.ContainsKey(url))
+                    {
+                        filesSha.Add(url, fileHash);
+                    }
+                    else
+                    {
+                        logger.Warning("Duplicate fileSha key. This should not append. The key is " + url);
+                    }
                 }
             }
 
@@ -328,7 +333,6 @@ namespace ModuleManager
 
             configSha = BitConverter.ToString(sha.Hash);
             sha.Clear();
-            filesha.Clear();
 
             sw.Stop();
 
@@ -366,10 +370,27 @@ namespace ModuleManager
 
             changes.Append("Changes :\n");
 
+            // The FILE nodes by filename, each list in node order: the first one is what a search
+            // of the nodes for that filename finds
+            ConfigNode.ConfigNodeList nodes = shaConfigNode.nodes;
+            Dictionary<string, Queue<ConfigNode>> fileNodes = new Dictionary<string, Queue<ConfigNode>>();
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                ConfigNode file = nodes[i];
+                if (file.name != "FILE" || !(file.GetValue("filename") is string filename)) continue;
+                if (!fileNodes.TryGetValue(filename, out Queue<ConfigNode> queue))
+                {
+                    queue = new Queue<ConfigNode>(1);
+                    fileNodes.Add(filename, queue);
+                }
+                queue.Enqueue(file);
+            }
+
+            string[] urls = new string[files.Length];
             for (int i = 0; i < files.Length; i++)
             {
-                string url = files[i].GetUrlWithExtension();
-                ConfigNode fileNode = GetFileNode(shaConfigNode, url);
+                string url = urls[i] = files[i].GetUrlWithExtension();
+                ConfigNode fileNode = fileNodes.TryGetValue(url, out Queue<ConfigNode> queue) ? queue.Peek() : null;
                 string fileSha = fileNode?.GetValue("SHA");
 
                 if (fileNode == null)
@@ -381,37 +402,34 @@ namespace ModuleManager
                     noChange = false;
                 }
             }
+
+            // Each file takes the first FILE node of its name not yet taken; the rest are deleted
+            HashSet<ConfigNode> taken = new HashSet<ConfigNode>();
             for (int i = 0; i < files.Length; i++)
             {
-                string url = files[i].GetUrlWithExtension();
-                ConfigNode fileNode = GetFileNode(shaConfigNode, url);
+                string url = urls[i];
+                ConfigNode fileNode = fileNodes.TryGetValue(url, out Queue<ConfigNode> queue) && queue.Count > 0 ? queue.Dequeue() : null;
 
                 if (fileNode == null)
                 {
                     changes.Append("Added   : " + url + "\n");
                     noChange = false;
                 }
-                shaConfigNode.RemoveNode(fileNode);
+                else
+                {
+                    taken.Add(fileNode);
+                }
             }
-            foreach (ConfigNode fileNode in shaConfigNode.GetNodes())
+            for (int i = 0; i < nodes.Count; i++)
             {
+                ConfigNode fileNode = nodes[i];
+                if (taken.Contains(fileNode)) continue;
                 changes.Append("Deleted : " + fileNode.GetValue("filename") + "\n");
                 noChange = false;
             }
             if (!noChange)
                 logger.Info(changes.ToString());
             return noChange;
-        }
-
-        private ConfigNode GetFileNode(ConfigNode shaConfigNode, string filename)
-        {
-            for (int i = 0; i < shaConfigNode.nodes.Count; i++)
-            {
-                ConfigNode file = shaConfigNode.nodes[i];
-                if (file.name == "FILE" && file.GetValue("filename") == filename)
-                    return file;
-            }
-            return null;
         }
 
 
@@ -432,10 +450,8 @@ namespace ModuleManager
                 ConfigNode node = cache.AddNode("UrlConfig");
                 node.AddValue("parentUrl", urlConfig.UrlFile.GetUrlWithExtension());
 
-                ConfigNode urlNode = urlConfig.Node.DeepCopy();
-                urlNode.EscapeValuesRecursive();
-
-                node.AddNode(urlNode);
+                // Written as a copy with its values sanitized and escaped would be, without the copy
+                node.AddNode(urlConfig.Node);
             }
 
             foreach (var file in GameDatabase.Instance.root.AllConfigFiles)
@@ -455,7 +471,7 @@ namespace ModuleManager
 
             try
             {
-                shaConfigNode.Save(shaPath);
+                ConfigNodeWriter.Save(shaConfigNode, shaPath);
             }
             catch (Exception e)
             {
@@ -463,7 +479,7 @@ namespace ModuleManager
             }
             try
             {
-                cache.Save(cachePath);
+                ConfigNodeWriter.SaveCache(cache, cachePath);
                 return;
             }
             catch (NullReferenceException e)
@@ -525,11 +541,22 @@ namespace ModuleManager
 
             List<IProtoUrlConfig> databaseConfigs = new List<IProtoUrlConfig>(cache.nodes.Count);
 
+            // Most files hold several nodes: each file is looked up once
+            Dictionary<string, UrlDir.UrlFile> parents = new Dictionary<string, UrlDir.UrlFile>();
             foreach (ConfigNode node in cache.nodes)
             {
                 string parentUrl = node.GetValue("parentUrl");
 
-                UrlDir.UrlFile parent = gameDataDir.Find(parentUrl);
+                UrlDir.UrlFile parent;
+                if (parentUrl == null)
+                {
+                    parent = gameDataDir.Find(parentUrl);
+                }
+                else if (!parents.TryGetValue(parentUrl, out parent))
+                {
+                    parent = gameDataDir.Find(parentUrl);
+                    parents.Add(parentUrl, parent);
+                }
                 if (parent != null)
                 {
                     node.nodes[0].UnescapeValuesRecursive();
@@ -569,12 +596,203 @@ namespace ModuleManager
         // Name is group 1, index is group 2, vector related filed is group 3, vector separator is group 4, operator is group 5
         private static readonly Regex parseValue = new Regex(@"([\w\&\-\.\?\*\#+/^!\(\) ]+(?:,[^*\d][\w\&\-\.\?\*\(\) ]*)*)(?:,(-?[0-9\*]+))?(?:\[((?:[0-9\*]+)+)(?:,(.))?\])?");
 
+        // What ModifyNode reads from a patch value's name (@key,1[2, ] *= ...). It depends on the
+        // name alone and is the same for every node the patch applies to, so it is parsed once
+        // per name. The errors it can lead to are still reported each time.
+        private sealed class ValueCommand
+        {
+            public Command cmd;
+            public Operator op;
+            public string opValName;    // the name without its command and operator
+            public bool matchSuccess;   // parseValue matched opValName
+            public string name;         // group 1
+            public bool hasIndex;       // group 2
+            public bool isStar;
+            public int index;
+            public bool indexBad;
+            public bool hasPosition;    // group 3
+            public bool isPosStar;
+            public int position;
+            public bool positionBad;
+            public char seperator;      // group 4
+            public bool hasGroup5;
+        }
+
+        private static readonly KeyValueCache<string, ValueCommand> valueCommandCache = new KeyValueCache<string, ValueCommand>();
+        private static readonly Func<string, ValueCommand> parseValueCommand = ParseValueCommand;
+
+        private static ValueCommand ParseValueCommand(string modValName)
+        {
+            ValueCommand parsed = new ValueCommand();
+            parsed.cmd = CommandParser.Parse(modValName, out string valName);
+
+            if (valName.Length > 2 && valName[valName.Length - 2] == ',')
+                parsed.op = Operator.Assign;
+            else
+                parsed.op = OperatorParser.Parse(valName, out valName);
+            parsed.opValName = valName;
+
+            if (parsed.cmd == Command.Special)
+                return parsed;
+
+            Match match = parseValue.Match(valName);
+            parsed.matchSuccess = match.Success;
+            if (!match.Success)
+                return parsed;
+
+            parsed.name = match.Groups[1].Value;
+
+            parsed.hasPosition = match.Groups[3].Success;
+            if (parsed.hasPosition)
+            {
+                if (match.Groups[3].Value == "*")
+                    parsed.isPosStar = true;
+                else if (!int.TryParse(match.Groups[3].Value, out parsed.position))
+                    parsed.positionBad = true;
+            }
+
+            parsed.seperator = match.Groups[4].Success ? match.Groups[4].Value[0] : ',';
+
+            parsed.hasIndex = match.Groups[2].Success;
+            if (parsed.hasIndex)
+            {
+                if (match.Groups[2].Value == "*")
+                    parsed.isStar = true;
+                else if (!int.TryParse(match.Groups[2].Value, out parsed.index))
+                    parsed.indexBad = true;
+            }
+
+            parsed.hasGroup5 = match.Groups[5].Success;
+            return parsed;
+        }
+
+        // What ModifyNode reads from a patch subnode's name (@MODULE[foo],1:HAS[...]) when it
+        // edits, copies, deletes or replaces existing subnodes. Parsed once per name.
+        private sealed class SubNodeCommand
+        {
+            public string constraints;
+            public string tag;
+            public int index;
+            public string nodeType;
+            public string nodeName;
+        }
+
+        private static readonly KeyValueCache<string, SubNodeCommand> subNodeCommandCache = new KeyValueCache<string, SubNodeCommand>();
+        private static readonly Func<string, SubNodeCommand> parseSubNodeCommand = ParseSubNodeCommand;
+
+        private static SubNodeCommand ParseSubNodeCommand(string subName)
+        {
+            string constraints = "";
+            string tag = "";
+            string nodeType, nodeName;
+            int index = 0;
+
+            // three ways to specify:
+            // NODE,n will match the nth node (NODE is the same as NODE,0)
+            // NODE,* will match ALL nodes
+            // NODE:HAS[condition] will match ALL nodes with condition
+            if (subName.Contains(":HAS[", out int hasStart))
+            {
+                constraints = subName.Substring(hasStart + 5, subName.LastIndexOf(']') - hasStart - 5);
+                subName = subName.Substring(0, hasStart);
+            }
+
+            if (subName.Contains(","))
+            {
+                tag = subName.Split(',')[1];
+                subName = subName.Split(',')[0];
+                int.TryParse(tag, out index);
+            }
+
+            if (subName.Contains("["))
+            {
+                // format @NODETYPE[Name] {...}
+                // or @NODETYPE[Name, index] {...}
+                nodeType = subName.Substring(1).Split('[')[0];
+                nodeName = subName.Split('[')[1].Replace("]", "");
+            }
+            else
+            {
+                // format @NODETYPE {...} or ! instead of @
+                nodeType = subName.Substring(1);
+                nodeName = null;
+            }
+
+            return new SubNodeCommand { constraints = constraints, tag = tag, index = index, nodeType = nodeType, nodeName = nodeName };
+        }
+
+        // A patch subnode's name with its whitespace removed
+        private static readonly KeyValueCache<string, string> removeWSCache = new KeyValueCache<string, string>();
+        private static readonly Func<string, string> removeWS = s => s.RemoveWS();
+
+        private static readonly char[] braces = { '{', '}' };
+        // Characters that the ConfigNode(string) constructor removes or splits a name on
+        private static readonly char[] nameCleanupChars = { '\n', '\r', '\t', '(', ')', ' ' };
+
+        // Set when something is written that a whole copy of its root would change, and that
+        // a subnode shared instead of copied would keep: a special command (*@PART[foo]/bar = x)
+        // writing a value with a brace, which the copy sanitizes, or a rename (|_ = A B) to a
+        // name with a space, a parenthesis or a newline, which the copy cleans. From then on
+        // edits copy whole roots again. PatchApplier clears it at the start of a run.
+        public static volatile bool NeedWholeCopies;
+
         // ModifyNode applies the ConfigNode mod as a 'patch' to ConfigNode original, then returns the patched ConfigNode.
         // it uses FindConfigNodeIn(src, nodeType, nodeName, nodeTag) to recurse.
         public static ConfigNode ModifyNode(NodeStack original, ConfigNode mod, PatchContext context)
         {
-            ConfigNode newNode = original.value.DeepCopy();
+            return ModifyNode(original, mod, context, false);
+        }
+
+        // Same as ModifyNode, but the new node shares the subnodes the patch leaves alone with
+        // original, instead of being a whole copy: a subnode is copied when the patch first edits
+        // (@) or replaces (%) it, at the same position, and edited there as ModifyNode would edit
+        // its copy. original must not be used afterwards but to read it, as the old version of a
+        // root an edit patch replaces. Nothing else writes into an existing subnode but special
+        // commands (*@PART[foo]/bar = x): the patch must have none, nor pastes, which can carry
+        // them, and nothing must have needed whole copies since (NeedWholeCopies).
+        public static ConfigNode ModifyNodeSharingSubnodes(NodeStack original, ConfigNode mod, PatchContext context)
+        {
+            return ModifyNode(original, mod, context, true);
+        }
+
+        private sealed class ReferenceComparer : IEqualityComparer<ConfigNode>
+        {
+            public static readonly ReferenceComparer Instance = new ReferenceComparer();
+            public bool Equals(ConfigNode x, ConfigNode y) => ReferenceEquals(x, y);
+            public int GetHashCode(ConfigNode obj) => System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(obj);
+        }
+
+        private static ConfigNode ModifyNode(NodeStack original, ConfigNode mod, PatchContext context, bool shareSubnodes)
+        {
+            ConfigNode newNode;
+            HashSet<ConfigNode> sharedSubnodes = null;
+            Dictionary<ConfigNode, ConfigNode> subnodeCopies = null;
+            if (shareSubnodes)
+            {
+                newNode = original.value.CopySharingSubnodes();
+                sharedSubnodes = new HashSet<ConfigNode>(ReferenceComparer.Instance);
+                for (int i = 0; i < newNode.nodes.Count; i++)
+                    sharedSubnodes.Add(newNode.nodes[i]);
+                subnodeCopies = new Dictionary<ConfigNode, ConfigNode>(ReferenceComparer.Instance);
+            }
+            else
+            {
+                newNode = original.value.DeepCopy();
+            }
             NodeStack nodeStack = original.ReplaceValue(newNode);
+
+            // The subnode to write into: a shared one is first replaced by its copy. A subnode
+            // can be listed twice (negative indexes); the second time it resolves to the copy.
+            ConfigNode Own(ConfigNode subNode)
+            {
+                if (sharedSubnodes == null) return subNode;
+                if (subnodeCopies.TryGetValue(subNode, out ConfigNode copy)) return copy;
+                if (!sharedSubnodes.Contains(subNode)) return subNode;
+                copy = subNode.DeepCopy();
+                newNode.ReplaceNode(subNode, copy);
+                subnodeCopies.Add(subNode, copy);
+                return copy;
+            }
 
             #region Values
 
@@ -587,13 +805,10 @@ namespace ModuleManager
                 vals += "\n   " + modVal.name + "= " + modVal.value;
                 #endif
 
-                Command cmd = CommandParser.Parse(modVal.name, out string valName);
-
-                Operator op;
-                if (valName.Length > 2 && valName[valName.Length - 2] == ',')
-                    op = Operator.Assign;
-                else
-                    op = OperatorParser.Parse(valName, out valName);
+                ValueCommand parsed = valueCommandCache.FetchWithKey(modVal.name, parseValueCommand);
+                Command cmd = parsed.cmd;
+                Operator op = parsed.op;
+                string valName = parsed.opValName;
 
                 if (cmd == Command.Special)
                 {
@@ -604,6 +819,10 @@ namespace ModuleManager
                         context.progress.Error(context.patchUrl, "Error - Cannot find value assigning command: " + valName);
                         continue;
                     }
+
+                    // The value may be the name of a node in the database, which its index looks nodes up by
+                    if (val.name == "name")
+                        PatchTypeIndex.NameWritten();
 
                     if (op != Operator.Assign)
                     {
@@ -637,64 +856,46 @@ namespace ModuleManager
                     else
                     {
                         val.value = modVal.value;
+                        // Stock sanitizes such a value when its root is next copied whole
+                        if (val.value != null && val.value.IndexOfAny(braces) >= 0)
+                            NeedWholeCopies = true;
                     }
                     continue;
                 }
 
-                Match match = parseValue.Match(valName);
-                if (!match.Success)
+                if (!parsed.matchSuccess)
                 {
                     context.progress.Error(context.patchUrl, "Error - Cannot parse value modifying command: " + valName);
                     continue;
                 }
 
                 // Get the bits and pieces from the regexp
-                valName = match.Groups[1].Value;
+                valName = parsed.name;
 
                 // Get a position for editing a vector
-                int position = 0;
-                bool isPosStar = false;
-                if (match.Groups[3].Success)
+                int position = parsed.position;
+                bool isPosStar = parsed.isPosStar;
+                if (parsed.positionBad)
                 {
-                    if (match.Groups[3].Value == "*")
-                        isPosStar = true;
-                    else if (!int.TryParse(match.Groups[3].Value, out position))
-                    {
-                        context.progress.Error(context.patchUrl, "Error - Unable to parse number as number. Very odd.");
-                        continue;
-                    }
+                    context.progress.Error(context.patchUrl, "Error - Unable to parse number as number. Very odd.");
+                    continue;
                 }
-                char seperator = ',';
-                if (match.Groups[4].Success)
-                {
-                    seperator = match.Groups[4].Value[0];
-                }
+                char seperator = parsed.seperator;
 
                 // In this case insert the value at position index (with the same node names)
-                int index = 0;
-                bool isStar = false;
-                if (match.Groups[2].Success)
+                int index = parsed.index;
+                bool isStar = parsed.isStar;
+                if (parsed.indexBad)
                 {
-                    if (match.Groups[2].Value == "*")
-                        isStar = true;
-                    // can have "node,n *" (for *= ect)
-                    else if (!int.TryParse(match.Groups[2].Value, out index))
-                    {
-                        context.progress.Error(context.patchUrl, "Error - Unable to parse number as number. Very odd.");
-                        continue;
-                    }
+                    context.progress.Error(context.patchUrl, "Error - Unable to parse number as number. Very odd.");
+                    continue;
                 }
-
-                int valCount = 0;
-                for (int i=0; i<newNode.CountValues; i++)
-                    if (newNode.values[i].name == valName)
-                        valCount++;
 
                 string varValue;
                 switch (cmd)
                 {
                     case Command.Insert:
-                        if (match.Groups[5].Success)
+                        if (parsed.hasGroup5)
                         {
                             context.progress.Error(context.patchUrl, "Error - Cannot use operators with insert value: " + mod.name);
                         }
@@ -703,7 +904,13 @@ namespace ModuleManager
                             // Insert at the end by default
                             varValue = ProcessVariableSearch(modVal.value, nodeStack, context);
                             if (varValue != null)
-                                InsertValue(newNode, match.Groups[2].Success ? index : int.MaxValue, valName, varValue);
+                            {
+                                // Without an index the value goes at the end, which needs no look at the others
+                                if (parsed.hasIndex)
+                                    InsertValue(newNode, index, valName, varValue);
+                                else
+                                    newNode.AddValueSafe(valName, varValue);
+                            }
                             else
                                 context.progress.Error(context.patchUrl, "Error - Cannot parse variable search when inserting new key " + valName + " = " +
                                     modVal.value);
@@ -711,12 +918,12 @@ namespace ModuleManager
                         break;
 
                     case Command.Replace:
-                        if (match.Groups[2].Success || match.Groups[5].Success || valName.Contains('*')
+                        if (parsed.hasIndex || parsed.hasGroup5 || valName.Contains('*')
                             || valName.Contains('?'))
                         {
-                            if (match.Groups[2].Success)
+                            if (parsed.hasIndex)
                                 context.progress.Error(context.patchUrl, "Error - Cannot use index with replace (%) value: " + mod.name);
-                            if (match.Groups[5].Success)
+                            if (parsed.hasGroup5)
                                 context.progress.Error(context.patchUrl, "Error - Cannot use operators with replace (%) value: " + mod.name);
                             if (valName.Contains('*') || valName.Contains('?'))
                                 context.progress.Error(context.patchUrl, "Error - Cannot use wildcards (* or ?) with replace (%) value: " + mod.name);
@@ -743,6 +950,8 @@ namespace ModuleManager
                         // Format is @key = value or @key *= value or @key += value or @key -= value
                         // or @key,index = value or @key,index *= value or @key,index += value or @key,index -= value
 
+                        // Counted before the loop: a copy adds values with the same name
+                        int valCount = CountValues(newNode, valName);
                         while (index < valCount)
                         {
                             varValue = ProcessVariableSearch(modVal.value, nodeStack, context);
@@ -757,7 +966,7 @@ namespace ModuleManager
                                     index,
                                     out ConfigNode.Value origVal,
                                     context,
-                                    match.Groups[3].Success,
+                                    parsed.hasPosition,
                                     position,
                                     isPosStar,
                                     seperator
@@ -787,13 +996,14 @@ namespace ModuleManager
                         break;
 
                     case Command.Delete:
-                        if (match.Groups[5].Success)
+                        if (parsed.hasGroup5)
                         {
                             context.progress.Error(context.patchUrl, "Error - Cannot use operators with delete (- or !) value: " + mod.name);
                         }
-                        else if (match.Groups[2].Success)
+                        else if (parsed.hasIndex)
                         {
-                            while (index < valCount)
+                            int deleteCount = CountValues(newNode, valName);
+                            while (index < deleteCount)
                             {
                                 // If there is an index, use it.
                                 ConfigNode.Value v = FindValueIn(newNode, valName, index);
@@ -830,15 +1040,17 @@ namespace ModuleManager
                             break;
                         }
                         newNode.name = modVal.value;
+                        if (modVal.value == null || modVal.value.IndexOfAny(nameCleanupChars) >= 0)
+                            NeedWholeCopies = true;
                         break;
 
                     case Command.Create:
-                        if (match.Groups[2].Success || match.Groups[5].Success || valName.Contains('*')
+                        if (parsed.hasIndex || parsed.hasGroup5 || valName.Contains('*')
                             || valName.Contains('?'))
                         {
-                            if (match.Groups[2].Success)
+                            if (parsed.hasIndex)
                                 context.progress.Error(context.patchUrl, "Error - Cannot use index with create (&) value: " + mod.name);
-                            if (match.Groups[5].Success)
+                            if (parsed.hasGroup5)
                                 context.progress.Error(context.patchUrl, "Error - Cannot use operators with create (&) value: " + mod.name);
                             if (valName.Contains('*') || valName.Contains('?'))
                                 context.progress.Error(context.patchUrl, "Error - Cannot use wildcards (* or ?) with create (&) value: " + mod.name);
@@ -870,7 +1082,7 @@ namespace ModuleManager
 
             foreach (ConfigNode subMod in mod.nodes)
             {
-                subMod.name = subMod.name.RemoveWS();
+                subMod.name = removeWSCache.FetchWithKey(subMod.name, removeWS);
 
                 if (!subMod.name.IsBracketBalanced())
                 {
@@ -933,61 +1145,22 @@ namespace ModuleManager
                 }
                 else
                 {
-                    string constraints = "";
-                    string tag = "";
-                    string nodeType, nodeName;
-                    int index = 0;
+                    SubNodeCommand subCommand = subNodeCommandCache.FetchWithKey(subName, parseSubNodeCommand);
+                    string constraints = subCommand.constraints;
+                    string tag = subCommand.tag;
+                    string nodeType = subCommand.nodeType, nodeName = subCommand.nodeName;
+                    int index = subCommand.index;
                     #if LOGSPAM
                     string msg = "";
                     #endif
                     List<ConfigNode> subNodes = new List<ConfigNode>();
-
-                    // three ways to specify:
-                    // NODE,n will match the nth node (NODE is the same as NODE,0)
-                    // NODE,* will match ALL nodes
-                    // NODE:HAS[condition] will match ALL nodes with condition
-                    if (subName.Contains(":HAS[", out int hasStart))
-                    {
-                        constraints = subName.Substring(hasStart + 5, subName.LastIndexOf(']') - hasStart - 5);
-                        subName = subName.Substring(0, hasStart);
-                    }
-
-                    if (subName.Contains(","))
-                    {
-                        tag = subName.Split(',')[1];
-                        subName = subName.Split(',')[0];
-                        int.TryParse(tag, out index);
-                    }
-
-                    if (subName.Contains("["))
-                    {
-                        // format @NODETYPE[Name] {...}
-                        // or @NODETYPE[Name, index] {...}
-                        nodeType = subName.Substring(1).Split('[')[0];
-                        nodeName = subName.Split('[')[1].Replace("]", "");
-                    }
-                    else
-                    {
-                        // format @NODETYPE {...} or ! instead of @
-                        nodeType = subName.Substring(1);
-                        nodeName = null;
-                    }
 
                     if (tag == "*" || constraints.Length > 0)
                     {
                         // get ALL nodes
                         if (command != Command.Replace)
                         {
-                            ConfigNode n, last = null;
-                            while (true)
-                            {
-                                n = FindConfigNodeIn(newNode, nodeType, nodeName, index++);
-                                if (n == last || n == null)
-                                    break;
-                                if (CheckConstraints(n, constraints))
-                                    subNodes.Add(n);
-                                last = n;
-                            }
+                            FindConfigNodesFrom(newNode, nodeType, nodeName, index, GetParsedConstraints(constraints), false, subNodes);
                         }
 #if LOGSPAM
                         else
@@ -1010,9 +1183,10 @@ namespace ModuleManager
                             #if LOGSPAM
                             msg += "  Applying subnode " + subMod.name + "\n";
                             #endif
-                            ConfigNode newSubNode = ModifyNode(nodeStack.Push(subNodes[0]), subMod, context);
-                            subNodes[0].ShallowCopyFrom(newSubNode);
-                            subNodes[0].name = newSubNode.name;
+                            ConfigNode target = Own(subNodes[0]);
+                            ConfigNode newSubNode = ModifyNode(nodeStack.Push(target), subMod, context);
+                            target.ShallowCopyFrom(newSubNode);
+                            target.name = newSubNode.name;
                         }
                         else
                         {
@@ -1066,9 +1240,10 @@ namespace ModuleManager
                                 case Command.Edit:
 
                                     // Edit in place
-                                    newSubNode = ModifyNode(nodeStack.Push(subNode), subMod, context);
-                                    subNode.ShallowCopyFrom(newSubNode);
-                                    subNode.name = newSubNode.name;
+                                    ConfigNode target = Own(subNode);
+                                    newSubNode = ModifyNode(nodeStack.Push(target), subMod, context);
+                                    target.ShallowCopyFrom(newSubNode);
+                                    target.name = newSubNode.name;
                                     break;
 
                                 case Command.Delete:
@@ -1156,21 +1331,9 @@ namespace ModuleManager
             // @XXXXX
             if (root)
             {
-                bool foundNodeType = false;
-                foreach (IProtoUrlConfig urlConfig in context.databaseConfigs)
-                {
-                    ConfigNode node = urlConfig.Node;
-
-                    if (node.name != nodeType) continue;
-
-                    foundNodeType = true;
-
-                    if (nodeName == null || (node.GetValue("name") is string testNodeName && WildcardMatch(testNodeName, nodeName)))
-                    {
-                        nodeStack = new NodeStack(node);
-                        break;
-                    }
-                }
+                ConfigNode rootNode = FindRootNode(context, nodeType, nodeName, out bool foundNodeType);
+                if (rootNode != null)
+                    nodeStack = new NodeStack(rootNode);
 
                 if (!foundNodeType) context.logger.Warning("Can't find nodeType:" + nodeType);
                 if (nodeStack == null) return null;
@@ -1180,22 +1343,8 @@ namespace ModuleManager
                 if (constraint.Length > 0)
                 {
                     // get the first one matching
-                    ConfigNode last = null;
-                    while (true)
-                    {
-                        ConfigNode n = FindConfigNodeIn(nodeStack.value, nodeType, nodeName, index++);
-                        if (n == last || n == null)
-                        {
-                            nodeStack = null;
-                            break;
-                        }
-                        if (CheckConstraints(n, constraint))
-                        {
-                            nodeStack = nodeStack.Push(n);
-                            break;
-                        }
-                        last = n;
-                    }
+                    ConfigNode n = FindConfigNodesFrom(nodeStack.value, nodeType, nodeName, index, GetParsedConstraints(constraint), true, null);
+                    nodeStack = n != null ? nodeStack.Push(n) : null;
                 }
                 else
                 {
@@ -1213,6 +1362,55 @@ namespace ModuleManager
             }
 
             return nodeStack.value;
+        }
+
+        // The first root node in the database of type nodeType whose name value matches nodeName
+        // (any node of that type if null), and whether there is any node of that type
+        private static ConfigNode FindRootNode(PatchContext context, string nodeType, string nodeName, out bool foundNodeType)
+        {
+            PatchTypeIndex index = context.typeIndex;
+            if (index == null)
+            {
+                foundNodeType = false;
+                foreach (IProtoUrlConfig urlConfig in context.databaseConfigs)
+                {
+                    ConfigNode node = urlConfig.Node;
+
+                    if (node.name != nodeType) continue;
+
+                    foundNodeType = true;
+
+                    if (nodeName == null || (node.GetValue("name") is string testNodeName && WildcardMatch(testNodeName, nodeName)))
+                        return node;
+                }
+                return null;
+            }
+
+            // The same nodes in the same order: those of the type, in list order
+            List<LinkedListNode<IProtoUrlConfig>> nodes = index.NodesOfType(nodeType);
+            foundNodeType = nodes.Count > 0;
+            if (nodeName == null)
+                return foundNodeType ? nodes[0].Value.Node : null;
+
+            if (nodeName.IndexOfAny(wildcardChars) < 0)
+            {
+                // A name without wildcards matches itself or itself followed by a newline: the
+                // index has their positions, and the first of either is the first match
+                List<int> exact = index.PositionsNamed(nodeType, nodeName);
+                List<int> newline = index.PositionsNamed(nodeType, nodeName + "\n");
+                int first = int.MaxValue;
+                if (exact.Count > 0) first = exact[0];
+                if (newline.Count > 0 && newline[0] < first) first = newline[0];
+                return first != int.MaxValue ? nodes[first].Value.Node : null;
+            }
+
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                ConfigNode node = nodes[i].Value.Node;
+                if (node.GetValue("name") is string testNodeName && WildcardMatch(testNodeName, nodeName))
+                    return node;
+            }
+            return null;
         }
 
         // KeyName is group 1, index is group 2, value index is group 3, value separator is group 4
@@ -1252,20 +1450,9 @@ namespace ModuleManager
                     nodeName = null;
                 }
 
-                bool foundNodeType = false;
-                foreach (IProtoUrlConfig urlConfig in context.databaseConfigs)
-                {
-                    ConfigNode node = urlConfig.Node;
-
-                    if (node.name != nodeType) continue;
-
-                    foundNodeType = true;
-
-                    if (nodeName == null || (node.GetValue("name") is string testNodeName && WildcardMatch(testNodeName, nodeName)))
-                    {
-                        return RecurseVariableSearch(path.Substring(nextSep + 1), new NodeStack(node), context);
-                    }
-                }
+                ConfigNode rootNode = FindRootNode(context, nodeType, nodeName, out bool foundNodeType);
+                if (rootNode != null)
+                    return RecurseVariableSearch(path.Substring(nextSep + 1), new NodeStack(rootNode), context);
 
                 if (!foundNodeType) context.logger.Warning("Can't find nodeType:" + nodeType);
 
@@ -1318,16 +1505,9 @@ namespace ModuleManager
                 if (constraint.Length > 0)
                 {
                     // get the first one matching
-                    ConfigNode last = null;
-                    while (true)
-                    {
-                        ConfigNode n = FindConfigNodeIn(nodeStack.value, nodeType, nodeName, index++);
-                        if (n == last || n == null)
-                            break;
-                        if (CheckConstraints(n, constraint))
-                            return RecurseVariableSearch(path.Substring(nextSep + 1), nodeStack.Push(n), context);
-                        last = n;
-                    }
+                    ConfigNode n = FindConfigNodesFrom(nodeStack.value, nodeType, nodeName, index, GetParsedConstraints(constraint), true, null);
+                    if (n != null)
+                        return RecurseVariableSearch(path.Substring(nextSep + 1), nodeStack.Push(n), context);
                     return null;
                 }
                 else
@@ -1536,19 +1716,43 @@ namespace ModuleManager
         static readonly char[] contraintSeparators = { '[', ']' };
 
         // CheckConstraints is called for every node a patch might apply to, with the same few
-        // constraint strings, so each string is parsed once.
-        private sealed class ParsedConstraints
+        // constraint strings, so each string is parsed once. The constraints it nests are looked
+        // up when first checked, as the strings were parsed when first checked, and then kept, so
+        // checking them again needs no lookup.
+        public sealed class ParsedConstraints
         {
-            public bool empty;
-            public List<string> list;
-            public char op;
-            public string type;
-            public string name;
-            public string remaining;
+            internal bool empty;
+            internal List<string> list;
+            internal char op;
+            internal string type;
+            internal string name;
+            internal string remaining;
+            internal bool compare;
+            internal double compareValue;
+            // type and name have no wildcard: WildcardMatch is then a plain comparison
+            internal bool typeLiteral;
+            internal bool nameLiteral;
+
+            private ParsedConstraints[] listParsed;
+            private ParsedConstraints remainingParsed;
+
+            internal ParsedConstraints ListItem(int i)
+            {
+                if (listParsed == null) listParsed = new ParsedConstraints[list.Count];
+                return listParsed[i] ?? (listParsed[i] = GetParsedConstraints(list[i]));
+            }
+
+            internal ParsedConstraints Remaining => remainingParsed ?? (remainingParsed = GetParsedConstraints(remaining));
         }
 
         private static readonly KeyValueCache<string, ParsedConstraints> constraintsCache = new KeyValueCache<string, ParsedConstraints>();
         private static readonly Func<string, ParsedConstraints> parseConstraints = ParseConstraints;
+
+        public static ParsedConstraints GetParsedConstraints(string constraints)
+        {
+            if (constraints == null) throw new ArgumentNullException("input");
+            return constraintsCache.FetchWithKey(constraints, parseConstraints);
+        }
 
         private static ParsedConstraints ParseConstraints(string constraints)
         {
@@ -1584,30 +1788,36 @@ namespace ModuleManager
             parsed.name = splits.Length > 1 ? splits[1] : null;
             parsed.op = constraints[0];
             parsed.remaining = remainingConstraints;
+            parsed.compare = ParseCompare(parsed.name, out parsed.compareValue);
+            parsed.typeLiteral = parsed.type.IndexOfAny(wildcardChars) < 0;
+            parsed.nameLiteral = parsed.name != null && parsed.name.IndexOfAny(wildcardChars) < 0;
             return parsed;
         }
 
         public static bool CheckConstraints(ConfigNode node, string constraints)
         {
-            if (constraints == null) throw new ArgumentNullException("input");
-            ParsedConstraints parsed = constraintsCache.FetchWithKey(constraints, parseConstraints);
+            return CheckConstraints(node, GetParsedConstraints(constraints));
+        }
 
+        public static bool CheckConstraints(ConfigNode node, ParsedConstraints parsed)
+        {
             if (parsed.empty)
                 return true;
 
             if (parsed.list != null)
             {
-                bool ret3 = true;
-                foreach (string constraint in parsed.list)
+                // Like ret = ret && Check(...) over the list: once one fails, the rest are not checked
+                int count = parsed.list.Count;
+                for (int i = 0; i < count; i++)
                 {
-                    ret3 = ret3 && CheckConstraints(node, constraint);
+                    if (!CheckConstraints(node, parsed.ListItem(i)))
+                        return false;
                 }
-                return ret3;
+                return true;
             }
 
             string type = parsed.type;
             string name = parsed.name;
-            string remainingConstraints = parsed.remaining;
 
             switch (parsed.op)
             {
@@ -1625,13 +1835,14 @@ namespace ModuleManager
                     for (int i = 0; i < c && !any; ++i)
                     {
                         ConfigNode subNode = node.nodes[i];
-                        if (!WildcardMatch(subNode.name, type))
+                        string subType = subNode.name;
+                        if (parsed.typeLiteral && subType != null ? !LiteralMatch(subType, type) : !WildcardMatch(subType, type))
                             continue;
-                        if (name != null && !(subNode.GetValue("name") is string subName && WildcardMatch(subName, name)))
+                        if (name != null && !(subNode.GetValue("name") is string subName && (parsed.nameLiteral ? LiteralMatch(subName, name) : WildcardMatch(subName, name))))
                             continue;
                         if (subNode == last)
                             break;
-                        any = CheckConstraints(subNode, remainingConstraints);
+                        any = CheckConstraints(subNode, parsed.Remaining);
                         last = subNode;
                     }
                     if (last != null)
@@ -1640,9 +1851,9 @@ namespace ModuleManager
 
                 case '#':
 
-                    // #module[Winglet]
-                    if (node.HasValue(type) && WildcardMatchValues(node, type, name))
-                        return CheckConstraints(node, remainingConstraints);
+                    // #module[Winglet]. No value of that name means no match, as HasValue(type) was checked first.
+                    if (WildcardMatchValues(node, type, name, parsed.compare, parsed.compareValue))
+                        return CheckConstraints(node, parsed.Remaining);
                     return false;
 
                 case '~':
@@ -1651,28 +1862,44 @@ namespace ModuleManager
                     // or: ~breakingForce[100]  will be true if it's present but not 100, too.
                     if (name == "" && node.HasValue(type))
                         return false;
-                    if (name != "" && WildcardMatchValues(node, type, name))
+                    if (name != "" && WildcardMatchValues(node, type, name, parsed.compare, parsed.compareValue))
                         return false;
-                    return CheckConstraints(node, remainingConstraints);
+                    return CheckConstraints(node, parsed.Remaining);
 
                 default:
                     return false;
             }
         }
 
+        // Whether value is a number comparison (<10, >0.5) and its number
+        private static bool ParseCompare(string value, out double val)
+        {
+            val = 0;
+            bool compare = value != null && value.Length > 1 && (value[0] == '<' || value[0] == '>');
+            return compare && double.TryParse(value.Substring(1), NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out val);
+        }
+
         public static bool WildcardMatchValues(ConfigNode node, string type, string value)
         {
-            double val = 0;
-            bool compare = value != null && value.Length > 1 && (value[0] == '<' || value[0] == '>');
-            compare = compare && double.TryParse(value.Substring(1), NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out val);
+            bool compare = ParseCompare(value, out double val);
+            return WildcardMatchValues(node, type, value, compare, val);
+        }
 
-            string[] values = node.GetValues(type);
-            for (int i = 0; i < values.Length; i++)
+        // Walks the values once, in order, instead of collecting them with GetValues(type)
+        private static bool WildcardMatchValues(ConfigNode node, string type, string value, bool compare, double val)
+        {
+            ConfigNode.ValueList values = node.values;
+            int count = values.Count;
+            for (int i = 0; i < count; i++)
             {
-                if (!compare && WildcardMatch(values[i], value))
+                ConfigNode.Value v = values[i];
+                if (v.name != type)
+                    continue;
+
+                if (!compare && WildcardMatch(v.value, value))
                     return true;
 
-                if (compare && double.TryParse(values[i], NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double val2)
+                if (compare && double.TryParse(v.value, NumberStyles.Float, CultureInfo.InvariantCulture.NumberFormat, out double val2)
                     && ((value[0] == '<' && val2 < val) || (value[0] == '>' && val2 > val)))
                 {
                     return true;
@@ -1691,14 +1918,60 @@ namespace ModuleManager
             if (s == null)
                 throw new ArgumentNullException("input");
 
-            // Without wildcards the pattern is ^literal$, and $ also matches before a final newline.
             if (wildcard.IndexOfAny(wildcardChars) < 0)
-                return s == wildcard
-                    || (s.Length == wildcard.Length + 1 && s[wildcard.Length] == '\n' && string.CompareOrdinal(s, 0, wildcard, 0, wildcard.Length) == 0);
+                return LiteralMatch(s, wildcard);
+
+            // The pattern is the regex ^...$ with * as .* and ? as ., where . is any character but
+            // a newline. Without a newline in s that is a plain glob match.
+            if (s.IndexOf('\n') < 0)
+                return GlobMatch(s, wildcard);
 
             Regex regex = wildcardRegexCache.FetchWithKey(wildcard, w =>
                 new Regex("^" + Regex.Escape(w).Replace(@"\*", ".*").Replace(@"\?", ".") + "$"));
             return regex.IsMatch(s);
+        }
+
+        // WildcardMatch for a pattern without wildcards, whose regex is ^literal$: $ also matches
+        // before a final newline. s must not be null.
+        private static bool LiteralMatch(string s, string literal)
+        {
+            return s == literal
+                || (s.Length == literal.Length + 1 && s[literal.Length] == '\n' && string.CompareOrdinal(s, 0, literal, 0, literal.Length) == 0);
+        }
+
+        // Whole-string match of s against a pattern where * is any run of characters and ? any one
+        // character, compared ordinally. Backtracks only to the last *, which is enough for *.
+        private static bool GlobMatch(string s, string pattern)
+        {
+            int si = 0, pi = 0;
+            int starPi = -1, starSi = 0;
+            int sLen = s.Length, pLen = pattern.Length;
+            while (si < sLen)
+            {
+                if (pi < pLen)
+                {
+                    char pc = pattern[pi];
+                    if (pc == '*')
+                    {
+                        starPi = pi++;
+                        starSi = si;
+                        continue;
+                    }
+                    if (pc == '?' || pc == s[si])
+                    {
+                        si++;
+                        pi++;
+                        continue;
+                    }
+                }
+                if (starPi < 0)
+                    return false;
+                pi = starPi + 1;
+                si = ++starSi;
+            }
+            while (pi < pLen && pattern[pi] == '*')
+                pi++;
+            return pi == pLen;
         }
 
         #endregion Condition checking
@@ -1722,6 +1995,16 @@ namespace ModuleManager
             }
             else
                 newNode.AddNode(subMod);
+        }
+
+        private static int CountValues(ConfigNode node, string name)
+        {
+            ConfigNode.ValueList values = node.values;
+            int count = 0;
+            for (int i = 0; i < values.Count; i++)
+                if (values[i].name == name)
+                    count++;
+            return count;
         }
 
         private static void InsertValue(ConfigNode newNode, int index, string name, string value)
@@ -1808,6 +2091,67 @@ namespace ModuleManager
                 }
             }
             return last;
+        }
+
+        // Walks the nodes FindConfigNodeIn(src, nodeType, nodeName, i) returns for i = index,
+        // index + 1, ... until it returns null or the node it returned before, and keeps those
+        // that pass the constraints: all of them in into, or only the first, which it returns.
+        // From an index of 0 or more those are the matching subnodes from that index on, or the
+        // last one if there are no more than index, found here in one pass.
+        private static ConfigNode FindConfigNodesFrom(
+            ConfigNode src,
+            string nodeType,
+            string nodeName,
+            int index,
+            ParsedConstraints constraints,
+            bool firstOnly,
+            List<ConfigNode> into)
+        {
+            if (index < 0)
+            {
+                // From the end then on from the start: rare, so as it always was
+                ConfigNode n, last = null;
+                while (true)
+                {
+                    n = FindConfigNodeIn(src, nodeType, nodeName, index++);
+                    if (n == last || n == null)
+                        return null;
+                    if (CheckConstraints(n, constraints))
+                    {
+                        if (firstOnly) return n;
+                        into.Add(n);
+                    }
+                    last = n;
+                }
+            }
+
+            int matched = 0;
+            ConfigNode lastMatch = null;
+            int c = src.nodes.Count;
+            for (int i = 0; i < c; ++i)
+            {
+                ConfigNode n = src.nodes[i];
+                if (!WildcardMatch(n.name, nodeType))
+                    continue;
+                if (nodeName != null && !(n.GetValue("name") is string name && WildcardMatch(name, nodeName)))
+                    continue;
+                lastMatch = n;
+                if (matched++ < index)
+                    continue;
+                if (CheckConstraints(n, constraints))
+                {
+                    if (firstOnly) return n;
+                    into.Add(n);
+                }
+            }
+
+            // Fewer matches than index: FindConfigNodeIn gave the last one, once
+            if (matched > 0 && matched <= index && CheckConstraints(lastMatch, constraints))
+            {
+                if (firstOnly) return lastMatch;
+                into.Add(lastMatch);
+            }
+            return null;
         }
 
         private static ConfigNode.Value FindValueIn(ConfigNode newNode, string valName, int index)

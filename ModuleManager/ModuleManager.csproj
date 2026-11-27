@@ -80,6 +80,8 @@
     <Compile Include="Pass.cs" />
     <Compile Include="PatchApplier.cs" />
     <Compile Include="PatchTypeIndex.cs" />
+    <Compile Include="ConfigFileHasher.cs" />
+    <Compile Include="ConfigNodeWriter.cs" />
     <Compile Include="PatchContext.cs" />
     <Compile Include="Patches\CopyPatch.cs" />
     <Compile Include="Patches\DeletePatch.cs" />
